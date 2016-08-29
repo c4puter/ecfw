@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 set(CMAKE_TOOLCHAIN_FILE CMakeModules/toolchain-gnu-arm-none-eabi-sam4s16c.cmake)
 project(ecfw)
 
-find_package(PythonInterp)
+find_package(PythonInterp REQUIRED)
 
 set(ECFW_ASF_SOURCE $ENV{HOME}/pantry/xdk-asf-3.31.0 CACHE PATH "Path to an unpacked Atmel ASF tree")
 set(ASF_UNF_DIR ${CMAKE_BINARY_DIR}/asf-unf)
