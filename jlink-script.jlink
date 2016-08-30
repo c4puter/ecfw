@@ -1,0 +1,7 @@
+si 1
+speed adaptive
+r
+h
+loadfile ecfw.hex
+r
+q

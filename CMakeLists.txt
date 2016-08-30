@@ -13,16 +13,27 @@ include_directories(SYSTEM
     ${ASF_UNF_DIR}
     )
 
-add_custom_target(asf-unf
+include_directories(BEFORE
+    config
+    )
+
+add_custom_target(asf-unf-dir
     COMMAND mkdir -p ${ASF_UNF_DIR}
-    WORKING_DIRECTORY ${ASF_UNF_DIR}
+    )
+
+add_custom_target(asf-unf
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/unfuck-asf.py sam ${ECFW_ASF_SOURCE} asf
+    WORKING_DIRECTORY ${ASF_UNF_DIR}
+    DEPENDS asf-unf-dir
     )
 
 add_executable( ecfw
     main.c
     ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.c
     ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.c
+    ${ASF_UNF_DIR}/asf/drivers/pio/pio.c
+    ${ASF_UNF_DIR}/asf/drivers/pmc/pmc.c
+    ${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.c
     )
 
 set_source_files_properties(
@@ -33,9 +44,9 @@ set_source_files_properties(
 add_dependencies(ecfw asf-unf)
 
 target_compile_options( ecfw PUBLIC
-    -Og -g -pipe -nostartfiles
+    -O1 -g -pipe
     -std=c99 -Wall -Wextra
-    -D__SAM4S16C__ -DARM_MATH_CM4=true )
+    -D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD )
 
 target_link_libraries( ecfw
     -Wl,--entry=Reset_Handler

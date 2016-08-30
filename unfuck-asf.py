@@ -20,18 +20,36 @@ HEADER = """\
 
 HEADER_LIST = [i + "\n" for i in HEADER.split("\n")]
 
+INC_RE = re.compile(r'^\s*#\s*include\s+[<"]([^>"]+)[>"]')
+
 def usage():
     print("unfuck-asf PLATFORM OLDPATH NEWPATH")
+
+INC_IGNORES = [
+    "samg", "same70", "sam3u", "sam4l", "sam3x", "samv71", "xmega",
+    "uc3l", "sam4e", "sams70", "uc3a3_a4", "uc3b0_b1", "sam4cp",
+    "uc3a0_a1", "sam3s", "uc3c", "samv70", "uc3d", "sam4s",
+    "sam4cm", "sam3n", "sam4c", "sam4n", "mega",
+    ]
 
 def get_include_path(subdir):
     incpath = {}
     for root, dirs, files in os.walk(subdir):
+        # Don't include device-specific files in the include path. These are
+        # included relatively by headers that select the right one.
+        ignored_include = False
+        for i in os.path.split(root):
+            if i in INC_IGNORES:
+                ignored_include = True
+        if ignored_include:
+            continue
         for name in files:
             p = os.path.join(root, name)
             incpath[name] = p
     return incpath
 
-INC_RE = re.compile(r'^\s*#include\s+[<"]([^>"]+)[>"]')
+def try_local_resolve(fn, header):
+    return os.path.exists(os.path.join(os.path.dirname(fn), header))
 
 def fix_one_file(fn, incpath):
     lines = HEADER_LIST[:]
@@ -46,9 +64,13 @@ def fix_one_file(fn, incpath):
             if header.startswith("conf_"):
                 quoted = True
                 fullpath = header
+            elif try_local_resolve(fn, header):
+                quoted = True
+                fullpath = header
             else:
                 quoted = False
-                fullpath = incpath.get(header, header)
+                header_short = os.path.split(header)[-1]
+                fullpath = incpath.get(header_short, header)
 
             if quoted:
                 lines.append('#include "%s"\n' % fullpath)
@@ -97,12 +119,12 @@ def main(argv):
     print("Calculate include path")
     incpath = get_include_path(newpath)
 
+    print("Fixup files")
     for root, dirs, files in os.walk(newpath):
         for name in files:
             if not name.endswith(".h") and not name.endswith(".c"):
                 continue
             fp = os.path.join(root, name)
-            print("Fixup %s" % fp)
             fix_one_file(fp, incpath)
 
     # Copy other things directly
