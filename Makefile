@@ -10,8 +10,11 @@ ASF_UNF_DIR = asf-unf
 ASF_SOURCE ?= asf
 
 LOCAL_OBJECTS = \
-	main.o		\
-	test.o		\
+	main/main.o \
+	hardware/mcu.o \
+
+RUST_CRATES = \
+	main/librust_support.rlib \
 
 ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
@@ -31,7 +34,12 @@ CFLAGS = \
 	-isystem ${ASF_UNF_DIR} \
 
 RUSTFLAGS = \
-	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g --emit obj -L libcore-thumbv7m
+	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-L libcore-thumbv7m -L main -L hardware
+
+RUSTFLAGS_CRATE = \
+	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	--crate-type lib -L libcore-thumbv7m -L main -L hardware
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
@@ -47,8 +55,14 @@ LIBS = -lm -lc -lgcc -lnosys
 
 .PHONY: all clean genclean distclean
 
-%.o: %.rs libcore-thumbv7m
-	${RUSTC} ${RUSTFLAGS} -o $@ $<
+%.o: %.rs libcore-thumbv7m ${RUST_CRATES}
+	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
+
+lib%.o: %.rs libcore-thumbv7m ${RUST_CRATES}
+	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
+
+lib%.rlib: %.rs libcore-thumbv7m
+	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
 all: ecfw.hex
 	${SIZE} ecfw
@@ -64,8 +78,8 @@ libcore-thumbv7m:
 %.o: %.c asf-unf
 	${CC} ${CFLAGS} -c $< -o $@
 
-ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS}
-	${CC} ${CFLAGS} ${LDFLAGS} ${ASF_OBJECTS} ${LOCAL_OBJECTS} ${LIBS} -o ecfw
+ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES}
+	${CC} ${CFLAGS} ${LDFLAGS} $^ ${LIBS} -o ecfw
 
 ecfw.hex: ecfw
 	${OBJCOPY} -O ihex $< $@
@@ -73,6 +87,7 @@ ecfw.hex: ecfw
 clean:
 	rm -f ${ASF_OBJECTS}
 	rm -f ${LOCAL_OBJECTS}
+	rm -f ${RUST_CRATES}
 	rm -f flash.map
 	rm -f ecfw ecfw.hex
 

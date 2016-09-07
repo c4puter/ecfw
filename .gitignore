@@ -5,4 +5,5 @@ ecfw.hex
 flash.map
 libcore-thumbv7m
 *.o
+*.rlib
 rustsrc
