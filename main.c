@@ -18,10 +18,6 @@ void do_toggle_led(void)
     ioport_toggle_pin_level(LED_GPIO);
 }
 
-void do_nothing(void)
-{
-}
-
 void do_thing_c();
 
 int main(void)

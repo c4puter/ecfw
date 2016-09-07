@@ -1,6 +1,7 @@
 #![no_std]
 #![crate_type="staticlib"]
 #![feature(lang_items)]
+#![feature(asm)]
 
 #[lang="eh_personality"] extern fn eh_personality() {}
 
@@ -16,7 +17,6 @@ pub unsafe fn __aeabi_unwind_cpp_pr0() -> () {
 
 extern "C" {
     fn do_toggle_led() -> ();
-    fn do_nothing() -> ();
 }
 
 fn delay(t: u32)
@@ -24,7 +24,7 @@ fn delay(t: u32)
     let mut x: u32 = 0;
     while x < t {
         x += 1;
-        unsafe{ do_nothing(); }
+        unsafe{asm!("" : : : : "volatile");}
     }
 }
 
@@ -44,8 +44,8 @@ fn nblink(times: u32, t: u32) {
 pub fn do_thing() -> () {
     loop {
         for i in 0..5 {
-            nblink(i, 40000);
-            delay(400000);
+            nblink(i, 80000);
+            delay(800000);
         }
     }
 }
