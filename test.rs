@@ -19,14 +19,33 @@ extern "C" {
     fn do_nothing() -> ();
 }
 
+fn delay(t: u32)
+{
+    let mut x: u32 = 0;
+    while x < t {
+        x += 1;
+        unsafe{ do_nothing(); }
+    }
+}
+
+fn blink(t: u32) {
+    unsafe{ do_toggle_led(); }
+    delay(t);
+    unsafe{ do_toggle_led(); }
+    delay(t);
+}
+
+fn nblink(times: u32, t: u32) {
+    for _ in 0..times {
+        blink(t);
+    }
+}
+
 pub fn do_thing() -> () {
     loop {
-        unsafe{ do_toggle_led(); }
-
-        let mut x: i32 = 0;
-        while x < 400000 {
-            x += 1;
-            unsafe{ do_nothing(); }
+        for i in 0..5 {
+            nblink(i, 40000);
+            delay(400000);
         }
     }
 }
