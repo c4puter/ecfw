@@ -47,3 +47,8 @@ system in order to check out the correct revision and build libcore. This is
 big (a few hundred MB). If you keep the created directory `libcore-thumbv7m`
 around, however, this will not be repeated. Do not `make distclean` unless
 you want to download it again.
+
+If you have to clone https://github.com/rust-lang/rust in the process of
+building your own rustc, you can save yourself the second download by
+placing that repository under `rustsrc/` in the source tree (i.e.
+`rustsrc/rust` is the repository).

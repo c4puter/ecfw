@@ -17,20 +17,19 @@ if [[ "$RUST_COMMIT_HASH" == "unknown" ]]; then
     exit 1
 fi
 
-if [[ -e rustsrc ]]; then
-    echo "Deleting existing rust source directory"
-    rm -rf rustsrc
+if ! [[ -e rustsrc/rust ]]; then
+    mkdir -p rustsrc
+    cd rustsrc
+
+    git clone https://github.com/rust-lang/rust
+    cd rust
+    git checkout "$RUST_COMMIT_HASH"
+    cd ..
+    cp ../thumbv7em-none-eabi.json .
+    cd ..
 fi
 
-mkdir rustsrc
 cd rustsrc
-
-git clone https://github.com/rust-lang/rust
-cd rust
-git checkout "$RUST_COMMIT_HASH"
-cd ..
-cp ../thumbv7em-none-eabi.json .
-
 mkdir -p libcore-thumbv7m
 echo Compiling rust libcore...
 rustc -C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
