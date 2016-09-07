@@ -37,10 +37,6 @@ RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L libcore-thumbv7m -L main -L hardware
 
-RUSTFLAGS_CRATE = \
-	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	--crate-type lib -L libcore-thumbv7m -L main -L hardware
-
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
 	-Wl,--cref \
@@ -56,9 +52,6 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all clean genclean distclean
 
 %.o: %.rs libcore-thumbv7m ${RUST_CRATES}
-	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
-
-lib%.o: %.rs libcore-thumbv7m ${RUST_CRATES}
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
 
 lib%.rlib: %.rs libcore-thumbv7m
