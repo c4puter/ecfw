@@ -31,7 +31,7 @@ CFLAGS = \
 	-isystem ${ASF_UNF_DIR} \
 
 RUSTFLAGS = \
-	-C opt-level=1 -Z no-landing-pads --target thumbv7em-none-eabi -g --emit obj -L libcore-thumbv7m
+	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g --emit obj -L libcore-thumbv7m
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \

@@ -21,9 +21,7 @@ extern "C" {
 
 fn delay(t: u32)
 {
-    let mut x: u32 = 0;
-    while x < t {
-        x += 1;
+    for _ in 0..t {
         unsafe{asm!("" : : : : "volatile");}
     }
 }
