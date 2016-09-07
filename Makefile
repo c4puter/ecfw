@@ -44,7 +44,7 @@ LDFLAGS = \
 
 LIBS = -lm -lc -lgcc -lnosys
 
-.PHONY: all clean distclean
+.PHONY: all asf-unf libcore-thumbv7m clean genclean distclean
 
 %.o: %.rs libcore-thumbv7m
 	${RUSTC} ${RUSTFLAGS} -o $@ $<
@@ -56,12 +56,13 @@ asf-unf: unfuck-asf.py
 	cd $@; \
 	${PYTHON} ../unfuck-asf.py sam $(realpath ${ASF_SOURCE}) asf
 
-${ASF_UNF_DIR}/%: asf-unf
-
 libcore-thumbv7m:
 	bash ./build-rust-libcore.sh
 
-ecfw: | asf-unf ${ASF_OBJECTS} ${LOCAL_OBJECTS}
+%.o: %.c asf-unf
+	${CC} ${CFLAGS} -c $< -o $@
+
+ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS}
 	${CC} ${CFLAGS} ${LDFLAGS} ${ASF_OBJECTS} ${LOCAL_OBJECTS} ${LIBS} -o ecfw
 
 ecfw.hex: ecfw
@@ -73,7 +74,9 @@ clean:
 	rm -f flash.map
 	rm -f ecfw ecfw.hex
 
-distclean: clean
+genclean: clean
 	rm -rf ${ASF_UNF_DIR}
 	rm -rf libcore-thumbv7m
+
+distclean: genclean
 	rm -rf rustsrc
