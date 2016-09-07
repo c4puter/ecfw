@@ -29,7 +29,8 @@ INC_IGNORES = [
     "samg", "same70", "sam3u", "sam4l", "sam3x", "samv71", "xmega",
     "uc3l", "sam4e", "sams70", "uc3a3_a4", "uc3b0_b1", "sam4cp",
     "uc3a0_a1", "sam3s", "uc3c", "samv70", "uc3d", "sam4s",
-    "sam4cm", "sam3n", "sam4c", "sam4n", "mega",
+    "sam4cm", "sam3n", "sam4c", "sam4n", "mega", "sam3s8",
+    "sam4cm32",
     ]
 
 def get_include_path(subdir):
@@ -38,7 +39,7 @@ def get_include_path(subdir):
         # Don't include device-specific files in the include path. These are
         # included relatively by headers that select the right one.
         ignored_include = False
-        for i in os.path.split(root):
+        for i in root.split("/"):
             if i in INC_IGNORES:
                 ignored_include = True
         if ignored_include:

@@ -1,1 +1,8 @@
-build
+asf
+asf-unf
+ecfw
+ecfw.hex
+flash.map
+libcore-thumbv7m
+*.o
+rustsrc

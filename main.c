@@ -13,14 +13,22 @@ void board_init(void)
     ioport_set_pin_dir(LED_GPIO, IOPORT_DIR_OUTPUT);
 }
 
+void do_toggle_led(void)
+{
+    ioport_toggle_pin_level(LED_GPIO);
+}
+
+void do_nothing(void)
+{
+}
+
+void do_thing_c();
+
 int main(void)
 {
     board_init();
 
-    for (;;) {
-        ioport_toggle_pin_level(LED_GPIO);
-        for (uint32_t i = 0; i < 100000; ++i);
-    }
+    do_thing_c();
 
     return 0;
 }
