@@ -2,6 +2,7 @@ CROSS_COMPILE ?= arm-none-eabi-
 CC 		= ${CROSS_COMPILE}gcc
 OBJCOPY	= ${CROSS_COMPILE}objcopy
 OBJDUMP = ${CROSS_COMPILE}objdump
+SIZE    = ${CROSS_COMPILE}size
 RUSTC   = rustc
 PYTHON  ?= python
 
@@ -30,7 +31,7 @@ CFLAGS = \
 	-isystem ${ASF_UNF_DIR} \
 
 RUSTFLAGS = \
-	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g --emit obj -L libcore-thumbv7m
+	-C opt-level=1 -Z no-landing-pads --target thumbv7em-none-eabi -g --emit obj -L libcore-thumbv7m
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
@@ -44,12 +45,13 @@ LDFLAGS = \
 
 LIBS = -lm -lc -lgcc -lnosys
 
-.PHONY: all asf-unf libcore-thumbv7m clean genclean distclean
+.PHONY: all clean genclean distclean
 
 %.o: %.rs libcore-thumbv7m
 	${RUSTC} ${RUSTFLAGS} -o $@ $<
 
 all: ecfw.hex
+	${SIZE} ecfw
 
 asf-unf: unfuck-asf.py
 	mkdir -p $@
