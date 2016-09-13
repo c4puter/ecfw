@@ -73,9 +73,11 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all clean genclean distclean
 
 %.o: %.rs libcore-thumbv7m ${RUST_CRATES}
+	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
 
 lib%.rlib: %.rs libcore-thumbv7m
+	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
 all: ecfw.hex
@@ -102,6 +104,8 @@ clean:
 	rm -f ${ASF_OBJECTS}
 	rm -f ${LOCAL_OBJECTS}
 	rm -f ${RUST_CRATES}
+	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
+	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
 	rm -f flash.map
 	rm -f ecfw ecfw.hex
 
