@@ -6,4 +6,5 @@ flash.map
 libcore-thumbv7m
 *.o
 *.rlib
+*.ll
 rustsrc

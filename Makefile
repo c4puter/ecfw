@@ -33,6 +33,7 @@ ASF_SOURCE ?= asf
 LOCAL_OBJECTS = \
 	main/main.o \
 	hardware/mcu.o \
+	hardware/usart.o \
 
 RUST_CRATES = \
 	main/librust_support.rlib \
@@ -42,14 +43,16 @@ ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \
 	${ASF_UNF_DIR}/asf/drivers/pio/pio.o \
 	${ASF_UNF_DIR}/asf/drivers/pmc/pmc.o \
+	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
+	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
 
 CFLAGS = \
 	-O1 -g -pipe -std=c99 -Wall -Wextra \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
 	-mcpu=cortex-m4 -mthumb -mlong-calls \
 	-fdata-sections -ffunction-sections \
-	-I config \
+	-iquote config \
 	-isystem ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/include \
 	-isystem ${ASF_UNF_DIR}/asf/thirdparty/CMSIS/Include \
 	-isystem ${ASF_UNF_DIR} \

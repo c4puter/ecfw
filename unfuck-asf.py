@@ -70,10 +70,21 @@ def get_include_path(subdir):
             incpath[name] = p
     return incpath
 
-def try_local_resolve(fn, header):
-    return os.path.exists(os.path.join(os.path.dirname(fn), header))
+def try_local_resolve(fn, header, root):
+    starting_dir = os.path.dirname(fn)
+    assert starting_dir.startswith(root)
+    starting_dir_parts = starting_dir.split('/')
 
-def fix_one_file(fn, incpath):
+    for i in range(1, len(starting_dir_parts) + 1):
+        partial_parts = starting_dir_parts[0:i]
+        partial = os.path.join('/'.join(partial_parts), header)
+        if os.path.exists(partial):
+            print("Partial resolve %s as %s" % (header, partial))
+            return partial
+
+    return None
+
+def fix_one_file(fn, incpath, root):
     lines = HEADER_LIST[:]
     with open(fn) as f:
         for line in f:
@@ -83,12 +94,13 @@ def fix_one_file(fn, incpath):
                 continue
 
             header = match.group(1)
+            localres = try_local_resolve(fn, header, root)
             if header.startswith("conf_"):
                 quoted = True
                 fullpath = header
-            elif try_local_resolve(fn, header):
-                quoted = True
-                fullpath = header
+            elif localres is not None:
+                quoted = False
+                fullpath = localres
             else:
                 quoted = False
                 header_short = os.path.split(header)[-1]
@@ -147,7 +159,7 @@ def main(argv):
             if not name.endswith(".h") and not name.endswith(".c"):
                 continue
             fp = os.path.join(root, name)
-            fix_one_file(fp, incpath)
+            fix_one_file(fp, incpath, newpath)
 
     # Copy other things directly
     direct_copy = ["thirdparty/CMSIS", "thirdparty/freertos"]

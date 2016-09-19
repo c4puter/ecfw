@@ -21,59 +21,32 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
+#include <asf/drivers/usart/usart.h>
+#include <asf/services/clock/sysclk.h>
+#include "conf_usart.h"
 
-extern "C" {
-    fn mcu_init();
-    fn board_init();
-    fn do_toggle_led();
+#define ALL_INTERRUPT_MASK  0xffffffff
 
-    fn ec_usart_init();
-    fn ec_usart_putc(c: u8);
-}
-
-extern crate rust_support;
-
-pub fn delay(t: u32)
+void ec_usart_init(void)
 {
-    for _ in 0..t {
-        rust_support::nop();
-    }
+    static const sam_usart_opt_t usart_settings = {
+        USART_SERIAL_BAUDRATE,
+        USART_SERIAL_CHAR_LENGTH,
+        USART_SERIAL_PARITY,
+        USART_SERIAL_STOP_BIT,
+        US_MR_CHMODE_NORMAL,
+        .irda_filter = 0,
+    };
+
+    sysclk_enable_peripheral_clock(USART_SERIAL_ID);
+    usart_init_rs232(USART_SERIAL, &usart_settings,
+            sysclk_get_peripheral_bus_hz(USART_SERIAL));
+    usart_enable_tx(USART_SERIAL);
+    usart_enable_rx(USART_SERIAL);
 }
 
-fn blink(t: u32) {
-    unsafe{ do_toggle_led(); }
-    delay(t);
-    unsafe{ do_toggle_led(); }
-    delay(t);
-}
-
-fn nblink(times: u32, t: u32) {
-    for _ in 0..times {
-        blink(t);
-    }
-}
-
-pub fn led_loop() {
-    loop {
-        unsafe{ ec_usart_putc(b'H'); }
-        /*
-        for i in 0..5 {
-            nblink(i, 80000);
-            delay(400000);
-        }
-        */
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn main() -> i32 {
-    unsafe {
-        mcu_init();
-        board_init();
-        ec_usart_init();
-        do_toggle_led();
-    }
-    led_loop();
-    return 0;
+void ec_usart_putc(char c)
+{
+    //if (!usart_is_tx_ready(USART_SERIAL)) return;
+    usart_putchar(USART_SERIAL, c);
 }
