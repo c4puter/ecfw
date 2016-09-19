@@ -9,3 +9,4 @@ libcore-thumbv7m
 *.ll
 rustsrc
 deps.rust
+have-bindgen

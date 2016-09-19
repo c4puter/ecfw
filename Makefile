@@ -40,6 +40,7 @@ SUPPORT_CRATES = \
 
 RUST_CRATES = \
 	rustsys/libec_io.rlib \
+	rustsys/libctypes.rlib \
 
 ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
@@ -86,6 +87,12 @@ lib%.rlib: %.rs libcore-thumbv7m
 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
+bindgen_%.rs: %.h have-bindgen
+	( echo '#![no_std]'; \
+	  $$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $< ) | \
+	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
+	> $@
+
 all: ecfw.hex
 	${SIZE} ecfw
 
@@ -93,6 +100,13 @@ all: ecfw.hex
 
 deps.rust:
 	bash ./gen-rust-dependencies.sh > $@
+
+have-bindgen:
+	( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
+	( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) || \
+	( cargo install bindgen && \
+			( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
+			( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) )
 
 asf-unf: unfuck-asf.py
 	mkdir -p $@
@@ -124,6 +138,7 @@ clean:
 	rm -f flash.map
 	rm -f ecfw ecfw.hex
 	rm -f deps.rust
+	rm -f have-bindgen
 
 genclean: clean
 	rm -rf ${ASF_UNF_DIR}

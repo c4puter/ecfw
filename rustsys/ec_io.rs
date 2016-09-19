@@ -25,9 +25,7 @@
 
 use core::fmt;
 
-extern "C" {
-    fn ec_usart_putc(c: u8);
-}
+extern crate bindgen_usart;
 
 struct UartWriter {}
 
@@ -35,9 +33,9 @@ impl<'a> fmt::Write for UartWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.as_bytes() {
             if *c == b'\n' {
-                unsafe { ec_usart_putc(b'\r'); }
+                unsafe { bindgen_usart::ec_usart_putc(b'\r'); }
             }
-            unsafe{ ec_usart_putc(*c); }
+            unsafe{ bindgen_usart::ec_usart_putc(*c); }
         }
         return Ok(());
     }

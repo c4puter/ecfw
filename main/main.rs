@@ -23,13 +23,8 @@
 
 #![no_std]
 
-extern "C" {
-    fn mcu_init();
-    fn board_init();
-    fn do_toggle_led();
-
-    fn ec_usart_init();
-}
+extern crate bindgen_mcu;
+extern crate bindgen_usart;
 
 extern crate rust_support;
 #[macro_use]
@@ -43,9 +38,9 @@ pub fn delay(t: u32)
 }
 
 fn blink(t: u32) {
-    unsafe{ do_toggle_led(); }
+    unsafe{ bindgen_mcu::do_toggle_led(); }
     delay(t);
-    unsafe{ do_toggle_led(); }
+    unsafe{ bindgen_mcu::do_toggle_led(); }
     delay(t);
 }
 
@@ -67,10 +62,10 @@ pub fn led_loop() {
 #[no_mangle]
 pub extern "C" fn main() -> i32 {
     unsafe {
-        mcu_init();
-        board_init();
-        ec_usart_init();
-        do_toggle_led();
+        bindgen_mcu::mcu_init();
+        bindgen_mcu::board_init();
+        bindgen_usart::ec_usart_init();
+        bindgen_mcu::do_toggle_led();
     }
     led_loop();
     return 0;

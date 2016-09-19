@@ -24,6 +24,7 @@
 #include <asf/drivers/usart/usart.h>
 #include <asf/services/clock/sysclk.h>
 #include "conf_usart.h"
+#include "usart.h"
 
 #define ALL_INTERRUPT_MASK  0xffffffff
 
