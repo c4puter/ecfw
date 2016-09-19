@@ -22,24 +22,44 @@
  */
 
 #![no_std]
-#![crate_type="staticlib"]
-#![feature(lang_items)]
-#![feature(asm)]
 
-#[lang="eh_personality"] extern fn eh_personality() {}
+use core::fmt;
 
-#[lang="panic_fmt"]
-pub fn panic_fmt(_fmt: &core::fmt::Arguments, _file_line: &(&'static str, usize)) -> !{
-    loop { }
+extern "C" {
+    fn ec_usart_putc(c: u8);
 }
 
-#[no_mangle]
-pub unsafe fn __aeabi_unwind_cpp_pr0() -> () {
-    loop { }
+struct UartWriter {}
+
+impl<'a> fmt::Write for UartWriter {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.as_bytes() {
+            if *c == b'\n' {
+                unsafe { ec_usart_putc(b'\r'); }
+            }
+            unsafe{ ec_usart_putc(*c); }
+        }
+        return Ok(());
+    }
 }
 
-pub fn nop()
-{
-    unsafe{asm!("nop" : : : : "volatile");}
+static mut uartwriter: UartWriter = UartWriter{};
+
+pub fn _print(args: fmt::Arguments) {
+    unsafe{ fmt::write(&mut uartwriter, args).unwrap(); }
 }
 
+pub fn _println(args: fmt::Arguments) {
+    _print(args);
+    unsafe{ fmt::Write::write_str(&mut uartwriter, "\n").unwrap(); }
+}
+
+#[macro_export]
+macro_rules! print {
+    ($($arg:tt)*) => (ec_io::_print(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println {
+    ($($arg:tt)*) => (ec_io::_println(format_args!($($arg)*)));
+}

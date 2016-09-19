@@ -35,8 +35,11 @@ LOCAL_OBJECTS = \
 	hardware/mcu.o \
 	hardware/usart.o \
 
+SUPPORT_CRATES = \
+	rustsys/librust_support.rlib \
+
 RUST_CRATES = \
-	main/librust_support.rlib \
+	rustsys/libec_io.rlib \
 
 ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
@@ -59,7 +62,7 @@ CFLAGS = \
 
 RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	-L libcore-thumbv7m -L main -L hardware
+	-L libcore-thumbv7m -L main -L hardware -L rustsys
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
@@ -86,6 +89,11 @@ lib%.rlib: %.rs libcore-thumbv7m
 all: ecfw.hex
 	${SIZE} ecfw
 
+-include deps.rust
+
+deps.rust:
+	bash ./gen-rust-dependencies.sh > $@
+
 asf-unf: unfuck-asf.py
 	mkdir -p $@
 	cd $@; \
@@ -97,8 +105,10 @@ libcore-thumbv7m:
 %.o: %.c asf-unf
 	${CC} ${CFLAGS} -c $< -o $@
 
-ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES}
-	${CC} ${CFLAGS} ${LDFLAGS} $^ ${LIBS} -o ecfw
+ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
+	${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
+			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} \
+			libcore-thumbv7m/libcore.rlib ${SUPPORT_CRATES} -o ecfw
 
 ecfw.hex: ecfw
 	${OBJCOPY} -O ihex $< $@
@@ -107,10 +117,13 @@ clean:
 	rm -f ${ASF_OBJECTS}
 	rm -f ${LOCAL_OBJECTS}
 	rm -f ${RUST_CRATES}
+	rm -f ${SUPPORT_CRATES}
 	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
+	rm -f $(patsubst %.rlib,%.ll,${SUPPORT_CRATES})
 	rm -f flash.map
 	rm -f ecfw ecfw.hex
+	rm -f deps.rust
 
 genclean: clean
 	rm -rf ${ASF_UNF_DIR}

@@ -47,6 +47,5 @@ void ec_usart_init(void)
 
 void ec_usart_putc(char c)
 {
-    //if (!usart_is_tx_ready(USART_SERIAL)) return;
     usart_putchar(USART_SERIAL, c);
 }

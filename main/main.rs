@@ -29,10 +29,11 @@ extern "C" {
     fn do_toggle_led();
 
     fn ec_usart_init();
-    fn ec_usart_putc(c: u8);
 }
 
 extern crate rust_support;
+#[macro_use]
+extern crate ec_io;
 
 pub fn delay(t: u32)
 {
@@ -55,14 +56,11 @@ fn nblink(times: u32, t: u32) {
 }
 
 pub fn led_loop() {
+    let mut i = 0;
     loop {
-        unsafe{ ec_usart_putc(b'H'); }
-        /*
-        for i in 0..5 {
-            nblink(i, 80000);
-            delay(400000);
-        }
-        */
+        println!("{} number {}", "Hello, world!", i);
+        i += 1;
+        //delay(40000);
     }
 }
 

@@ -8,3 +8,4 @@ libcore-thumbv7m
 *.rlib
 *.ll
 rustsrc
+deps.rust
