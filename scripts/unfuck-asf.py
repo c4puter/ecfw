@@ -79,7 +79,7 @@ def try_local_resolve(fn, header, root):
         partial_parts = starting_dir_parts[0:i]
         partial = os.path.join('/'.join(partial_parts), header)
         if os.path.exists(partial):
-            print("Partial resolve %s as %s" % (header, partial))
+            #print("Partial resolve %s as %s" % (header, partial))
             return partial
 
     return None
