@@ -108,8 +108,8 @@ have-bindgen:
 	( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
 	( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) || \
 	( cargo install bindgen && \
-			( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
-			( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) )
+			(( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
+			 ( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ )))
 
 ${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
 	@if ! [ -e ${ASF_SOURCE} ]; then \
