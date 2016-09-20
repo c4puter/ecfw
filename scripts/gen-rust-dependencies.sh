@@ -11,6 +11,7 @@ find_header() {
 
 find . -name rustsrc -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0' srcfile; do
 
+    echo -n "$srcfile:"
     grep 'extern crate' "$srcfile" | awk '{print $3}' | sed 's/;//' | while read dep; do
 
         without_bindgen="$(echo "$dep" | sed -e 's/^bindgen_//')"
@@ -20,7 +21,7 @@ find . -name rustsrc -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0' 
         if [[ x"$location_rust" != x"" ]]; then
             location="$location_rust"
         elif [[ x"$location_c" != x"" ]]; then
-            echo "$srcfile: rustsys/libctypes.rlib"
+            echo -n " rustsys/libctypes.rlib"
             rustfn="$(basename "${location_c}" | sed -e 's/\.h$/\.rs/' -e 's/^/bindgen_/')"
             location="$(dirname "${location_c}")/$rustfn"
         else
@@ -28,8 +29,10 @@ find . -name rustsrc -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0' 
         fi
         compiled="$(basename "${location}" | sed -e 's/^/lib/' -e 's/\.rs$/\.rlib/')"
         fullpath="$(dirname "${location}")/${compiled}"
-        echo "$srcfile: $fullpath"
+        echo -n " $fullpath"
 
     done
+
+    echo
 
 done
