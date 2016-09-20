@@ -3,6 +3,7 @@ ecfw
 ecfw.hex
 flash.map
 *.o
+*.d
 *.rlib
 *.ll
 deps.rust

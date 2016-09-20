@@ -80,6 +80,9 @@ LIBS = -lm -lc -lgcc -lnosys
 
 .PHONY: all clean genclean distclean debug program
 
+all: ecfw.hex
+	${SIZE} ecfw
+
 %.o: %.rs ${LIBCORE} ${RUST_CRATES}
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
@@ -94,10 +97,9 @@ bindgen_%.rs: %.h have-bindgen
 	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
 	> $@
 
-all: ecfw.hex
-	${SIZE} ecfw
-
 -include deps.rust
+-include ${LOCAL_OBJECTS:.o=.d}
+-include ${ASF_OBJECTS:.o=.d}
 
 deps.rust:
 	bash ./scripts/gen-rust-dependencies.sh > $@
@@ -124,7 +126,8 @@ ${LIBCORE}:
 	bash ./scripts/build-rust-libcore.sh
 
 %.o: %.c ${ASF_UNF_DIR}
-	${CC} ${CFLAGS} -c $< -o $@
+	${CC} -c  ${CFLAGS} $*.c -o $*.o
+	${CC} -MM ${CFLAGS} $*.c  > $*.d
 
 ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
 	${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
@@ -145,6 +148,8 @@ clean:
 	rm -f flash.map
 	rm -f ecfw ecfw.hex
 	rm -f deps.rust
+	rm -f ${LOCAL_OBJECTS:.o=.d}
+	rm -f ${ASF_OBJECTS:.o=.d}
 	rm -f have-bindgen
 
 genclean: clean
