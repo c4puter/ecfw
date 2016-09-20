@@ -1,3 +1,0 @@
-# JLinkExe -device ATSAM4S16C -CommanderScript jlink-script.jlink
-
-openocd -f atmelice.cfg -c init -c halt -c "program ecfw.hex verify" -c reset -c exit

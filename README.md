@@ -28,9 +28,9 @@ anything in the source tree, put the unzipped ASF tree somewhere on your
 system, and direct make to it with the `ASF_SOURCE` option.
 
 Alternatively (this is what I do), either put it directly in the source tree
-as a directory named `asf`, or symlink it into the source tree as `asf`
-(preferred). This name is in `.gitignore` and so will not be accidentally
-committed.
+as a directory named `resources/asf`, or symlink it into the source tree as
+`resources/asf` (preferred). This name is in `.gitignore` and so will not be
+accidentally committed.
 
 Rust compiler
 -------------
@@ -50,5 +50,5 @@ you want to download it again.
 
 If you have to clone https://github.com/rust-lang/rust in the process of
 building your own rustc, you can save yourself the second download by
-placing that repository under `rustsrc/` in the source tree (i.e.
-`rustsrc/rust` is the repository).
+placing that repository under `resources/rustsrc/` in the source tree (i.e.
+`resources/rustsrc/rust` is the repository).

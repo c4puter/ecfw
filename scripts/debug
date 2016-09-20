@@ -1,4 +1,4 @@
-setsid openocd -f atmelice.cfg -c init -c halt &
+setsid openocd -f scripts/atmelice.cfg -c init -c halt &
 OPENOCD=$!
 arm-none-eabi-gdb ecfw -ex "target remote localhost:3333"
 kill $OPENOCD

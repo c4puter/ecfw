@@ -24,7 +24,10 @@
 
 set -e
 
-if [[ -f libcore-thumbv7m/libcore.rlib ]]; then
+LIBCORE=resources/libcore-thumbv7m
+RUSTSRC=resources/rustsrc
+
+if [[ -f $LIBCORE/libcore.rlib ]]; then
     echo "rust libcore already built"
     exit 0
 fi
@@ -39,19 +42,19 @@ if [[ "$RUST_COMMIT_HASH" == "unknown" ]]; then
     exit 1
 fi
 
-if ! [[ -e rustsrc/rust ]]; then
-    mkdir -p rustsrc
-    cd rustsrc
+if ! [[ -e $RUSTSRC/rust ]]; then
+    mkdir -p $RUSTSRC
+    cd $RUSTSRC
 
     git clone https://github.com/rust-lang/rust
     cd rust
     git checkout "$RUST_COMMIT_HASH"
     cd ..
-    cp ../thumbv7em-none-eabi.json .
-    cd ..
+    cp ../../thumbv7em-none-eabi.json .
+    cd ../..
 fi
 
-cd rustsrc
+cd $RUSTSRC
 mkdir -p libcore-thumbv7m
 echo Compiling rust libcore...
 rustc -C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \

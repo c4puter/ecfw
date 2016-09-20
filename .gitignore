@@ -1,12 +1,9 @@
-asf
-asf-unf
+resources
 ecfw
 ecfw.hex
 flash.map
-libcore-thumbv7m
 *.o
 *.rlib
 *.ll
-rustsrc
 deps.rust
 have-bindgen

@@ -27,8 +27,9 @@ SIZE    = ${CROSS_COMPILE}size
 RUSTC   = rustc
 PYTHON  ?= python
 
-ASF_UNF_DIR = asf-unf
-ASF_SOURCE ?= asf
+ASF_UNF_DIR = resources/asf-unf
+ASF_SOURCE ?= resources/asf
+LIBCORE = resources/libcore-thumbv7m
 
 LOCAL_OBJECTS = \
 	main/main.o \
@@ -63,7 +64,7 @@ CFLAGS = \
 
 RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	-L libcore-thumbv7m -L main -L hardware -L rustsys
+	-L ${LIBCORE} -L main -L hardware -L rustsys
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
@@ -77,13 +78,13 @@ LDFLAGS = \
 
 LIBS = -lm -lc -lgcc -lnosys
 
-.PHONY: all clean genclean distclean
+.PHONY: all clean genclean distclean debug program
 
-%.o: %.rs libcore-thumbv7m ${RUST_CRATES}
+%.o: %.rs ${LIBCORE} ${RUST_CRATES}
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
 
-lib%.rlib: %.rs libcore-thumbv7m
+lib%.rlib: %.rs ${LIBCORE}
 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
@@ -99,7 +100,7 @@ all: ecfw.hex
 -include deps.rust
 
 deps.rust:
-	bash ./gen-rust-dependencies.sh > $@
+	bash ./scripts/gen-rust-dependencies.sh > $@
 
 have-bindgen:
 	( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
@@ -108,21 +109,21 @@ have-bindgen:
 			( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
 			( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) )
 
-asf-unf: unfuck-asf.py
+${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
 	mkdir -p $@
 	cd $@; \
-	${PYTHON} ../unfuck-asf.py sam $(realpath ${ASF_SOURCE}) asf
+	${PYTHON} ../../scripts/unfuck-asf.py sam $(realpath ${ASF_SOURCE}) asf
 
-libcore-thumbv7m:
-	bash ./build-rust-libcore.sh
+${LIBCORE}:
+	bash ./scripts/build-rust-libcore.sh
 
-%.o: %.c asf-unf
+%.o: %.c ${ASF_UNF_DIR}
 	${CC} ${CFLAGS} -c $< -o $@
 
 ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
 	${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
 			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} \
-			libcore-thumbv7m/libcore.rlib ${SUPPORT_CRATES} -o ecfw
+			${LIBCORE}/libcore.rlib ${SUPPORT_CRATES} -o ecfw
 
 ecfw.hex: ecfw
 	${OBJCOPY} -O ihex $< $@
@@ -142,7 +143,13 @@ clean:
 
 genclean: clean
 	rm -rf ${ASF_UNF_DIR}
-	rm -rf libcore-thumbv7m
+	rm -rf ${LIBCORE}
 
 distclean: genclean
-	rm -rf rustsrc
+	rm -rf resources/rustsrc
+
+debug: ecfw
+	bash ./scripts/debug
+
+program: ecfw
+	bash ./scripts/program
