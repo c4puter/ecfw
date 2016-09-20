@@ -30,6 +30,7 @@ PYTHON  ?= python
 ASF_UNF_DIR = resources/asf-unf
 ASF_SOURCE ?= resources/asf
 LIBCORE = resources/libcore-thumbv7m
+FREERTOS = ${ASF_UNF_DIR}/asf/thirdparty/freertos/freertos-8.2.3
 
 LOCAL_OBJECTS = \
 	main/main.o \
@@ -43,6 +44,16 @@ RUST_CRATES = \
 	rustsys/libec_io.rlib \
 	rustsys/libctypes.rlib \
 
+FREERTOS_OBJECTS = \
+	${FREERTOS}/Source/queue.o \
+	${FREERTOS}/Source/list.o \
+	${FREERTOS}/Source/timers.o \
+	${FREERTOS}/Source/tasks.o \
+	${FREERTOS}/Source/croutine.o \
+	${FREERTOS}/Source/event_groups.o \
+	${FREERTOS}/Source/portable/MemMang/heap_1.o \
+	freertos-port/port.o \
+
 ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \
@@ -51,6 +62,7 @@ ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
 	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
+	${FREERTOS_OBJECTS} \
 
 CFLAGS = \
 	-O1 -g -pipe -std=c99 -Wall -Wextra \
@@ -60,6 +72,8 @@ CFLAGS = \
 	-iquote config \
 	-isystem ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/include \
 	-isystem ${ASF_UNF_DIR}/asf/thirdparty/CMSIS/Include \
+	-isystem ${FREERTOS}/Source/include \
+	-isystem freertos-port \
 	-isystem ${ASF_UNF_DIR} \
 
 RUSTFLAGS = \

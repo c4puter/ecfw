@@ -1,0 +1,5 @@
+FreeRTOS CM3/CM4 port
+=====================
+
+Atmel ASF does not bundle this for some reason. License is in the preambles of
+these files.

@@ -1,6 +1,10 @@
 #ifndef CONF_CLOCK_H
 #define CONF_CLOCK_H
 
+// Used by FreeRTOS, should match the final clock rate when FreeRTOS is up
+// and running
+#define BOARD_MCK 12000000u
+
 #define CONFIG_SYSCLK_SOURCE        SYSCLK_SRC_MAINCK_12M_RC
 #define CONFIG_SYSCLK_PRES          SYSCLK_PRES_1
 #define BOARD_FREQ_SLCK_XTAL    12000000U
