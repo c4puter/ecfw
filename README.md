@@ -52,3 +52,10 @@ If you have to clone https://github.com/rust-lang/rust in the process of
 building your own rustc, you can save yourself the second download by
 placing that repository under `resources/rustsrc/` in the source tree (i.e.
 `resources/rustsrc/rust` is the repository).
+
+rust-bindgen
+------------
+
+The build system requires [rust-bindgen](https://github.com/Yamakaky/rust-bindgen)
+to generate Rust bindings for C headers. It will be automatically installed
+in the local user context via cargo if you don't have it already.
