@@ -110,6 +110,12 @@ have-bindgen:
 			( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) )
 
 ${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
+	@if ! [ -e ${ASF_SOURCE} ]; then \
+		echo ERROR - you must provide the Atmel ASF source, via either ASF_SOURCE= ; \
+		echo or via a link or direct copy in resources/asf. For more information, ; \
+		echo see README.md. ; \
+		exit 1 ; \
+	fi
 	mkdir -p $@
 	cd $@; \
 	${PYTHON} ../../scripts/unfuck-asf.py sam $(realpath ${ASF_SOURCE}) asf
