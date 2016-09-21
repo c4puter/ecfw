@@ -48,6 +48,7 @@ pub fn test_loop() {
 }
 
 #[no_mangle]
+#[allow(unreachable_code)]
 pub extern "C" fn main() -> i32 {
     unsafe {
         bindgen_mcu::mcu_init();
@@ -55,8 +56,9 @@ pub extern "C" fn main() -> i32 {
         bindgen_usart::ec_usart_init();
     }
 
-    let led_task = freertos::Task::new(test_loop, "test_loop", 200, 0);
+    freertos::Task::new(test_loop, "test_loop", 200, 0);
     freertos::run();
     loop {}
+
     return 0;
 }

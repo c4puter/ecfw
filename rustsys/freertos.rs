@@ -22,6 +22,7 @@
  */
 
 #![no_std]
+#![allow(improper_ctypes)]
 
 #[macro_use]
 extern crate ec_io;
@@ -74,8 +75,10 @@ pub fn run() {
 }
 
 #[no_mangle]
+#[allow(non_snake_case)]
 pub extern "C" fn vApplicationStackOverflowHook(taskhnd: *const Void, pname: *const u8)
 {
+    let _ = taskhnd;
     let name = unsafe {
         str::from_utf8_unchecked(
             slice::from_raw_parts(pname, strlen(pname))) };
@@ -84,6 +87,7 @@ pub extern "C" fn vApplicationStackOverflowHook(taskhnd: *const Void, pname: *co
 }
 
 #[no_mangle]
+#[allow(non_snake_case)]
 pub extern "C" fn vApplicationMallocFailedHook()
 {
     println!("\n\nOUT OF MEMORY");
