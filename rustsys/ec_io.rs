@@ -29,27 +29,29 @@ extern crate bindgen_usart;
 
 struct UartWriter {}
 
+fn putc(c: u8) {
+    unsafe { bindgen_usart::ec_usart_putc(c); }
+}
+
 impl<'a> fmt::Write for UartWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.as_bytes() {
             if *c == b'\n' {
-                unsafe { bindgen_usart::ec_usart_putc(b'\r'); }
+                putc(b'\r');
             }
-            unsafe{ bindgen_usart::ec_usart_putc(*c); }
+            putc(*c);
         }
         return Ok(());
     }
 }
 
-static mut uartwriter: UartWriter = UartWriter{};
-
 pub fn _print(args: fmt::Arguments) {
-    unsafe{ fmt::write(&mut uartwriter, args).unwrap(); }
+    fmt::write(&mut UartWriter{}, args).unwrap();
 }
 
 pub fn _println(args: fmt::Arguments) {
     _print(args);
-    unsafe{ fmt::Write::write_str(&mut uartwriter, "\n").unwrap(); }
+    fmt::Write::write_str(&mut UartWriter{}, "\n").unwrap();
 }
 
 #[macro_export]
