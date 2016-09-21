@@ -50,3 +50,4 @@ void ec_usart_putc(char c)
 {
     usart_putchar(USART_SERIAL, c);
 }
+

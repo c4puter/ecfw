@@ -24,7 +24,7 @@
 #define configUSE_PORT_OPTIMISED_TASK_SELECTION	1
 #define configUSE_QUEUE_SETS					1
 #define configUSE_IDLE_HOOK						0
-#define configUSE_TICK_HOOK						1
+#define configUSE_TICK_HOOK						0
 #define configCPU_CLOCK_HZ						( BOARD_MCK << 1UL )
 #define configTICK_RATE_HZ						( 1000 )
 #define configMAX_PRIORITIES					( 5 )
@@ -62,7 +62,7 @@ FreeRTOS/Source/tasks.c for limitations. */
 
 /* Software timer definitions. */
 #define configUSE_TIMERS				1
-#define configTIMER_TASK_PRIORITY		( configMAX_PRIORITIES - 1 )
+#define configTIMER_TASK_PRIORITY		( 2 )
 #define configTIMER_QUEUE_LENGTH		5
 #define configTIMER_TASK_STACK_DEPTH	( configMINIMAL_STACK_SIZE * 2 )
 
@@ -83,7 +83,7 @@ to exclude the API function. */
 	/* __BVIC_PRIO_BITS will be specified when CMSIS is being used. */
 	#define configPRIO_BITS       		__NVIC_PRIO_BITS
 #else
-	#define configPRIO_BITS       		3        /* 7 priority levels */
+	#define configPRIO_BITS       		4
 #endif
 
 /* The lowest interrupt priority that can be used in a call to a "set priority"
@@ -106,6 +106,11 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
 /* Normal assert() semantics without relying on the provision of an assert.h
 header file. */
 #define configASSERT( x ) if( ( x ) == 0 ) { taskDISABLE_INTERRUPTS(); for( ;; ); }
+
+// Install interrupt handlers
+#define vPortSVCHandler SVC_Handler
+#define xPortPendSVHandler PendSV_Handler
+#define xPortSysTickHandler SysTick_Handler
 
 #endif /* FREERTOS_CONFIG_H */
 

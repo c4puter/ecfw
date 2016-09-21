@@ -43,6 +43,7 @@ SUPPORT_CRATES = \
 RUST_CRATES = \
 	rustsys/libec_io.rlib \
 	rustsys/libctypes.rlib \
+	rustsys/libfreertos.rlib \
 
 FREERTOS_OBJECTS = \
 	${FREERTOS}/Source/queue.o \

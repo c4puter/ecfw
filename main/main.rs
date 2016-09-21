@@ -29,6 +29,7 @@ extern crate bindgen_usart;
 extern crate rust_support;
 #[macro_use]
 extern crate ec_io;
+extern crate freertos;
 
 pub fn delay(t: u32)
 {
@@ -37,25 +38,12 @@ pub fn delay(t: u32)
     }
 }
 
-fn blink(t: u32) {
-    unsafe{ bindgen_mcu::do_toggle_led(); }
-    delay(t);
-    unsafe{ bindgen_mcu::do_toggle_led(); }
-    delay(t);
-}
-
-fn nblink(times: u32, t: u32) {
-    for _ in 0..times {
-        blink(t);
-    }
-}
-
-pub fn led_loop() {
+pub fn test_loop() {
     let mut i = 0;
     loop {
         println!("{} number {}", "Hello, world!", i);
         i += 1;
-        //delay(40000);
+        delay(40000);
     }
 }
 
@@ -65,8 +53,10 @@ pub extern "C" fn main() -> i32 {
         bindgen_mcu::mcu_init();
         bindgen_mcu::board_init();
         bindgen_usart::ec_usart_init();
-        bindgen_mcu::do_toggle_led();
     }
-    led_loop();
+
+    let led_task = freertos::Task::new(test_loop, "test_loop", 200, 0);
+    freertos::run();
+    loop {}
     return 0;
 }

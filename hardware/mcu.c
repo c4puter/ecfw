@@ -37,11 +37,7 @@ void mcu_init(void)
 {
     WDT->WDT_MR = WDT_MR_WDDIS;
     sysclk_init();
-    sysclk_enable_peripheral_clock(ID_PIOA);
-    sysclk_enable_peripheral_clock(ID_PIOB);
-    sysclk_enable_peripheral_clock(ID_PIOC);
-    irq_initialize_vectors();
-    cpu_irq_enable();
+    NVIC_SetPriorityGrouping(0);
     ioport_init();
 }
 
