@@ -31,6 +31,8 @@ extern crate rust_support;
 extern crate ec_io;
 extern crate freertos;
 
+use core::mem;
+
 pub fn delay(t: u32)
 {
     for _ in 0..t {
@@ -38,13 +40,41 @@ pub fn delay(t: u32)
     }
 }
 
-pub fn test_loop() {
+pub fn count_task(q: freertos::Queue<i32>) {
     let mut i = 0;
     loop {
-        println!("{} number {}", "Hello, world!", i);
-        i += 1;
+        println!("handle: {:08x}", q.handle as u32);
+        match q.send(&i, 100) {
+            Ok(()) => { i += 1; }
+            _ => {}
+        }
         delay(40000);
     }
+}
+
+pub fn speak_task(q: freertos::Queue<i32>) {
+    loop {
+        match q.receive(100) {
+            Some(i) => println!("{} number {}", "Hello, world!", i),
+            None => {} }
+    }
+}
+
+pub fn test(qh: u32) {
+    let q = freertos::Queue::<i32>::from_handle(qh);
+    println!("Handle in test: {:08x}", q.handle);
+    q.send(&42, 100);
+    loop{}
+}
+
+pub fn test2(qh: u32) {
+    delay(50000);
+    let q = freertos::Queue::<i32>::from_handle(qh);
+    println!("Handle in test2: {:08x}", q.handle);
+    match q.receive(100) {
+        Some(i) => println!("Received {}", i),
+        None => {} }
+    loop {}
 }
 
 #[no_mangle]
@@ -56,9 +86,38 @@ pub extern "C" fn main() -> i32 {
         bindgen_usart::ec_usart_init();
     }
 
-    freertos::Task::new(test_loop, "test_loop", 200, 0);
+    let q = freertos::Queue::<i32>::new(16);
+    let clos1 = move || { test(q.handle); };
+    let clos2 = move || { test2(q.handle); };
+    let task1 = freertos::Task::new(&clos1, "test1", 5000, 0);
+    let task2 = freertos::Task::new(&clos2, "test2", 5000, 0);
     freertos::run();
     loop {}
 
     return 0;
+}
+
+#[no_mangle]
+pub extern "C" fn hard_fault_printer(regs: [u32; 8]) {
+    rust_support::disable_irq();
+    println!("\n\n===================================");
+    println!("HARD FAULT");
+    println!("r0  = {:08x}  r1  = {:08x}  r2  = {:08x}  r3  = {:08x}",
+             regs[0], regs[1], regs[2], regs[3]);
+    println!("r12 = {:08x}  lr  = {:08x}  pc  = {:08x}  psr = {:08x}",
+             regs[4], regs[5], regs[6], regs[7]);
+
+    println!("");
+    unsafe {
+        println!("BFAR = {:08x}  CFSR = {:08x}  HFSR = {:08x}",
+                 rust_support::readmem(0xe000ed38),
+                 rust_support::readmem(0xe000ed28),
+                 rust_support::readmem(0xe000ed2c));
+        println!("DFSR = {:08x}  AFSR = {:08x}  SCB_SHCSR = {:08x}",
+                 rust_support::readmem(0xe000ed30),
+                 rust_support::readmem(0xe000ed3c),
+                 rust_support::readmem(0xe000e000 + 0x0d00 + 0x024));
+                                //     SCS_BASE    SCB_off   SHCSR_off
+    }
+    loop{}
 }

@@ -22,49 +22,139 @@
  */
 
 #![no_std]
-#![allow(improper_ctypes)]
+#![allow(improper_ctypes, non_upper_case_globals)]
 
 #[macro_use]
 extern crate ec_io;
 use core::ptr;
 use core::str;
 use core::slice;
+use core::mem;
+use core::marker;
 
 pub enum Void {}
+type QueueHandle = u32;
+
+const pdTRUE: i32 = 1;
+const errQUEUE_FULL: i32 = 0;
+const queueSEND_TO_BACK: i32 = 0;
+const queueSEND_TO_FRONT: i32 = 1;
+const queueQUEUE_TYPE_BASE: u8 = 0;
 
 #[allow(dead_code)]
-pub struct Task<'a> {
-    task: fn(),
-    name: &'a str,
-    stackdepth: usize,
-    priority: i32,
+pub struct Task<'a, F> where F: 'static {
+    f: &'a F,
+}
+
+#[derive(Copy, Clone)]
+pub struct Queue<T> {
+    pub handle: QueueHandle,
+    phantom: marker::PhantomData<T>,
 }
 
 extern "C" {
     fn xTaskGenericCreate(
-        pvTaskCode: extern "C" fn(task: fn()),
+        pvTaskCode: extern "C" fn(task: *mut Void),
         pcName: *const u8,
         usStackDepth: u16,
-        pvParameters: fn(),
+        pvParameters: *mut Void,
         uxPriority: i32,
         pvCreatedTask: *const Void,
         puxStackBuffer: *const Void,
         xRegions: *const Void);
     fn vTaskStartScheduler();
     fn strlen(s: *const u8) -> usize;
+
+    // Queue management
+    fn xQueueGenericCreate(queuelen: usize, itemsize: usize, qtype: u8) -> QueueHandle;
+    fn xQueueGenericSend(queue: QueueHandle, item: *const Void, waitticks: usize, copypos: i32) -> i32;
+    fn xQueueGenericReceive(queue: QueueHandle, item: *mut Void, waitticks: usize, peek: i32) -> i32;
+    fn uxQueueMessagesWaiting(queue: QueueHandle) -> usize;
+    fn uxQueueSpacesAvailable(queue: QueueHandle) -> usize;
+    fn xQueueReset(queue: QueueHandle) -> i32; // always returns pdPASS
 }
 
-extern "C" fn task_wrapper(task: fn()) {
-    task();
+extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
+    unsafe {
+        let pclos = task as *mut F;
+        (*pclos)();
+    }
 }
 
-impl<'a> Task<'a> {
-    pub fn new(task: fn(), name: &'a str, stackdepth: usize, priority: i32) -> Task<'a> {
+impl<'a, F> Task<'a, F> {
+    pub fn new(f: &'a F, name: &'a str, stackdepth: usize, priority: i32) -> Task<'a, F>
+            where F: Fn()
+    {
+        mem::size_of::<F>();
+        let p = f as *const _ as *mut Void;
+        let taskstruct = Task { f: f };
         unsafe {
-            xTaskGenericCreate(task_wrapper, name.as_bytes().as_ptr(), stackdepth as u16,
-                task, priority, ptr::null(), ptr::null(), ptr::null());
+            xTaskGenericCreate(task_wrapper::<F>, name.as_bytes().as_ptr(), stackdepth as u16,
+                p, priority, ptr::null(), ptr::null(), ptr::null());
         }
-        return Task { task: task, name: name, stackdepth: stackdepth, priority: priority };
+        return taskstruct;
+    }
+}
+
+impl <T> Queue<T> {
+    pub fn new(len: usize) -> Queue<T> {
+        let itemsize = mem::size_of::<T>();
+        let qhandle = unsafe{ xQueueGenericCreate(len, itemsize, queueQUEUE_TYPE_BASE) };
+        println!("Handle received: {:08x}", qhandle);
+        return Queue::<T> { handle: qhandle, phantom: marker::PhantomData };
+    }
+
+    pub fn from_handle(handle: QueueHandle) -> Queue<T> {
+        return Queue::<T> { handle: handle, phantom: marker::PhantomData };
+    }
+
+    fn send_generic(&self, item: &T, waitticks: usize, copypos: i32) -> Result<(), &str> {
+        let res = unsafe {
+            xQueueGenericSend(self.handle, mem::transmute(item), waitticks, copypos)
+        };
+        return match res {
+            pdTRUE => Ok(()),
+            errQUEUE_FULL => Err("queue full"),
+            _ => Err("unknown queue error")
+        };
+    }
+
+    pub fn send(&self, item: &T, waitticks: usize) -> Result<(), &str> {
+        return self.send_generic(item, waitticks, queueSEND_TO_BACK);
+    }
+
+    pub fn send_to_front(&self, item: &T, waitticks: usize) -> Result<(), &str> {
+        return self.send_generic(item, waitticks, queueSEND_TO_FRONT);
+    }
+
+    fn receive_generic(&self, waitticks: usize, peek: bool) -> Option<T> {
+        let mut buf: T = unsafe{ mem::zeroed() };
+        let res = unsafe { xQueueGenericReceive(
+                self.handle, &mut buf as *mut T as *mut Void, waitticks, peek as i32) };
+        return match res {
+            pdTRUE => Some(buf),
+            _ => None,
+        };
+    }
+
+    pub fn receive(&self, waitticks: usize) -> Option<T> {
+        return self.receive_generic(waitticks, false);
+    }
+
+    pub fn peek(&self, waitticks: usize) -> Option<T> {
+        return self.receive_generic(waitticks, true);
+    }
+
+    pub fn waiting(&self) -> usize {
+        return unsafe{ uxQueueMessagesWaiting(self.handle) };
+    }
+
+    pub fn available(&self) -> usize {
+        return unsafe{ uxQueueSpacesAvailable(self.handle) };
+    }
+
+    pub fn reset(&self) {
+        unsafe{ xQueueReset(self.handle); }
     }
 }
 

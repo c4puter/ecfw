@@ -56,3 +56,24 @@ void do_toggle_led(void)
 {
     ioport_toggle_pin_level(LED_GPIO);
 }
+
+/*
+ * On hard fault, this prepares an array of register values read from the stack
+ * and calls hard_fault_printer. The values are:
+ * {r0, r1, r2, r3, r12, lr, pc, psr}
+ */
+__attribute__((naked))
+void HardFault_Handler(void)
+{
+    __asm volatile
+        (
+         " tst lr, #4                                                \n"
+         " ite eq                                                    \n"
+         " mrseq r0, msp                                             \n"
+         " mrsne r0, psp                                             \n"
+         " ldr r1, [r0, #24]                                         \n"
+         " ldr r2, hard_fault_printer_const                          \n"
+         " bx r2                                                     \n"
+         " hard_fault_printer_const: .word hard_fault_printer        \n"
+        );
+}

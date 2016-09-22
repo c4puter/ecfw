@@ -25,6 +25,9 @@
 #![feature(lang_items)]
 #![feature(asm)]
 
+use core::ptr;
+use core::mem;
+
 #[lang="eh_personality"] extern fn eh_personality() {}
 
 #[lang="panic_fmt"]
@@ -37,3 +40,18 @@ pub fn nop()
     unsafe{asm!("nop" : : : : "volatile");}
 }
 
+pub fn enable_irq()
+{
+    unsafe{asm!("cpsie i" : : : "memory" : "volatile");}
+}
+
+pub fn disable_irq()
+{
+    unsafe{asm!("cpsid i" : : : "memory" : "volatile");}
+}
+
+pub unsafe fn readmem(addr: u32) -> u32
+{
+    let p: *const u32 = mem::transmute(addr);
+    return *p;
+}
