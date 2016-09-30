@@ -40,7 +40,7 @@ required.  The build system can make libcore itself, but it requires a Rust
 compiler that knows which source revision it came from. In other words,
 `rustc -v --version` must output a commit hash. If it does not, you may need
 to build rustc from source. On Arch Linux, this is available in the Arch User
-Repository as aur/rustc-git.
+Repository as aur/rust-git.
 
 Be warned that the entire Rust source repository will be cloned by the build
 system in order to check out the correct revision and build libcore. This is
