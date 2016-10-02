@@ -44,15 +44,15 @@ const queueSEND_TO_BACK: i32 = 0;
 const queueSEND_TO_FRONT: i32 = 1;
 const queueQUEUE_TYPE_BASE: u8 = 0;
 
-#[allow(dead_code)]
-pub struct Task<'a, F> where F: 'static {
-    f: &'a F,
-}
-
 #[derive(Copy, Clone)]
 pub struct Queue<T> {
     pub handle: QueueHandle,
     phantom: marker::PhantomData<T>,
+}
+
+//#[allow(dead_code)]
+pub struct Task<F> {
+    phantom: marker::PhantomData<F>
 }
 
 extern "C" {
@@ -78,24 +78,26 @@ extern "C" {
 }
 
 extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
-    unsafe {
-        let pclos = task as *mut F;
-        (*pclos)();
-    }
+    let tboxptr = task as *mut Box<F>;
+    let pclos = unsafe{Box::from_raw(tboxptr)};
+    pclos();
 }
 
-impl<'a, F> Task<'a, F> {
-    pub fn new(f: &'a F, name: &'a str, stackdepth: usize, priority: i32) -> Task<'a, F>
-            where F: Fn()
+impl<F> Task<F> {
+    pub fn new(f: F, name: &str, stackdepth: usize, priority: i32) -> Task<F>
+        where F: Fn()
     {
-        mem::size_of::<F>();
-        let p = f as *const _ as *mut Void;
-        let taskstruct = Task { f: f };
+        let fbox = Box::new(Box::new(f));
+        //let wrap_ptr = unsafe{pvPortMalloc(mem::size_of::<*mut &'a Fn()>()) as *mut &'a Fn()};
+        //println!("Size of closure ref: {}", mem::size_of::<&'a Fn()>());
+        //println!("Size of closure pointer box: {}", mem::size_of::<*mut &'a Fn()>());
+        println!("Size of box: {}", mem::size_of::<Box<Fn()>>());
+        println!("Size of boxbox: {}", mem::size_of::<Box<Box<Fn()>>>());
         unsafe {
             xTaskGenericCreate(task_wrapper::<F>, name.as_bytes().as_ptr(), stackdepth as u16,
-                p, priority, ptr::null(), ptr::null(), ptr::null());
+                Box::into_raw(fbox) as *mut Void, priority, ptr::null(), ptr::null(), ptr::null());
         }
-        return taskstruct;
+        Task{phantom: marker::PhantomData}
     }
 }
 
