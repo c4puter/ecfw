@@ -31,8 +31,6 @@ extern crate rust_support;
 extern crate ec_io;
 extern crate freertos;
 
-use core::mem;
-
 pub fn delay(t: u32)
 {
     for _ in 0..t {

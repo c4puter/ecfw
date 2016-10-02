@@ -35,18 +35,18 @@ pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
 }
 
 #[no_mangle]
-pub extern fn __rust_deallocate(ptr: *mut u8, _old_size: usize, _align: usize) {
+pub extern fn __rust_deallocate(_ptr: *mut u8, _old_size: usize, _align: usize) {
     panic!("cannot deallocate");
 }
 
 #[no_mangle]
-pub extern fn __rust_reallocate(ptr: *mut u8, _old_size: usize, size: usize,
+pub extern fn __rust_reallocate(_ptr: *mut u8, _old_size: usize, _size: usize,
                                 _align: usize) -> *mut u8 {
     panic!("cannot reallocate");
 }
 
 #[no_mangle]
-pub extern fn __rust_reallocate_inplace(_ptr: *mut u8, old_size: usize,
+pub extern fn __rust_reallocate_inplace(_ptr: *mut u8, _old_size: usize,
                                         _size: usize, _align: usize) -> usize {
     panic!("cannot reallocate");
 }
