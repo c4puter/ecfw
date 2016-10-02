@@ -169,14 +169,12 @@ pub extern "C" fn vApplicationStackOverflowHook(taskhnd: *const Void, pname: *co
     let name = unsafe {
         str::from_utf8_unchecked(
             slice::from_raw_parts(pname, strlen(pname))) };
-    println!("\n\nSTACK OVERFLOW IN {}", name);
-    loop {}
+    panic!("Stack overflow in task: {}", name);
 }
 
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "C" fn vApplicationMallocFailedHook()
 {
-    println!("\n\nOUT OF MEMORY");
-    loop{}
+    panic!("Out of memory");
 }
