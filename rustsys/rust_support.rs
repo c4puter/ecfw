@@ -25,13 +25,22 @@
 #![feature(lang_items)]
 #![feature(asm)]
 
-use core::ptr;
+#[macro_use]
+extern crate ec_io;
+
 use core::mem;
+use core::fmt;
 
 #[lang="eh_personality"] extern fn eh_personality() {}
 
 #[lang="panic_fmt"]
-pub fn panic_fmt(_fmt: &core::fmt::Arguments, _file_line: &(&'static str, usize)) -> !{
+pub extern fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> ! {
+    unsafe{disable_irq();}
+    println!("\n\n===================================");
+    println!("PANIC");
+    println!("file:line = {}:{}", file, line);
+    print!  ("message   = ");
+    ec_io::_println(fmt);
     loop { }
 }
 
@@ -40,18 +49,43 @@ pub fn nop()
     unsafe{asm!("nop" : : : : "volatile");}
 }
 
-pub fn enable_irq()
+pub unsafe fn enable_irq()
 {
-    unsafe{asm!("cpsie i" : : : "memory" : "volatile");}
+    asm!("cpsie i" : : : "memory" : "volatile");
 }
 
-pub fn disable_irq()
+pub unsafe fn disable_irq()
 {
-    unsafe{asm!("cpsid i" : : : "memory" : "volatile");}
+    asm!("cpsid i" : : : "memory" : "volatile");
 }
 
-pub unsafe fn readmem(addr: u32) -> u32
+unsafe fn readmem(addr: u32) -> u32
 {
     let p: *const u32 = mem::transmute(addr);
     return *p;
+}
+
+#[no_mangle]
+pub extern "C" fn hard_fault_printer(regs: [u32; 8]) {
+    unsafe{disable_irq();}
+    println!("\n\n===================================");
+    println!("HARD FAULT");
+    println!("r0  = {:08x}  r1  = {:08x}  r2  = {:08x}  r3  = {:08x}",
+             regs[0], regs[1], regs[2], regs[3]);
+    println!("r12 = {:08x}  lr  = {:08x}  pc  = {:08x}  psr = {:08x}",
+             regs[4], regs[5], regs[6], regs[7]);
+
+    println!("");
+    unsafe {
+        println!("BFAR = {:08x}  CFSR = {:08x}  HFSR = {:08x}",
+                 readmem(0xe000ed38),
+                 readmem(0xe000ed28),
+                 readmem(0xe000ed2c));
+        println!("DFSR = {:08x}  AFSR = {:08x}  SCB_SHCSR = {:08x}",
+                 readmem(0xe000ed30),
+                 readmem(0xe000ed3c),
+                 readmem(0xe000e000 + 0x0d00 + 0x024));
+                  //     SCS_BASE    SCB_off   SHCSR_off
+    }
+    loop{}
 }

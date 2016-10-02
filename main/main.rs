@@ -74,6 +74,7 @@ pub fn test2(qh: u32) {
     match q.receive(100) {
         Some(i) => println!("Received {}", i),
         None => {} }
+    panic!("panicpanicpanic");
     loop {}
 }
 
@@ -89,35 +90,10 @@ pub extern "C" fn main() -> i32 {
     let q = freertos::Queue::<i32>::new(16);
     let clos1 = move || { test(q.handle); };
     let clos2 = move || { test2(q.handle); };
-    let task1 = freertos::Task::new(clos1, "test1", 5000, 0);
-    let task2 = freertos::Task::new(clos2, "test2", 5000, 0);
+    let task1 = freertos::Task::new(clos1, "test1", 6000, 0);
+    let task2 = freertos::Task::new(clos2, "test2", 6000, 0);
     freertos::run();
     loop {}
 
     return 0;
-}
-
-#[no_mangle]
-pub extern "C" fn hard_fault_printer(regs: [u32; 8]) {
-    rust_support::disable_irq();
-    println!("\n\n===================================");
-    println!("HARD FAULT");
-    println!("r0  = {:08x}  r1  = {:08x}  r2  = {:08x}  r3  = {:08x}",
-             regs[0], regs[1], regs[2], regs[3]);
-    println!("r12 = {:08x}  lr  = {:08x}  pc  = {:08x}  psr = {:08x}",
-             regs[4], regs[5], regs[6], regs[7]);
-
-    println!("");
-    unsafe {
-        println!("BFAR = {:08x}  CFSR = {:08x}  HFSR = {:08x}",
-                 rust_support::readmem(0xe000ed38),
-                 rust_support::readmem(0xe000ed28),
-                 rust_support::readmem(0xe000ed2c));
-        println!("DFSR = {:08x}  AFSR = {:08x}  SCB_SHCSR = {:08x}",
-                 rust_support::readmem(0xe000ed30),
-                 rust_support::readmem(0xe000ed3c),
-                 rust_support::readmem(0xe000e000 + 0x0d00 + 0x024));
-                                //     SCS_BASE    SCB_off   SHCSR_off
-    }
-    loop{}
 }
