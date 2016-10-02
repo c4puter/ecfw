@@ -36,11 +36,11 @@ use core::fmt;
 #[lang="panic_fmt"]
 pub extern fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> ! {
     unsafe{disable_irq();}
-    println!("\n\n===================================");
-    println!("PANIC");
-    println!("file:line = {}:{}", file, line);
-    print!  ("message   = ");
-    ec_io::_println(fmt);
+    println_async!("\n\n===================================");
+    println_async!("PANIC");
+    println_async!("file:line = {}:{}", file, line);
+    print_async!  ("message   = ");
+    ec_io::println_async(fmt);
     loop { }
 }
 
@@ -68,20 +68,20 @@ unsafe fn readmem(addr: u32) -> u32
 #[no_mangle]
 pub extern "C" fn hard_fault_printer(regs: [u32; 8]) {
     unsafe{disable_irq();}
-    println!("\n\n===================================");
-    println!("HARD FAULT");
-    println!("r0  = {:08x}  r1  = {:08x}  r2  = {:08x}  r3  = {:08x}",
+    println_async!("\n\n===================================");
+    println_async!("HARD FAULT");
+    println_async!("r0  = {:08x}  r1  = {:08x}  r2  = {:08x}  r3  = {:08x}",
              regs[0], regs[1], regs[2], regs[3]);
-    println!("r12 = {:08x}  lr  = {:08x}  pc  = {:08x}  psr = {:08x}",
+    println_async!("r12 = {:08x}  lr  = {:08x}  pc  = {:08x}  psr = {:08x}",
              regs[4], regs[5], regs[6], regs[7]);
 
-    println!("");
+    println_async!("");
     unsafe {
-        println!("BFAR = {:08x}  CFSR = {:08x}  HFSR = {:08x}",
+        println_async!("BFAR = {:08x}  CFSR = {:08x}  HFSR = {:08x}",
                  readmem(0xe000ed38),
                  readmem(0xe000ed28),
                  readmem(0xe000ed2c));
-        println!("DFSR = {:08x}  AFSR = {:08x}  SCB_SHCSR = {:08x}",
+        println_async!("DFSR = {:08x}  AFSR = {:08x}  SCB_SHCSR = {:08x}",
                  readmem(0xe000ed30),
                  readmem(0xe000ed3c),
                  readmem(0xe000e000 + 0x0d00 + 0x024));

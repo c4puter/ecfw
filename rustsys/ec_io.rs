@@ -26,11 +26,35 @@
 use core::fmt;
 
 extern crate bindgen_usart;
+extern crate freertos;
 
 struct UartWriter {}
+struct UartWriterAsync {}
+
+static mut stdout_queue: Option<freertos::Queue<u8>> = None;
+static mut stdout_mutex: Option<freertos::Mutex> = None;
+
+fn putc_task(q: freertos::Queue<u8>)
+{
+    loop {
+        match q.receive(100) {
+            Some(c) => unsafe {
+                bindgen_usart::ec_usart_putc(c)
+            },
+            None => {}
+        }
+    }
+}
 
 fn putc(c: u8) {
-    unsafe { bindgen_usart::ec_usart_putc(c); }
+    match unsafe{stdout_queue} {
+        Some(q) => q.send(&c, 1000).unwrap(),
+        None => ()
+    }
+}
+
+fn putc_async(c: u8) {
+    unsafe{bindgen_usart::ec_usart_putc(c)};
 }
 
 impl<'a> fmt::Write for UartWriter {
@@ -45,21 +69,89 @@ impl<'a> fmt::Write for UartWriter {
     }
 }
 
-pub fn _print(args: fmt::Arguments) {
+impl<'a> fmt::Write for UartWriterAsync {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.as_bytes() {
+            if *c == b'\n' {
+                putc_async(b'\r');
+            }
+            putc_async(*c);
+        }
+        return Ok(());
+    }
+}
+
+fn mutex_take(waitticks: usize) -> Result<(), &'static str>
+{
+    match unsafe{stdout_mutex} {
+        Some(m) => m.take(waitticks),
+        None => Err("no mutex configured yet")
+    }
+}
+
+fn mutex_give() -> Result<(), &'static str>
+{
+    match unsafe{stdout_mutex} {
+        Some(m) => m.give(),
+        None => Err("no mutex configured yet")
+    }
+}
+
+/// Initialize EC IO. Starts a FreeRTOS task.
+pub fn init()
+{
+    let q = freertos::Queue::<u8>::new(72);
+    let m = freertos::Mutex::new();
+    unsafe {
+        stdout_queue = Some(q);
+        stdout_mutex = Some(m);
+        bindgen_usart::ec_usart_init();
+    }
+    freertos::Task::new(move || { putc_task(q); }, "ec_io", 200, 0);
+}
+
+fn _print(args: fmt::Arguments) {
     fmt::write(&mut UartWriter{}, args).unwrap();
 }
 
-pub fn _println(args: fmt::Arguments) {
+pub fn print(args: fmt::Arguments) {
+    mutex_take(1000).unwrap();
+    _print(args);
+    mutex_give().unwrap();
+}
+
+pub fn println(args: fmt::Arguments) {
+    mutex_take(1000).unwrap();
     _print(args);
     fmt::Write::write_str(&mut UartWriter{}, "\n").unwrap();
+    mutex_give().unwrap()
+}
+
+pub fn print_async(args: fmt::Arguments) {
+    fmt::write(&mut UartWriterAsync{}, args).unwrap();
+}
+
+pub fn println_async(args: fmt::Arguments) {
+    print_async(args);
+    fmt::Write::write_str(&mut UartWriterAsync{}, "\n").unwrap();
 }
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => (ec_io::_print(format_args!($($arg)*)));
+    ($($arg:tt)*) => (ec_io::print(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! println {
-    ($($arg:tt)*) => (ec_io::_println(format_args!($($arg)*)));
+    ($($arg:tt)*) => (ec_io::println(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! print_async {
+    ($($arg:tt)*) => (ec_io::print_async(format_args!($($arg)*)));
+}
+
+#[macro_export]
+macro_rules! println_async {
+    ($($arg:tt)*) => (ec_io::println_async(format_args!($($arg)*)));
 }

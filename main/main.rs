@@ -58,16 +58,15 @@ pub fn speak_task(q: freertos::Queue<i32>) {
 }
 
 pub fn test(q: freertos::Queue<i32>) {
+    println!("Sending");
     q.send(&42, 100);
     loop{}
 }
 
 pub fn test2(q: freertos::Queue<i32>) {
-    delay(50000);
     match q.receive(100) {
         Some(i) => println!("Received {}", i),
         None => {} }
-    panic!("panicpanicpanic");
     loop {}
 }
 
@@ -77,14 +76,15 @@ pub extern "C" fn main() -> i32 {
     unsafe {
         bindgen_mcu::mcu_init();
         bindgen_mcu::board_init();
-        bindgen_usart::ec_usart_init();
     }
+
+    ec_io::init();
 
     let q = freertos::Queue::<i32>::new(16);
     let clos1 = move || { test(q); };
     let clos2 = move || { test2(q); };
-    let task1 = freertos::Task::new(clos1, "test1", 6000, 0);
-    let task2 = freertos::Task::new(clos2, "test2", 6000, 0);
+    let task1 = freertos::Task::new(clos1, "test1", 400, 0);
+    let task2 = freertos::Task::new(clos2, "test2", 400, 0);
     freertos::run();
     loop {}
 

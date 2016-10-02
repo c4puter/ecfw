@@ -53,6 +53,7 @@ pub struct Queue<T> {
 
 pub struct Task { }
 
+#[derive(Copy, Clone)]
 pub struct Mutex {
     handle: QueueHandle
 }
@@ -164,7 +165,7 @@ impl Mutex {
         Mutex{handle: hnd}
     }
 
-    pub fn take(&self, waitticks: usize) -> Result<(), &str> {
+    pub fn take(&self, waitticks: usize) -> Result<(), &'static str> {
         let res = unsafe{ xQueueGenericReceive(
                 self.handle, ptr::null_mut(), waitticks, pdFALSE ) };
         return match res {
@@ -173,7 +174,7 @@ impl Mutex {
         };
     }
 
-    pub fn give(&self) -> Result<(), &str> {
+    pub fn give(&self) -> Result<(), &'static str> {
         let res = unsafe {
             xQueueGenericSend(self.handle, ptr::null(), semGIVE_BLOCK_TIME, queueSEND_TO_BACK)
         };
