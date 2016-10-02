@@ -23,14 +23,17 @@
 
 #![no_std]
 #![allow(improper_ctypes, non_upper_case_globals)]
+#![feature(alloc)]
 
 #[macro_use]
 extern crate ec_io;
+extern crate alloc;
 use core::ptr;
 use core::str;
 use core::slice;
 use core::mem;
 use core::marker;
+use alloc::boxed::Box;
 
 pub enum Void {}
 type QueueHandle = u32;

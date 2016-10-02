@@ -29,8 +29,11 @@ PYTHON  ?= python
 
 ASF_UNF_DIR = resources/asf-unf
 ASF_SOURCE ?= resources/asf
-LIBCORE = resources/libcore-thumbv7m
+RUSTLIB_DIR ?= resources/rustlibs
 FREERTOS = ${ASF_UNF_DIR}/asf/thirdparty/freertos/freertos-8.2.3
+
+RUSTLIBS = core alloc
+RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
 
 LOCAL_OBJECTS = \
 	main/main.o \
@@ -41,6 +44,7 @@ SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
 
 RUST_CRATES = \
+	rustsys/liballoc_system.rlib \
 	rustsys/libec_io.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
@@ -79,7 +83,7 @@ CFLAGS = \
 
 RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	-L ${LIBCORE} -L main -L hardware -L rustsys
+	-L ${RUSTLIB_DIR} -L main -L hardware -L rustsys
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
@@ -94,20 +98,22 @@ LDFLAGS = \
 LIBS = -lm -lc -lgcc -lnosys
 
 .PHONY: all clean genclean distclean debug program
+.SECONDARY: ${RUSTLIB_FILES}
 
 all: ecfw.hex
 	${SIZE} ecfw
 
-%.o: %.rs ${LIBCORE} ${RUST_CRATES}
+%.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
 
-lib%.rlib: %.rs ${LIBCORE}
+lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
 bindgen_%.rs: %.h have-bindgen
-	( echo '#![no_std]'; \
+	echo bindgen > $@
+	@( echo '#![no_std]'; \
 	  $$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $< ) | \
 	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
 	> $@
@@ -120,9 +126,9 @@ deps.rust:
 	bash ./scripts/gen-rust-dependencies.sh > $@
 
 have-bindgen:
-	( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
-	( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ ) || \
-	( cargo install bindgen && \
+	@( command -v bindgen >$@ && command -v bindgen > $@ && echo "Found bindgen on path" ) || \
+	( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ && echo "Found bindgen in ~/.cargo" ) || \
+	( echo "Installing bindgen..." && cargo install bindgen && \
 			(( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
 			 ( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ )))
 
@@ -137,8 +143,8 @@ ${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
 	cd $@; \
 	${PYTHON} ../../scripts/unfuck-asf.py sam $(realpath ${ASF_SOURCE}) asf
 
-${LIBCORE}:
-	bash ./scripts/build-rust-libcore.sh
+${RUSTLIB_DIR}/lib%.rlib:
+	bash ./scripts/build-rust-lib.sh $*
 
 %.o: %.c ${ASF_UNF_DIR}
 	${CC} -c  ${CFLAGS} $*.c -o $*.o
@@ -147,7 +153,7 @@ ${LIBCORE}:
 ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
 	${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
 			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} \
-			${LIBCORE}/libcore.rlib ${SUPPORT_CRATES} -o ecfw
+			${RUSTLIB_FILES} ${SUPPORT_CRATES} -o ecfw
 
 ecfw.hex: ecfw
 	${OBJCOPY} -O ihex $< $@
@@ -169,7 +175,7 @@ clean:
 
 genclean: clean
 	rm -rf ${ASF_UNF_DIR}
-	rm -rf ${LIBCORE}
+	rm -rf ${RUSTLIB_FILES}
 
 distclean: genclean
 	rm -rf resources/rustsrc

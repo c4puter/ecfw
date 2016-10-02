@@ -24,11 +24,14 @@
 
 set -e
 
-LIBCORE=resources/libcore-thumbv7m
+RUSTLIB_DIR=resources/rustlibs
 RUSTSRC=resources/rustsrc
 
-if [[ -f $LIBCORE/libcore.rlib ]]; then
-    echo "rust libcore already built"
+# For linking
+RUSTLIB_DIR_ABS="$PWD/$RUSTLIB_DIR"
+
+if [[ -f "$RUSTLIB_DIR/lib$1.rlib" ]]; then
+    echo "rust lib$1 already built"
     exit 0
 fi
 
@@ -36,7 +39,7 @@ RUST_COMMIT_HASH="$(rustc -v --version | grep commit-hash | awk '{print $2}')"
 
 if [[ "$RUST_COMMIT_HASH" == "unknown" ]]; then
     echo "Cannot determine rustc commit hash." >&2
-    echo "This is necessary to match to a revision of libcore." >&2
+    echo "This is necessary to match to a revision of lib$1." >&2
     echo "You may need to install rustc from source." >&2
     echo "On Arch Linux, this can be installed as aur/rust-git." >&2
     exit 1
@@ -44,20 +47,23 @@ fi
 
 if ! [[ -e $RUSTSRC/rust ]]; then
     mkdir -p $RUSTSRC
-    cd $RUSTSRC
+    pushd $RUSTSRC >/dev/null
 
     git clone https://github.com/rust-lang/rust
     cd rust
     git checkout "$RUST_COMMIT_HASH"
     cd ..
     cp ../../thumbv7em-none-eabi.json .
-    cd ../..
+    popd >/dev/null
 fi
 
-cd $RUSTSRC
-mkdir -p libcore-thumbv7m
-echo Compiling rust libcore...
+pushd $RUSTSRC >/dev/null
+mkdir -p lib_out
+#echo Compiling rust lib$1...
 rustc -C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-    rust/src/libcore/lib.rs --out-dir libcore-thumbv7m
+    -L "$RUSTLIB_DIR_ABS" \
+    rust/src/lib$1/lib.rs --out-dir lib_out
+popd >/dev/null
 
-mv libcore-thumbv7m ../
+mkdir -p $RUSTLIB_DIR
+mv $RUSTSRC/lib_out/lib$1.rlib $RUSTLIB_DIR/
