@@ -44,10 +44,10 @@ SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
 
 RUST_CRATES = \
-	rustsys/liballoc_system.rlib \
 	rustsys/libec_io.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
+	rustsys/liballoc_system.rlib \
 
 FREERTOS_OBJECTS = \
 	${FREERTOS}/Source/queue.o \
@@ -82,10 +82,9 @@ CFLAGS = \
 	-isystem ${ASF_UNF_DIR} \
 
 RUSTFLAGS = \
-	-C opt-level=0 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L main -L hardware -L rustsys
 
-	#-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \

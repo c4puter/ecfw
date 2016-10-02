@@ -89,8 +89,8 @@ pub extern "C" fn main() -> i32 {
     let q = freertos::Queue::<i32>::new(16);
     let clos1 = move || { test(q.handle); };
     let clos2 = move || { test2(q.handle); };
-    let task1 = freertos::Task::new(&clos1, "test1", 5000, 0);
-    let task2 = freertos::Task::new(&clos2, "test2", 5000, 0);
+    let task1 = freertos::Task::new(clos1, "test1", 5000, 0);
+    let task2 = freertos::Task::new(clos2, "test2", 5000, 0);
     freertos::run();
     loop {}
 
