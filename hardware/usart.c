@@ -51,3 +51,11 @@ void ec_usart_putc(char c)
     usart_putchar(USART_SERIAL, c);
 }
 
+char ec_usart_getc()
+{
+    int c = 0;
+    usart_getchar(USART_SERIAL, &c);
+    if (c > 0 && c <= 255) {
+        return (char) c;
+    }
+}

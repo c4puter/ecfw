@@ -57,6 +57,10 @@ fn putc_async(c: u8) {
     unsafe{bindgen_usart::ec_usart_putc(c)};
 }
 
+pub fn getc_async() -> u8 {
+    unsafe{bindgen_usart::ec_usart_getc()}
+}
+
 impl<'a> fmt::Write for UartWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.as_bytes() {

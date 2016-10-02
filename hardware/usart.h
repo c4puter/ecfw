@@ -26,5 +26,6 @@
 
 void ec_usart_init(void);
 void ec_usart_putc(char c);
+char ec_usart_getc();
 
 #endif // USART_H

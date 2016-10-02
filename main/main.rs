@@ -67,7 +67,10 @@ pub fn test2(q: freertos::Queue<i32>) {
     match q.receive(100) {
         Some(i) => println!("Received {}", i),
         None => {} }
-    loop {}
+    loop {
+        let c = ec_io::getc_async();
+        print!("{}", c);
+    }
 }
 
 #[no_mangle]
