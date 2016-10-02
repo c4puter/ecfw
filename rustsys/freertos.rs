@@ -47,7 +47,7 @@ const semGIVE_BLOCK_TIME: usize = 0;
 
 #[derive(Copy, Clone)]
 pub struct Queue<T> {
-    pub handle: QueueHandle,
+    handle: QueueHandle,
     phantom: marker::PhantomData<T>,
 }
 
@@ -107,9 +107,6 @@ impl <T> Queue<T> {
         return Queue::<T> { handle: qhandle, phantom: marker::PhantomData };
     }
 
-    pub fn from_handle(handle: QueueHandle) -> Queue<T> {
-        return Queue::<T> { handle: handle, phantom: marker::PhantomData };
-    }
 
     fn send_generic(&self, item: &T, waitticks: usize, copypos: i32) -> Result<(), &str> {
         let res = unsafe {

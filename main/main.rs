@@ -41,7 +41,6 @@ pub fn delay(t: u32)
 pub fn count_task(q: freertos::Queue<i32>) {
     let mut i = 0;
     loop {
-        println!("handle: {:08x}", q.handle as u32);
         match q.send(&i, 100) {
             Ok(()) => { i += 1; }
             _ => {}
@@ -58,17 +57,13 @@ pub fn speak_task(q: freertos::Queue<i32>) {
     }
 }
 
-pub fn test(qh: u32) {
-    let q = freertos::Queue::<i32>::from_handle(qh);
-    println!("Handle in test: {:08x}", q.handle);
+pub fn test(q: freertos::Queue<i32>) {
     q.send(&42, 100);
     loop{}
 }
 
-pub fn test2(qh: u32) {
+pub fn test2(q: freertos::Queue<i32>) {
     delay(50000);
-    let q = freertos::Queue::<i32>::from_handle(qh);
-    println!("Handle in test2: {:08x}", q.handle);
     match q.receive(100) {
         Some(i) => println!("Received {}", i),
         None => {} }
@@ -86,8 +81,8 @@ pub extern "C" fn main() -> i32 {
     }
 
     let q = freertos::Queue::<i32>::new(16);
-    let clos1 = move || { test(q.handle); };
-    let clos2 = move || { test2(q.handle); };
+    let clos1 = move || { test(q); };
+    let clos2 = move || { test2(q); };
     let task1 = freertos::Task::new(clos1, "test1", 6000, 0);
     let task2 = freertos::Task::new(clos2, "test2", 6000, 0);
     freertos::run();
