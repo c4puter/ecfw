@@ -105,8 +105,8 @@ all: ecfw.hex
 	${SIZE} ecfw
 
 %.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
-	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
+	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>&1
 
 lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
