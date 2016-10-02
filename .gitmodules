@@ -1,0 +1,3 @@
+[submodule "esh"]
+	path = esh
+	url = git@github.com:cpavlina/esh

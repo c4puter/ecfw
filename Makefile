@@ -39,6 +39,9 @@ LOCAL_OBJECTS = \
 	main/main.o \
 	hardware/mcu.o \
 	hardware/usart.o \
+	esh/esh_argparser.o \
+	esh/esh.o \
+	esh/esh_hist.o \
 
 SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
@@ -48,6 +51,7 @@ RUST_CRATES = \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/liballoc_system.rlib \
+	esh/esh_rust/src/libesh.rlib \
 
 FREERTOS_OBJECTS = \
 	${FREERTOS}/Source/queue.o \
@@ -80,10 +84,11 @@ CFLAGS = \
 	-isystem ${FREERTOS}/Source/include \
 	-isystem freertos-port \
 	-isystem ${ASF_UNF_DIR} \
+	-I esh \
 
 RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	-L ${RUSTLIB_DIR} -L main -L hardware -L rustsys
+	-L ${RUSTLIB_DIR} -L main -L hardware -L rustsys -L esh/esh_rust/src
 
 
 LDFLAGS = \
@@ -110,6 +115,9 @@ all: ecfw.hex
 
 lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
+	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+
+esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs ${RUSTLIB_FILES} ${LIBALLOC}
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
 bindgen_%.rs: %.h have-bindgen

@@ -46,14 +46,14 @@ fn putc_task(q: freertos::Queue<u8>)
     }
 }
 
-fn putc(c: u8) {
+pub fn putc(c: u8) {
     match unsafe{stdout_queue} {
         Some(q) => q.send(&c, 1000).unwrap(),
         None => ()
     }
 }
 
-fn putc_async(c: u8) {
+pub fn putc_async(c: u8) {
     unsafe{bindgen_usart::ec_usart_putc(c)};
 }
 

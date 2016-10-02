@@ -30,46 +30,48 @@ extern crate rust_support;
 #[macro_use]
 extern crate ec_io;
 extern crate freertos;
+extern crate esh;
 
-pub fn delay(t: u32)
+use core::str;
+
+fn esh_command_cb(_esh: &esh::Esh, args: &esh::EshArgArray)
 {
-    for _ in 0..t {
-        rust_support::nop();
+    println!("argc: {}\r", args.len());
+
+    for i in 0..args.len() {
+        let arg = match str::from_utf8(&args[i]) {
+            Ok(s) => s,
+            _ => ""
+        };
+        println!("argv[{:2}] = {}", i, arg);
+    }
+
+    if args[0] == *b"exit" || args[0] == *b"quit" {
+        panic!("exit");
     }
 }
 
-pub fn count_task(q: freertos::Queue<i32>) {
-    let mut i = 0;
-    loop {
-        match q.send(&i, 100) {
-            Ok(()) => { i += 1; }
-            _ => {}
+fn esh_print_cb(_esh: &esh::Esh, s: &[u8])
+{
+    for c in s {
+        if *c == b'\n' {
+            ec_io::putc(b'\r');
         }
-        delay(40000);
+        ec_io::putc(*c);
     }
 }
 
-pub fn speak_task(q: freertos::Queue<i32>) {
-    loop {
-        match q.receive(100) {
-            Some(i) => println!("{} number {}", "Hello, world!", i),
-            None => {} }
-    }
-}
+pub fn esh_task() {
+    let mut esh = esh::Esh::init().unwrap();
+    esh.register_command(esh_command_cb);
+    esh.register_print(esh_print_cb);
 
-pub fn test(q: freertos::Queue<i32>) {
-    println!("Sending");
-    q.send(&42, 100);
-    loop{}
-}
-
-pub fn test2(q: freertos::Queue<i32>) {
-    match q.receive(100) {
-        Some(i) => println!("Received {}", i),
-        None => {} }
     loop {
         let c = ec_io::getc_async();
-        print!("{}", c);
+        let c_replaced =
+            if c == b'\r' { b'\n' }
+            else          { c };
+        esh.rx(c_replaced);
     }
 }
 
@@ -82,12 +84,12 @@ pub extern "C" fn main() -> i32 {
     }
 
     ec_io::init();
+    println_async!("Initialized EC core and USART");
 
-    let q = freertos::Queue::<i32>::new(16);
-    let clos1 = move || { test(q); };
-    let clos2 = move || { test2(q); };
-    let task1 = freertos::Task::new(clos1, "test1", 400, 0);
-    let task2 = freertos::Task::new(clos2, "test2", 400, 0);
+    println_async!("Create task \"esh\"...");
+    freertos::Task::new(move || { esh_task() }, "esh", 1000, 0);
+
+    println_async!("Start task scheduler...");
     freertos::run();
     loop {}
 
