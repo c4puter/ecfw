@@ -25,8 +25,6 @@
 #![allow(improper_ctypes, non_upper_case_globals)]
 #![feature(alloc)]
 
-#[macro_use]
-extern crate ec_io;
 extern crate alloc;
 use core::ptr;
 use core::str;
@@ -39,10 +37,13 @@ pub enum Void {}
 type QueueHandle = u32;
 
 const pdTRUE: i32 = 1;
+const pdFALSE: i32 = 0;
 const errQUEUE_FULL: i32 = 0;
 const queueSEND_TO_BACK: i32 = 0;
 const queueSEND_TO_FRONT: i32 = 1;
 const queueQUEUE_TYPE_BASE: u8 = 0;
+const queueQUEUE_TYPE_MUTEX: u8 = 1;
+const semGIVE_BLOCK_TIME: usize = 0;
 
 #[derive(Copy, Clone)]
 pub struct Queue<T> {
@@ -51,6 +52,10 @@ pub struct Queue<T> {
 }
 
 pub struct Task { }
+
+pub struct Mutex {
+    handle: QueueHandle
+}
 
 extern "C" {
     fn xTaskGenericCreate(
@@ -72,6 +77,8 @@ extern "C" {
     fn uxQueueMessagesWaiting(queue: QueueHandle) -> usize;
     fn uxQueueSpacesAvailable(queue: QueueHandle) -> usize;
     fn xQueueReset(queue: QueueHandle) -> i32; // always returns pdPASS
+
+    fn xQueueCreateMutex(qtype: u8) -> QueueHandle;
 }
 
 extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
@@ -97,7 +104,6 @@ impl <T> Queue<T> {
     pub fn new(len: usize) -> Queue<T> {
         let itemsize = mem::size_of::<T>();
         let qhandle = unsafe{ xQueueGenericCreate(len, itemsize, queueQUEUE_TYPE_BASE) };
-        println!("Handle received: {:08x}", qhandle);
         return Queue::<T> { handle: qhandle, phantom: marker::PhantomData };
     }
 
@@ -152,6 +158,32 @@ impl <T> Queue<T> {
 
     pub fn reset(&self) {
         unsafe{ xQueueReset(self.handle); }
+    }
+}
+
+impl Mutex {
+    pub fn new() -> Mutex {
+        let hnd = unsafe{xQueueCreateMutex(queueQUEUE_TYPE_MUTEX)};
+        Mutex{handle: hnd}
+    }
+
+    pub fn take(&self, waitticks: usize) -> Result<(), &str> {
+        let res = unsafe{ xQueueGenericReceive(
+                self.handle, ptr::null_mut(), waitticks, pdFALSE ) };
+        return match res {
+            pdTRUE => Ok(()),
+            _ => Err("timeout")
+        };
+    }
+
+    pub fn give(&self) -> Result<(), &str> {
+        let res = unsafe {
+            xQueueGenericSend(self.handle, ptr::null(), semGIVE_BLOCK_TIME, queueSEND_TO_BACK)
+        };
+        return match res {
+            pdTRUE => Ok(()),
+            _ => Err("timeout")
+        };
     }
 }
 
