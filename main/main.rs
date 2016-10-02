@@ -51,14 +51,12 @@ fn esh_command_cb(_esh: &esh::Esh, args: &esh::EshArgArray)
     }
 }
 
-fn esh_print_cb(_esh: &esh::Esh, s: &[u8])
+fn esh_print_cb(_esh: &esh::Esh, c: u8)
 {
-    for c in s {
-        if *c == b'\n' {
-            ec_io::putc(b'\r');
-        }
-        ec_io::putc(*c);
+    if c == b'\n' {
+        ec_io::putc(b'\r');
     }
+    ec_io::putc(c);
 }
 
 pub fn esh_task() {
