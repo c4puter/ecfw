@@ -30,7 +30,7 @@ PYTHON  ?= python
 ASF_UNF_DIR = resources/asf-unf
 ASF_SOURCE ?= resources/asf
 RUSTLIB_DIR ?= resources/rustlibs
-FREERTOS = ${ASF_UNF_DIR}/asf/thirdparty/freertos/freertos-8.2.3
+FREERTOS = FreeRTOS
 
 RUSTLIBS = core alloc
 RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
@@ -62,7 +62,7 @@ FREERTOS_OBJECTS = \
 	${FREERTOS}/Source/croutine.o \
 	${FREERTOS}/Source/event_groups.o \
 	${FREERTOS}/Source/portable/MemMang/heap_1.o \
-	freertos-port/port.o \
+	${FREERTOS}/Source/portable/GCC/ARM_CM3/port.o \
 
 ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
@@ -83,7 +83,7 @@ CFLAGS = \
 	-isystem ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/include \
 	-isystem ${ASF_UNF_DIR}/asf/thirdparty/CMSIS/Include \
 	-isystem ${FREERTOS}/Source/include \
-	-isystem freertos-port \
+	-isystem ${FREERTOS}/Source/portable/GCC/ARM_CM3 \
 	-isystem ${ASF_UNF_DIR} \
 	-I esh \
 

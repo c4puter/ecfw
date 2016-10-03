@@ -60,15 +60,14 @@ pub struct Mutex {
 }
 
 extern "C" {
-    fn xTaskGenericCreate(
-        pvTaskCode: extern "C" fn(task: *mut Void),
+    fn xTaskCreate(
+        pxTaskCode: extern "C" fn(task: *mut Void),
         pcName: *const u8,
-        usStackDepth: u16,
+        ulStackDepth: u32,
         pvParameters: *mut Void,
-        uxPriority: i32,
-        pvCreatedTask: *const Void,
+        uxPriority: u32,
         puxStackBuffer: *const Void,
-        xRegions: *const Void);
+        pxTaskBuffer: *const Void);
     fn vTaskStartScheduler();
     fn strlen(s: *const u8) -> usize;
 
@@ -93,13 +92,13 @@ extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
 }
 
 impl Task {
-    pub fn new<F>(f: F, name: &str, stackdepth: usize, priority: i32) -> Task
+    pub fn new<F>(f: F, name: &str, stackdepth: usize, priority: u32) -> Task
         where F: Fn()
     {
         let fbox = Box::new(Box::new(f));
         unsafe {
-            xTaskGenericCreate(task_wrapper::<F>, name.as_bytes().as_ptr(), stackdepth as u16,
-                Box::into_raw(fbox) as *mut Void, priority, ptr::null(), ptr::null(), ptr::null());
+            xTaskCreate(task_wrapper::<F>, name.as_bytes().as_ptr(), stackdepth as u32,
+                Box::into_raw(fbox) as *mut Void, priority, ptr::null(), ptr::null());
         }
         Task{}
     }
