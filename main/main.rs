@@ -31,23 +31,49 @@ extern crate rust_support;
 extern crate ec_io;
 extern crate freertos;
 extern crate esh;
+extern crate commands;
 
 use core::str;
 
-fn esh_command_cb(_esh: &esh::Esh, args: &esh::EshArgArray)
-{
-    println!("argc: {}\r", args.len());
+struct EshArgAdapter<'a> {
+    argarray: &'a esh::EshArgArray
+}
 
-    for i in 0..args.len() {
-        let arg = match str::from_utf8(&args[i]) {
-            Ok(s) => s,
-            _ => ""
-        };
-        println!("argv[{:2}] = {}", i, arg);
+impl<'a> commands::Args<'a> for EshArgAdapter<'a> {
+    fn argc(&self) -> usize {
+        return self.argarray.len();
     }
+    fn argv(&self, n: usize) -> Option<&str> {
+        return match str::from_utf8(&self.argarray[n]) {
+            Ok(s) => Some(s),
+            _ => None,
+        };
+    }
+}
 
-    if args[0] == *b"exit" || args[0] == *b"quit" {
-        panic!("exit");
+fn command_dispatch(_esh: &esh::Esh, args: &esh::EshArgArray)
+{
+    if args.len() >= 1 {
+        let argadapter = EshArgAdapter{argarray: args};
+        let argv0 = match str::from_utf8(&args[0]) {
+            Ok(s) => s,
+            _ => "__invalid_command",
+        };
+
+        let mut f: Option<fn(&commands::Args)> = None;
+
+        for i in 0..(commands::COMMAND_TABLE.len()) {
+            let ref cmd = commands::COMMAND_TABLE[i];
+            if *(cmd.name) == *argv0 {
+                f = Some(cmd.f);
+                break;
+            }
+        }
+
+        match f {
+            Some(f) => f(&argadapter),
+            None => println!("unrecognized command: {}", argv0),
+        };
     }
 }
 
@@ -61,7 +87,7 @@ fn esh_print_cb(_esh: &esh::Esh, c: u8)
 
 pub fn esh_task() {
     let mut esh = esh::Esh::init().unwrap();
-    esh.register_command(esh_command_cb);
+    esh.register_command(command_dispatch);
     esh.register_print(esh_print_cb);
 
     loop {

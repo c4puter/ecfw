@@ -47,6 +47,7 @@ SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
 
 RUST_CRATES = \
+	main/libcommands.rlib \
 	rustsys/libec_io.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \

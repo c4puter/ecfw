@@ -35,6 +35,7 @@ use alloc::boxed::Box;
 
 pub enum Void {}
 type QueueHandle = u32;
+pub type TaskHandle = u32;
 
 const pdTRUE: i32 = 1;
 const pdFALSE: i32 = 0;
@@ -80,6 +81,9 @@ extern "C" {
     fn xQueueReset(queue: QueueHandle) -> i32; // always returns pdPASS
 
     fn xQueueCreateMutex(qtype: u8) -> QueueHandle;
+
+    // Utilities
+    fn xPortGetFreeHeapSize() -> usize;
 }
 
 extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
@@ -189,6 +193,10 @@ pub fn run() {
     unsafe {
         vTaskStartScheduler();
     }
+}
+
+pub fn get_free_heap() -> usize {
+    unsafe { xPortGetFreeHeapSize() }
 }
 
 #[no_mangle]
