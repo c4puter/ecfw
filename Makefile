@@ -115,18 +115,21 @@ all: ecfw.hex
 	${SIZE} ecfw
 
 %.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
-	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
-	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>/dev/null
+	@echo "[RUSTC   ] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
+	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>/dev/null
 
 lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
-	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
-	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $< 2>/dev/null
+	@echo "[RUSTC   ] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $< 2>/dev/null
 
 esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs ${RUSTLIB_FILES} ${LIBALLOC}
-	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+	@echo "[RUSTC   ] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
 bindgen_%.rs: %.h have-bindgen
-	echo bindgen > $@
+	@echo "[BINDGEN ] $@"
 	@( echo '#![no_std]'; \
 	  $$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $< ) | \
 	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
@@ -137,12 +140,14 @@ bindgen_%.rs: %.h have-bindgen
 -include ${ASF_OBJECTS:.o=.d}
 
 deps.rust:
-	bash ./scripts/gen-rust-dependencies.sh > $@
+	@echo "[RUSTDEPS]"
+	@bash ./scripts/gen-rust-dependencies.sh > $@
 
 have-bindgen:
-	@( command -v bindgen >$@ && command -v bindgen > $@ && echo "Found bindgen on path" ) || \
-	( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ && echo "Found bindgen in ~/.cargo" ) || \
-	( echo "Installing bindgen..." && cargo install bindgen && \
+	@echo -n "[LOCATE  ] bindgen... "
+	@( command -v bindgen >$@ && command -v bindgen | tee $@ ) || \
+	( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" | tee $@ ) || \
+	( echo -e "\n[INSTALL ] bindgen" && cargo install bindgen && \
 			(( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
 			 ( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ )))
 
@@ -153,24 +158,29 @@ ${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
 		echo see README.md. ; \
 		exit 1 ; \
 	fi
-	mkdir -p $@
-	cd $@; \
+	@echo "[UNFUCK  ] ${ASF_SOURCE}"
+	@mkdir -p $@
+	@cd $@; \
 	${PYTHON} ../../scripts/unfuck-asf.py sam $(realpath ${ASF_SOURCE}) asf
 
 ${RUSTLIB_DIR}/lib%.rlib:
-	bash ./scripts/build-rust-lib.sh $*
+	@echo "[RUSTLIB ] $@"
+	@bash ./scripts/build-rust-lib.sh $*
 
 %.o: %.c ${ASF_UNF_DIR}
-	${CC} -c  ${CFLAGS} $*.c -o $*.o
-	${CC} -MM ${CFLAGS} $*.c  > $*.d
+	@echo "[CC      ] $@"
+	@${CC} -c  ${CFLAGS} $*.c -o $*.o
+	@${CC} -MM ${CFLAGS} $*.c  > $*.d
 
 ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
-	${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
+	@echo "[CC LINK ] $@"
+	@${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
 			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} \
 			${RUSTLIB_FILES} ${SUPPORT_CRATES} -o ecfw
 
 ecfw.hex: ecfw
-	${OBJCOPY} -O ihex $< $@
+	@echo "[OBJCOPY ] $@"
+	@${OBJCOPY} -O ihex $< $@
 
 clean:
 	rm -f ${ASF_OBJECTS}
