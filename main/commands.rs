@@ -49,7 +49,6 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "args",      f: cmd_args,    descr: "test: print out all arguments" },
     Command{ name: "free",      f: cmd_free,    descr: "display free heap" },
 
-    Command{ name: "i2c_init",  f: cmd_i2c_init,    descr: "initialize I2C at FREQUENCY" },
     Command{ name: "i2c_probe", f: cmd_i2c_probe,   descr: "probe I2C for an ADDR" },
     Command{ name: "i2c_read",  f: cmd_i2c_read,    descr: "read I2C from ADDR at LOCATION, N bytes" },
     Command{ name: "i2c_write", f: cmd_i2c_write,   descr: "write I2C to ADDR at LOCATION, BYTES" },
@@ -99,46 +98,19 @@ fn cmd_free(_args: &Args)
     println!("{} B", freertos::get_free_heap());
 }
 
-static mut I2C: Option<twi::Twi> = None;
-
-fn cmd_i2c_init(args: &Args)
-{
-    let freq = match argv_parsed(args, 1, "FREQ", u32::from_str) {
-        Some(v) => v,
-        None => return
-    };
-    match unsafe{I2C.clone()} {
-        Some(_) => { println!("I2C already initialized!"); },
-        None => {
-            let i2c = twi::Twi::new(twi::TWI0);
-            match i2c.init(freq) {
-                Ok(_) => unsafe{I2C = Some(i2c);},
-                Err(s) => {println!("initialization error: {}", s);},
-            }
-        }
-    };
-}
-
 fn cmd_i2c_probe(args: &Args)
 {
     let addr = match argv_parsed(args, 1, "ADDR", u8::from_str) {
         Some(v) => v,
         None => return
     };
-    match unsafe{I2C.clone()} {
-        None => {
-            println!("I2C must be initialized first!");
-        }
-        Some(i2c) => {
-            match i2c.probe(addr) {
-                Ok(is_present) => {
-                    if is_present { println!("address {} present", addr); }
-                    else          { println!("address {} does not respond", addr); }
-                },
-                Err(s) => { println!("I2C error: {}", s); },
-            };
-        }
-    }
+    match twi::twi0().probe(addr) {
+        Ok(is_present) => {
+            if is_present { println!("address {} present", addr); }
+            else          { println!("address {} does not respond", addr); }
+        },
+        Err(s) => { println!("I2C error: {}", s); },
+    };
 }
 
 fn cmd_i2c_read(args: &Args)
@@ -152,26 +124,19 @@ fn cmd_i2c_read(args: &Args)
     let n = match argv_parsed(args, 3, "N", u8::from_str) {
         Some(v) => v,
         None => return };
-    match unsafe{I2C.clone()} {
-        None => {
-            println!("I2C must be initialized first!");
-        }
-        Some(i2c) => {
-            if n > 16 {
-                println!("can only read up to 16 bytes");
-                return;
-            }
+    if n > 16 {
+        println!("can only read up to 16 bytes");
+        return;
+    }
 
-            let location_arr = [loc];
-            let mut buffer = [0 as u8; 16];
+    let location_arr = [loc];
+    let mut buffer = [0 as u8; 16];
 
-            match i2c.read(addr, &location_arr, &mut buffer[0..n as usize]) {
-                Ok(_) => {
-                    println!("{:?}", &buffer[0..n as usize]);
-                }
-                Err(s) => { println!("I2C error: {}", s); }
-            }
+    match twi::twi0().read(addr, &location_arr, &mut buffer[0..n as usize]) {
+        Ok(_) => {
+            println!("{:?}", &buffer[0..n as usize]);
         }
+        Err(s) => { println!("I2C error: {}", s); }
     }
 }
 
@@ -186,31 +151,24 @@ fn cmd_i2c_write(args: &Args)
         None => return
     };
 
-    match unsafe{I2C.clone()} {
-        None => {
-            println!("I2C must be initialized first!");
-        }
-        Some(i2c) => {
-            if args.argc() > 19 {
-                println!("can only write up to 16 bytes");
-                return;
-            }
+    if args.argc() > 19 {
+        println!("can only write up to 16 bytes");
+        return;
+    }
 
-            let mut buffer = [0 as u8; 16];
-            let n = args.argc() - 3;
-            for i in 0..n {
-                let arg = match argv_parsed(args, i + 3, "BYTES", u8::from_str) {
-                    Some(v) => v,
-                    None => return };
-                buffer[i] = arg;
-            }
+    let mut buffer = [0 as u8; 16];
+    let n = args.argc() - 3;
+    for i in 0..n {
+        let arg = match argv_parsed(args, i + 3, "BYTES", u8::from_str) {
+            Some(v) => v,
+            None => return };
+        buffer[i] = arg;
+    }
 
-            let location_arr = [loc];
+    let location_arr = [loc];
 
-            match i2c.write(addr, &location_arr, &buffer[0..n as usize]) {
-                Ok(_) => {}
-                Err(s) => { println!("I2c error: {}", s); }
-            }
-        }
+    match twi::twi0().write(addr, &location_arr, &buffer[0..n as usize]) {
+        Ok(_) => {}
+        Err(s) => { println!("I2c error: {}", s); }
     }
 }

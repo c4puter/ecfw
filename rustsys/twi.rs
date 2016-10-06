@@ -30,10 +30,20 @@ type TwiHandle = u32;
 use rust_support::Error;
 use core::fmt;
 
-pub const TWI0: TwiHandle = 0x40018000;
-pub const TWI1: TwiHandle = 0x4001C000;
+pub const TWI0_HANDLE: TwiHandle = 0x40018000;
+pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
+
+static mut TWI0_: Twi = Twi { p_twi: TWI0_HANDLE, mutex: None };
+static mut TWI1_: Twi = Twi { p_twi: TWI1_HANDLE, mutex: None };
+
+pub fn twi0() -> &'static Twi { return unsafe{&TWI0_}; }
+pub fn twi1() -> &'static Twi { return unsafe{&TWI1_}; }
+
+pub unsafe fn twi0_init(speed: u32) -> Result<(),TwiResult> { TWI0_.init(speed) }
+pub unsafe fn twi1_init(speed: u32) -> Result<(),TwiResult> { TWI1_.init(speed) }
 
 #[repr(u32)]
+#[derive(Debug)]
 pub enum TwiResultCode {
     Success         = 0,
     InvalidArgument = 1,
@@ -48,6 +58,7 @@ pub enum TwiResultCode {
 }
 
 #[repr(C)]
+#[derive(Debug)]
 pub struct TwiResult {
     code: TwiResultCode
 }
@@ -104,21 +115,12 @@ extern "C" {
 #[derive(Copy,Clone)]
 pub struct Twi {
     p_twi: TwiHandle,
-    mutex: freertos::Mutex,
+    mutex: Option<freertos::Mutex>,
 }
 
 impl Twi {
-    pub fn new(p_twi: TwiHandle) -> Twi {
-        if p_twi == TWI0 || p_twi == TWI1 {
-            let mutex = freertos::Mutex::new();
-            return Twi { p_twi: p_twi, mutex: mutex };
-        } else {
-            panic!("invalid TWI handle {:08x}", p_twi);
-        }
-    }
-
-    pub fn init(&self, speed: u32) -> Result<(),TwiResult> {
-        let _lock = self.mutex.lock(1000).unwrap();
+    pub fn init(&mut self, speed: u32) -> Result<(),TwiResult> {
+        self.mutex = Some(freertos::Mutex::new());
         let opts = TwiOptions {
             master_clk: unsafe{bindgen_mcu::mcu_get_peripheral_hz()},
             speed: speed,
@@ -133,7 +135,7 @@ impl Twi {
 
     /// Test if a device answers a given address
     pub fn probe(&self, addr: u8) -> Result<bool,TwiResult> {
-        let _lock = self.mutex.lock(1000).unwrap();
+        let _lock = self.mutex.unwrap().lock(1000).unwrap();
         let rc = unsafe{twi_probe(self.p_twi, addr)};
         return match rc.code {
             TwiResultCode::Success      => Ok(true),
@@ -147,7 +149,7 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
     pub fn read(&self, addr: u8, location: &[u8], buffer: &mut [u8]) -> Result<(), TwiResult> {
-        let _lock = self.mutex.lock(1000).unwrap();
+        let _lock = self.mutex.unwrap().lock(1000).unwrap();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
         }
@@ -171,7 +173,7 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
     pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> Result<(), TwiResult> {
-        let _lock = self.mutex.lock(1000).unwrap();
+        let _lock = self.mutex.unwrap().lock(1000).unwrap();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
         }

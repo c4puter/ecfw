@@ -29,6 +29,7 @@ extern crate bindgen_usart;
 extern crate rust_support;
 #[macro_use]
 extern crate ec_io;
+extern crate twi;
 extern crate freertos;
 extern crate esh;
 extern crate commands;
@@ -112,6 +113,9 @@ pub extern "C" fn main() -> i32 {
 
     ec_io::init();
     println_async!("Initialized EC core and USART");
+
+    println_async!("Initialize I2C...");
+    unsafe{ twi::twi0_init(100000).unwrap(); }
 
     println_async!("Create task \"esh\"...");
     freertos::Task::new(move || { esh_task() }, "esh", 1000, 0);
