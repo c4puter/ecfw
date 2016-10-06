@@ -139,7 +139,7 @@ impl Twi {
         let rc = unsafe{twi_probe(self.p_twi, addr)};
         return match rc.code {
             TwiResultCode::Success      => Ok(true),
-            TwiResultCode::NoChipFound  => Ok(false),
+            TwiResultCode::ReceiveNack  => Ok(false),
             _                           => Err(rc)
         };
     }
