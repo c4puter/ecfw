@@ -114,11 +114,11 @@ all: ecfw.hex
 
 %.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
 	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
-	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>&1
+	${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>/dev/null
 
 lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
-	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $<
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $< 2>/dev/null
 
 esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs ${RUSTLIB_FILES} ${LIBALLOC}
 	${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
