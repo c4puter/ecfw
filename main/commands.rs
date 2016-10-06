@@ -47,7 +47,6 @@ pub struct Command {
 
 pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "help",      f: cmd_help,    descr: "display commands and their descriptions" },
-    Command{ name: "args",      f: cmd_args,    descr: "test: print out all arguments" },
     Command{ name: "free",      f: cmd_free,    descr: "display free heap" },
 
     Command{ name: "i2c_probe", f: cmd_i2c_probe,   descr: "probe I2C for an ADDR" },
@@ -84,16 +83,6 @@ fn cmd_help(_args: &Args)
     for i in 0..COMMAND_TABLE.len() {
         let ref cmd = COMMAND_TABLE[i];
         println!("{:12} - {}", cmd.name, cmd.descr);
-    }
-}
-
-fn cmd_args(args: &Args)
-{
-    for i in 0..args.argc() {
-        match args.argv(i) {
-            Some(arg) => println!("argv[{:2}] = {}", i, arg),
-            None => println!("argv[{:2}] is invalid UTF-8", i),
-        };
     }
 }
 
