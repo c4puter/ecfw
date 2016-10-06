@@ -59,6 +59,10 @@ pub struct Mutex {
     handle: QueueHandle
 }
 
+pub struct MutexLock {
+    mutex: Mutex
+}
+
 extern "C" {
     fn xTaskCreate(
         pxTaskCode: extern "C" fn(task: *mut Void),
@@ -185,6 +189,19 @@ impl Mutex {
             pdTRUE => Ok(()),
             _ => Err("timeout")
         };
+    }
+
+    pub fn lock(&self, waitticks: usize) -> Result<MutexLock, &'static str> {
+        match self.take(waitticks) {
+            Ok(_) => Ok(MutexLock{mutex: *self}),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl Drop for MutexLock {
+    fn drop(&mut self) {
+        self.mutex.give().unwrap();
     }
 }
 

@@ -85,19 +85,11 @@ impl<'a> fmt::Write for UartWriterAsync {
     }
 }
 
-fn mutex_take(waitticks: usize) -> Result<(), &'static str>
+fn mutex_lock(waitticks: usize) -> Result<freertos::MutexLock, &'static str>
 {
     match unsafe{stdout_mutex} {
-        Some(m) => m.take(waitticks),
-        None => Err("no mutex configured yet")
-    }
-}
-
-fn mutex_give() -> Result<(), &'static str>
-{
-    match unsafe{stdout_mutex} {
-        Some(m) => m.give(),
-        None => Err("no mutex configured yet")
+        Some(m) => m.lock(waitticks),
+        None => panic!("no mutex configured yet")
     }
 }
 
@@ -119,16 +111,14 @@ fn _print(args: fmt::Arguments) {
 }
 
 pub fn print(args: fmt::Arguments) {
-    mutex_take(1000).unwrap();
+    let _lock = mutex_lock(1000).unwrap();
     _print(args);
-    mutex_give().unwrap();
 }
 
 pub fn println(args: fmt::Arguments) {
-    mutex_take(1000).unwrap();
+    let _lock = mutex_lock(1000).unwrap();
     _print(args);
     fmt::Write::write_str(&mut UartWriter{}, "\n").unwrap();
-    mutex_give().unwrap()
 }
 
 pub fn print_async(args: fmt::Arguments) {

@@ -25,6 +25,7 @@
 
 extern crate rust_support;
 extern crate bindgen_mcu;
+extern crate freertos;
 type TwiHandle = u32;
 use rust_support::Error;
 use core::fmt;
@@ -103,18 +104,21 @@ extern "C" {
 #[derive(Copy,Clone)]
 pub struct Twi {
     p_twi: TwiHandle,
+    mutex: freertos::Mutex,
 }
 
 impl Twi {
     pub fn new(p_twi: TwiHandle) -> Twi {
         if p_twi == TWI0 || p_twi == TWI1 {
-            return Twi { p_twi: p_twi };
+            let mutex = freertos::Mutex::new();
+            return Twi { p_twi: p_twi, mutex: mutex };
         } else {
             panic!("invalid TWI handle {:08x}", p_twi);
         }
     }
 
     pub fn init(&self, speed: u32) -> Result<(),TwiResult> {
+        let _lock = self.mutex.lock(1000).unwrap();
         let opts = TwiOptions {
             master_clk: unsafe{bindgen_mcu::mcu_get_peripheral_hz()},
             speed: speed,
@@ -129,6 +133,7 @@ impl Twi {
 
     /// Test if a device answers a given address
     pub fn probe(&self, addr: u8) -> Result<bool,TwiResult> {
+        let _lock = self.mutex.lock(1000).unwrap();
         let rc = unsafe{twi_probe(self.p_twi, addr)};
         return match rc.code {
             TwiResultCode::Success      => Ok(true),
@@ -142,6 +147,7 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
     pub fn read(&self, addr: u8, location: &[u8], buffer: &mut [u8]) -> Result<(), TwiResult> {
+        let _lock = self.mutex.lock(1000).unwrap();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
         }
@@ -165,6 +171,7 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
     pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> Result<(), TwiResult> {
+        let _lock = self.mutex.lock(1000).unwrap();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
         }
