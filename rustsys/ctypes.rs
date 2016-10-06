@@ -27,5 +27,5 @@
          non_snake_case)]
 
 
-pub type c_char = u8;
+pub type c_char = i8;
 pub type c_uint = u32;

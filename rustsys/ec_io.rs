@@ -39,7 +39,7 @@ fn putc_task(q: freertos::Queue<u8>)
     loop {
         match q.receive(100) {
             Some(c) => unsafe {
-                bindgen_usart::ec_usart_putc(c)
+                bindgen_usart::ec_usart_putc(c as i8)
             },
             None => {}
         }
@@ -54,11 +54,11 @@ pub fn putc(c: u8) {
 }
 
 pub fn putc_async(c: u8) {
-    unsafe{bindgen_usart::ec_usart_putc(c)};
+    unsafe{bindgen_usart::ec_usart_putc(c as i8)};
 }
 
 pub fn getc_async() -> u8 {
-    unsafe{bindgen_usart::ec_usart_getc()}
+    unsafe{bindgen_usart::ec_usart_getc() as u8}
 }
 
 impl<'a> fmt::Write for UartWriter {
