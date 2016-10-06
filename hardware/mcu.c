@@ -33,6 +33,8 @@
 
 #define UART0_TX_PIN IOPORT_CREATE_PIN(PIOA, 22)
 #define UART0_RX_PIN IOPORT_CREATE_PIN(PIOA, 21)
+#define TWI0_SCL_PIN IOPORT_CREATE_PIN(PIOA, 4)
+#define TWI0_SDA_PIN IOPORT_CREATE_PIN(PIOA, 3)
 
 void mcu_init(void)
 {
@@ -51,11 +53,22 @@ void board_init(void)
     ioport_disable_pin(UART0_TX_PIN);
     ioport_set_pin_mode(UART0_RX_PIN, IOPORT_MODE_MUX_A);
     ioport_disable_pin(UART0_RX_PIN);
+
+    ioport_set_pin_mode(TWI0_SCL_PIN, IOPORT_MODE_MUX_A);
+    ioport_disable_pin(TWI0_SCL_PIN);
+    ioport_set_pin_mode(TWI0_SDA_PIN, IOPORT_MODE_MUX_A);
+    ioport_disable_pin(TWI0_SDA_PIN);
+    sysclk_enable_peripheral_clock(ID_TWI0);
 }
 
 void do_toggle_led(void)
 {
     ioport_toggle_pin_level(LED_GPIO);
+}
+
+unsigned int mcu_get_peripheral_hz(void)
+{
+    return sysclk_get_peripheral_hz();
 }
 
 /*

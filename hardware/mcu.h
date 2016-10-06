@@ -28,4 +28,6 @@ void mcu_init(void);
 void board_init(void);
 void do_toggle_led(void);
 
+unsigned int mcu_get_peripheral_hz(void);
+
 #endif // MCU_H

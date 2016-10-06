@@ -44,6 +44,11 @@ pub extern fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> 
     loop { }
 }
 
+pub trait Error: fmt::Display {
+    fn description(&self) -> &str;
+    fn cause(&self) -> Option<&Error> {None}
+}
+
 pub fn nop()
 {
     unsafe{asm!("nop" : : : : "volatile");}

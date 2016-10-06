@@ -28,3 +28,4 @@
 
 
 pub type c_char = u8;
+pub type c_uint = u32;

@@ -44,6 +44,9 @@ impl<'a> commands::Args<'a> for EshArgAdapter<'a> {
         return self.argarray.len();
     }
     fn argv(&self, n: usize) -> Option<&str> {
+        if n >= self.argarray.len() {
+            return None;
+        }
         return match str::from_utf8(&self.argarray[n]) {
             Ok(s) => Some(s),
             _ => None,

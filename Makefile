@@ -49,6 +49,7 @@ SUPPORT_CRATES = \
 RUST_CRATES = \
 	main/libcommands.rlib \
 	rustsys/libec_io.rlib \
+	rustsys/libtwi.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/liballoc_system.rlib \
@@ -70,6 +71,7 @@ ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/drivers/pio/pio.o \
 	${ASF_UNF_DIR}/asf/drivers/pmc/pmc.o \
 	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
+	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
 	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
 	${FREERTOS_OBJECTS} \
