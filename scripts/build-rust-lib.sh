@@ -53,13 +53,11 @@ if ! [[ -e $RUSTSRC/rust ]]; then
     cd rust
     git checkout "$RUST_COMMIT_HASH"
     cd ..
-    cp ../../thumbv7em-none-eabi.json .
     popd >/dev/null
 fi
 
 pushd $RUSTSRC >/dev/null
 mkdir -p lib_out
-#echo Compiling rust lib$1...
 rustc -C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
     -L "$RUSTLIB_DIR_ABS" \
     rust/src/lib$1/lib.rs --out-dir lib_out
