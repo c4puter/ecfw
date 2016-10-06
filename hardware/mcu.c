@@ -71,6 +71,29 @@ unsigned int mcu_get_peripheral_hz(void)
     return sysclk_get_peripheral_hz();
 }
 
+bool mcu_get_pin_level(unsigned int pin)
+{
+    // Fucking Atmel force-inlines this, so un-inline it so Rust can find it
+    return ioport_get_pin_level(pin);
+}
+
+void mcu_set_pin_level(unsigned int pin, bool value)
+{
+    // Fucking Atmel force-inlines this, so un-inline it so Rust can find it
+    ioport_set_pin_level(pin, value);
+}
+
+void mcu_init_pin(unsigned int pin, bool is_output, bool default_value)
+{
+    ioport_set_pin_mode(pin, 0);
+    if (is_output) {
+        ioport_set_pin_level(pin, default_value);
+        ioport_set_pin_dir(pin, IOPORT_DIR_OUTPUT);
+    } else {
+        ioport_set_pin_dir(pin, IOPORT_DIR_INPUT);
+    }
+}
+
 /*
  * On hard fault, this prepares an array of register values read from the stack
  * and calls hard_fault_printer. The values are:

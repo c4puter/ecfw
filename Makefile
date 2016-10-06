@@ -48,8 +48,10 @@ SUPPORT_CRATES = \
 
 RUST_CRATES = \
 	main/libcommands.rlib \
+	main/libpins.rlib \
 	rustsys/libec_io.rlib \
 	rustsys/libtwi.rlib \
+	rustsys/libgpio.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/liballoc_system.rlib \

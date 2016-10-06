@@ -21,18 +21,17 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef MCU_H
-#define MCU_H
+#![no_std]
+extern crate gpio;
+use gpio::*;
 
-#include <stdbool.h>
+pub const PIN_TABLE: &'static [&'static Gpio] = &[
+    &FPGA_DATA,
 
-void mcu_init(void);
-void board_init(void);
-void do_toggle_led(void);
+    // IO expander: U101
+    &POWER_LED,
+];
 
-unsigned int mcu_get_peripheral_hz(void);
-bool mcu_get_pin_level(unsigned int pin);
-void mcu_set_pin_level(unsigned int pin, bool value);
-void mcu_init_pin(unsigned int pin, bool is_output, bool default_value);
+pub const FPGA_DATA:    SamGpio = SamGpio { name: "FPGA_DATA", mode: Mode::Output, default: false, port: PIOA, pin: 13, invert: false };
 
-#endif // MCU_H
+pub const POWER_LED:    PcfGpio = PcfGpio { name: "POWER_LED",    addr: 0x21, pin: 15, default: false, outputs: 0x0030, invert: true };

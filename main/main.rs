@@ -30,6 +30,7 @@ extern crate rust_support;
 #[macro_use]
 extern crate ec_io;
 extern crate twi;
+extern crate pins;
 extern crate freertos;
 extern crate esh;
 extern crate commands;
@@ -116,6 +117,11 @@ pub extern "C" fn main() -> i32 {
 
     println_async!("Initialize I2C...");
     unsafe{ twi::twi0_init(100000).unwrap(); }
+
+    println_async!("Initialize GPIO...");
+    for &pin in pins::PIN_TABLE {
+        pin.init();
+    }
 
     println_async!("Create task \"esh\"...");
     freertos::Task::new(move || { esh_task() }, "esh", 1000, 0);

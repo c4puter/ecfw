@@ -26,6 +26,7 @@
 extern crate ec_io;
 extern crate freertos;
 extern crate twi;
+extern crate pins;
 
 use core::str::FromStr;
 use core::fmt;
@@ -52,6 +53,9 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "i2c_probe", f: cmd_i2c_probe,   descr: "probe I2C for an ADDR" },
     Command{ name: "i2c_read",  f: cmd_i2c_read,    descr: "read I2C from ADDR at LOCATION, N bytes" },
     Command{ name: "i2c_write", f: cmd_i2c_write,   descr: "write I2C to ADDR at LOCATION, BYTES" },
+
+    Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
+    Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 ];
 
 fn argv_parsed<T, U>(args: &Args, n: usize, name: &str, parser: fn(&str)->Result<T,U>) -> Option<T>
@@ -171,4 +175,39 @@ fn cmd_i2c_write(args: &Args)
         Ok(_) => {}
         Err(s) => { println!("I2c error: {}", s); }
     }
+}
+
+fn cmd_gpio_read(args: &Args)
+{
+    let gpio_name = match args.argv(1) {
+        Some(arg) => arg,
+        None => { println!("GPIO not specified"); return; } };
+
+    for &pin in pins::PIN_TABLE {
+        if *(pin.name()) == *gpio_name {
+            println!("{}", pin.get());
+            return;
+        }
+    }
+
+    println!("pin {} not found", gpio_name);
+}
+
+fn cmd_gpio_write(args: &Args)
+{
+    let gpio_name = match args.argv(1) {
+        Some(arg) => arg,
+        None => { println!("GPIO not specified"); return; } };
+    let gpio_val = match argv_parsed(args, 2, "VALUE", i8::from_str) {
+        Some(v) => v,
+        None => return };
+
+    for &pin in pins::PIN_TABLE {
+        if *(pin.name()) == *gpio_name {
+            pin.set(gpio_val != 0);
+            return;
+        }
+    }
+
+    println!("pin {} no found", gpio_name);
 }
