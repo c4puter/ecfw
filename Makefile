@@ -79,7 +79,7 @@ ASF_OBJECTS = \
 	${FREERTOS_OBJECTS} \
 
 CFLAGS = \
-	-O1 -g -pipe -std=c99 -Wall -Wextra \
+	-Os -g -flto -pipe -std=c99 -Wall -Wextra \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
 	-mcpu=cortex-m4 -mthumb -mlong-calls \
 	-fdata-sections -ffunction-sections \
@@ -92,7 +92,7 @@ CFLAGS = \
 	-I esh \
 
 RUSTFLAGS = \
-	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-C opt-level=3 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L main -L hardware -L rustsys -L esh/esh_rust/src
 
 
