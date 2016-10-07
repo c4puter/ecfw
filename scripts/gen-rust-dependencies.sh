@@ -16,9 +16,9 @@ find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0
         location_rust="$(find . -name resources -prune -o \( -name "${dep}.rs" -print -quit \) | head -n 1)"
         location_c="$(find_header "${without_bindgen}.h" | head -n 1)"
 
-        if [[ x"$location_rust" != x"" ]]; then
+        if [[ "$location_rust" != "" ]]; then
             location="$location_rust"
-        elif [[ x"$location_c" != x"" ]]; then
+        elif [[ "$location_c" != "" && "$dep" == bindgen* ]]; then
             echo -n " rustsys/libctypes.rlib"
             rustfn="$(basename "${location_c}" | sed -e 's/\.h$/\.rs/' -e 's/^/bindgen_/')"
             location="$(dirname "${location_c}")/$rustfn"
