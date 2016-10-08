@@ -52,8 +52,8 @@ RUST_CRATES = \
 	main/libpins.rlib \
 	rustsys/libpanicking.rlib \
 	rustsys/libec_io.rlib \
-	rustsys/libtwi.rlib \
-	rustsys/libgpio.rlib \
+	hardware/libtwi.rlib \
+	hardware/libgpio.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/liballoc_system.rlib \
