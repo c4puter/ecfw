@@ -45,10 +45,12 @@ LOCAL_OBJECTS = \
 
 SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
+	rustsys/libpanicking.rlib \
 
 RUST_CRATES = \
 	main/libcommands.rlib \
 	main/libpins.rlib \
+	rustsys/libpanicking.rlib \
 	rustsys/libec_io.rlib \
 	rustsys/libtwi.rlib \
 	rustsys/libgpio.rlib \

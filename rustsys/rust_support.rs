@@ -25,24 +25,10 @@
 #![feature(lang_items)]
 #![feature(asm)]
 
-#[macro_use]
-extern crate ec_io;
-
 use core::mem;
 use core::fmt;
 
 #[lang="eh_personality"] extern fn eh_personality() {}
-
-#[lang="panic_fmt"]
-pub extern fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> ! {
-    unsafe{disable_irq();}
-    println_async!("\n\n===================================");
-    println_async!("PANIC");
-    println_async!("file:line = {}:{}", file, line);
-    print_async!  ("message   = ");
-    ec_io::println_async(fmt);
-    loop { }
-}
 
 pub trait Error: fmt::Display {
     fn description(&self) -> &str;
@@ -73,27 +59,4 @@ unsafe fn readmem(addr: u32) -> u32
     return *p;
 }
 
-#[no_mangle]
-pub extern "C" fn hard_fault_printer(regs: [u32; 8]) {
-    unsafe{disable_irq();}
-    println_async!("\n\n===================================");
-    println_async!("HARD FAULT");
-    println_async!("r0  = {:08x}  r1  = {:08x}  r2  = {:08x}  r3  = {:08x}",
-             regs[0], regs[1], regs[2], regs[3]);
-    println_async!("r12 = {:08x}  lr  = {:08x}  pc  = {:08x}  psr = {:08x}",
-             regs[4], regs[5], regs[6], regs[7]);
-
-    println_async!("");
-    unsafe {
-        println_async!("BFAR = {:08x}  CFSR = {:08x}  HFSR = {:08x}",
-                 readmem(0xe000ed38),
-                 readmem(0xe000ed28),
-                 readmem(0xe000ed2c));
-        println_async!("DFSR = {:08x}  AFSR = {:08x}  SCB_SHCSR = {:08x}",
-                 readmem(0xe000ed30),
-                 readmem(0xe000ed3c),
-                 readmem(0xe000e000 + 0x0d00 + 0x024));
-                  //     SCS_BASE    SCB_off   SHCSR_off
-    }
-    loop{}
 }

@@ -27,6 +27,7 @@ extern crate bindgen_mcu;
 extern crate bindgen_usart;
 
 extern crate rust_support;
+extern crate panicking;
 #[macro_use]
 extern crate ec_io;
 extern crate twi;
