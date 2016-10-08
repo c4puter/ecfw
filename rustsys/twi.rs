@@ -26,6 +26,7 @@
 extern crate rust_support;
 extern crate bindgen_mcu;
 extern crate freertos;
+extern crate smutex;
 type TwiHandle = u32;
 use rust_support::Error;
 use core::fmt;
@@ -118,6 +119,12 @@ pub struct Twi {
     mutex: Option<freertos::Mutex>,
 }
 
+pub struct TwiDevice {
+    pub twi: fn() -> &'static Twi,
+    pub addr: u8,
+    pub mutex: smutex::StaticMutex,
+}
+
 impl Twi {
     pub fn init(&mut self, speed: u32) -> Result<(),TwiResult> {
         self.mutex = Some(freertos::Mutex::new());
@@ -190,5 +197,36 @@ impl Twi {
             TwiResultCode::Success      => Ok(()),
             _                           => Err(rc),
         };
+    }
+}
+
+impl TwiDevice {
+    /// Obtain and return a lock on this device. This is an RAII lock that will
+    /// be released when it goes out of scope.
+    pub fn lock(&'static self) -> smutex::StaticMutexLock {
+        self.mutex.lock()
+    }
+
+    /// Test if the device answers its address
+    pub fn probe(&'static self) -> Result<bool, TwiResult> {
+        (self.twi)().probe(self.addr)
+    }
+
+    /// Read from 'location' into 'buffer'
+    /// location:   register address in the chip, zero to three bytes
+    /// buffer:     buffer to receive. Will receive buffer.len() bytes
+    pub fn read(&'static self, location: &[u8], buffer: &mut [u8])
+            -> Result<(), TwiResult>
+    {
+        (self.twi)().read(self.addr, location, buffer)
+    }
+
+    /// Write to 'location' from 'buffer'.
+    /// location:   register address in the chip, zero to three bytes
+    /// buffer:     buffer to write. Will write buffer.len() bytes
+    pub fn write(&'static self, location: &[u8], buffer: &[u8])
+            -> Result<(), TwiResult>
+    {
+        (self.twi)().write(self.addr, location, buffer)
     }
 }
