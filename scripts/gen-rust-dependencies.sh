@@ -9,7 +9,10 @@ find_header() {
 
 find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0' srcfile; do
 
-    echo -n "$srcfile:"
+    compiledsrc_base="$(basename "${srcfile}" | sed -e 's/^/lib/' -e 's/\.rs$/\.rlib/')"
+    compiledsrc="$(dirname "${srcfile}")/${compiledsrc_base}"
+
+    echo -n "$compiledsrc:"
     grep 'extern crate' "$srcfile" | awk '{print $3}' | sed 's/;//' | while read dep; do
 
         without_bindgen="$(echo "$dep" | sed -e 's/^bindgen_//')"
@@ -19,7 +22,7 @@ find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0
         if [[ "$location_rust" != "" ]]; then
             location="$location_rust"
         elif [[ "$location_c" != "" && "$dep" == bindgen* ]]; then
-            echo -n " rustsys/libctypes.rlib"
+            echo -n " rustsys/ctypes.rs"
             rustfn="$(basename "${location_c}" | sed -e 's/\.h$/\.rs/' -e 's/^/bindgen_/')"
             location="$(dirname "${location_c}")/$rustfn"
         else
@@ -27,7 +30,7 @@ find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0
         fi
         compiled="$(basename "${location}" | sed -e 's/^/lib/' -e 's/\.rs$/\.rlib/')"
         fullpath="$(dirname "${location}")/${compiled}"
-        echo -n " $fullpath"
+        echo -n " $location $fullpath"
 
     done
 
