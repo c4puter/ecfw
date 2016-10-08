@@ -82,7 +82,7 @@ impl Gpio for SamGpio {
 }
 
 pub struct PcfGpio {
-    pub addr: u8,
+    pub dev: &'static twi::TwiDevice,
     pub pin: u8,
     pub default: bool,
     pub invert: bool,
@@ -116,7 +116,8 @@ impl Gpio for PcfGpio {
             else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
             else { panic!("invalid pin number {}", self.pin); };
 
-        twi::twi0().read(self.addr, &[], &mut data).unwrap();
+        let _lock = self.dev.lock();
+        self.dev.read(&[], &mut data).unwrap();
 
         let mut data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 
@@ -133,7 +134,7 @@ impl Gpio for PcfGpio {
         data[0] = ((data_u16 >> 8) & 0xff) as u8;
         data[1] = ((data_u16)      & 0xff) as u8;
 
-        twi::twi0().write(self.addr, &[], &data).unwrap();
+        self.dev.write(&[], &data).unwrap();
     }
 
     fn get(&self) -> bool {
@@ -143,7 +144,8 @@ impl Gpio for PcfGpio {
             else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
             else { panic!("invalid pin number {}", self.pin); };
 
-        twi::twi0().read(self.addr, &[], &mut data).unwrap();
+        let _lock = self.dev.lock();
+        self.dev.read(&[], &mut data).unwrap();
 
         let data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 

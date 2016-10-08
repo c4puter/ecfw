@@ -23,7 +23,10 @@
 
 #![no_std]
 extern crate gpio;
+extern crate twi;
+extern crate smutex;
 use gpio::*;
+use twi::TwiDevice;
 
 pub const PIN_TABLE: &'static [&'static Gpio] = &[
     // Integrated GPIOs
@@ -193,90 +196,100 @@ pub const SDRAM_RST: SamGpio = SamGpio {
     port:   PIOB,           pin: 13,            invert: true };
 
 const OUTPUTS_U101: u16 = 0x0030;
+const U101: TwiDevice = TwiDevice {
+    twi: twi::twi0,
+    addr: 0x21,
+    mutex: smutex::StaticMutex{locked: false},
+};
 
 pub const POWER_LED: PcfGpio = PcfGpio {
     name:   "POWER_LED",    default: false,
-    addr:   0x21,           pin: 15,            invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 15,            invert: true,   outputs: OUTPUTS_U101 };
 pub const ACT_LED: PcfGpio = PcfGpio {
     name:   "ACT_LED",      default: false,
-    addr:   0x21,           pin: 14,            invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 14,            invert: true,   outputs: OUTPUTS_U101 };
 pub const POWER_BTN: PcfGpio = PcfGpio {
     name:   "POWER_BTN",    default: false,
-    addr:   0x21,           pin: 16,            invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 16,            invert: true,   outputs: OUTPUTS_U101 };
 pub const FLASH_BTN: PcfGpio = PcfGpio {
     name:   "FLASH_BTN",    default: false,
-    addr:   0x21,           pin: 16,            invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 16,            invert: true,   outputs: OUTPUTS_U101 };
 pub const SPEAKER: PcfGpio = PcfGpio {
     name:   "SPEAKER",      default: false,
-    addr:   0x21,           pin: 10,            invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 10,            invert: true,   outputs: OUTPUTS_U101 };
 pub const MERGE_SERIAL: PcfGpio = PcfGpio {
     name:   "MERGE_SERIAL", default: false,
-    addr:   0x21,           pin: 7,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 7,             invert: true,   outputs: OUTPUTS_U101 };
 pub const DEBUG_BOOT: PcfGpio = PcfGpio {
     name:   "DEBUG_BOOT",   default: false,
-    addr: 0x21,             pin: 6,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 6,             invert: true,   outputs: OUTPUTS_U101 };
 pub const SINGLE_CPU: PcfGpio = PcfGpio {
     name:   "SINGLE_CPU",   default: false,
-    addr: 0x21,             pin: 5,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 5,             invert: true,   outputs: OUTPUTS_U101 };
 pub const FORCE_POWER: PcfGpio = PcfGpio {
     name:   "FORCE_POWER",  default: false,
-    addr: 0x21,             pin: 4,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 4,             invert: true,   outputs: OUTPUTS_U101 };
 pub const LOW_SPEED: PcfGpio = PcfGpio {
     name:   "LOW_SPEED",    default: false,
-    addr: 0x21,             pin: 3,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 3,             invert: true,   outputs: OUTPUTS_U101 };
 pub const UNC_SW_2: PcfGpio = PcfGpio {
     name:   "UNC_SW_2",     default: false,
-    addr: 0x21,             pin: 2,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 2,             invert: true,   outputs: OUTPUTS_U101 };
 pub const UNC_SW_1: PcfGpio = PcfGpio {
     name:   "UNC_SW_1",     default: false,
-    addr: 0x21,             pin: 1,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 1,             invert: true,   outputs: OUTPUTS_U101 };
 pub const UNC_SW_0: PcfGpio = PcfGpio {
     name:   "UNC_SW_0",     default: false,
-    addr: 0x21,             pin: 0,             invert: true,   outputs: OUTPUTS_U101 };
+    dev:    &U101,          pin: 0,             invert: true,   outputs: OUTPUTS_U101 };
 
 const OUTPUTS_U901: u16 = 0xcfff;
+const U901: TwiDevice = TwiDevice {
+    twi: twi::twi0,
+    addr: 0x20,
+    mutex: smutex::StaticMutex{locked: false},
+};
 
 pub const EN_V75: PcfGpio = PcfGpio {
     name:   "EN_V75",       default: false,
-    addr: 0x20,             pin: 0,             invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 0,             invert: false,  outputs: OUTPUTS_U901 };
 pub const EN_V75REF: PcfGpio = PcfGpio {
     name:   "EN_V75REF",    default: false,
-    addr: 0x20,             pin: 1,             invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 1,             invert: false,  outputs: OUTPUTS_U901 };
 pub const EN_1V2: PcfGpio = PcfGpio {
     name:   "EN_1V2",       default: false,
-    addr: 0x20,             pin: 2,             invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 2,             invert: false,  outputs: OUTPUTS_U901 };
 pub const EN_1V5: PcfGpio = PcfGpio {
     name:   "EN_1V5",       default: false,
-    addr: 0x20,             pin: 3,             invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 3,             invert: false,  outputs: OUTPUTS_U901 };
 pub const EN_SAFETY: PcfGpio = PcfGpio {
     name:   "EN_SAFETY",    default: true,
-    addr: 0x20,             pin: 6,             invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 6,             invert: false,  outputs: OUTPUTS_U901 };
 pub const DISCH_1V5: PcfGpio = PcfGpio {
     name:   "DISCH_1V5",    default: true,
-    addr: 0x20,             pin: 7,             invert: true,   outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 7,             invert: true,   outputs: OUTPUTS_U901 };
 pub const DISCH_3VA: PcfGpio = PcfGpio {
     name:   "DISCH_3VA",    default: true,
-    addr: 0x20,             pin: 10,            invert: true,   outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 10,            invert: true,   outputs: OUTPUTS_U901 };
 pub const DISCH_3VB: PcfGpio = PcfGpio {
     name:   "DISCH_3VB",    default: true,
-    addr: 0x20,             pin: 11,            invert: true,   outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 11,            invert: true,   outputs: OUTPUTS_U901 };
 pub const EN_P3V3_S0B: PcfGpio = PcfGpio {
     name:   "EN_P3V3_S0B",  default: false,
-    addr: 0x20,             pin: 12,            invert: true,   outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 12,            invert: true,   outputs: OUTPUTS_U901 };
 pub const DISCH_5VA: PcfGpio = PcfGpio {
     name:   "DISCH_5VA",    default: true,
-    addr: 0x20,             pin: 13,            invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 13,            invert: false,  outputs: OUTPUTS_U901 };
 pub const DISCH_5VB: PcfGpio = PcfGpio {
     name:   "DISCH_5VB",    default: true,
-    addr: 0x20,             pin: 14,            invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 14,            invert: false,  outputs: OUTPUTS_U901 };
 pub const EN_5V_PCI_B: PcfGpio = PcfGpio {
     name:   "EN_5V_PCI_B",  default: false,
-    addr: 0x20,             pin: 15,            invert: true,   outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 15,            invert: true,   outputs: OUTPUTS_U901 };
 pub const EN_P12V_PCI: PcfGpio = PcfGpio {
     name:   "EN_P12V_PCI",  default: false,
-    addr: 0x20,             pin: 16,            invert: false,  outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 16,            invert: false,  outputs: OUTPUTS_U901 };
 pub const DISCH_1V2: PcfGpio = PcfGpio {
     name:   "DISCH_1V2",    default: true,
-    addr: 0x20,             pin: 17,            invert: true,   outputs: OUTPUTS_U901 };
+    dev:    &U901,          pin: 17,            invert: true,   outputs: OUTPUTS_U901 };
 
 
