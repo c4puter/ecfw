@@ -79,7 +79,7 @@ ASF_OBJECTS = \
 	${FREERTOS_OBJECTS} \
 
 CFLAGS = \
-	-Os -g -flto -pipe -std=c99 -Wall -Wextra \
+	-Os -g -pipe -std=c99 -Wall -Wextra \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
 	-mcpu=cortex-m4 -mthumb -mlong-calls \
 	-fdata-sections -ffunction-sections \
