@@ -139,7 +139,7 @@ fn cmd_i2c_write(args: &Args)
         Some(v) => v,
         None => return
     };
-    let loc = match argv_parsed(args, 1, "LOCATION", u8::from_str) {
+    let loc = match argv_parsed(args, 2, "LOCATION", u8::from_str) {
         Some(v) => v,
         None => return
     };
