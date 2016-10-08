@@ -26,6 +26,7 @@
 #![feature(alloc)]
 
 extern crate alloc;
+extern crate rust_support;
 use core::ptr;
 use core::str;
 use core::slice;
@@ -213,6 +214,12 @@ pub fn run() {
 
 pub fn get_free_heap() -> usize {
     unsafe { xPortGetFreeHeapSize() }
+}
+
+pub fn yield_task() {
+    unsafe{ rust_support::pendsv(); }
+    rust_support::dsb();
+    rust_support::isb();
 }
 
 #[no_mangle]

@@ -57,6 +57,7 @@ RUST_CRATES = \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/liballoc_system.rlib \
+	rustsys/libsmutex.rlib \
 	esh/esh_rust/src/libesh.rlib \
 
 FREERTOS_OBJECTS = \

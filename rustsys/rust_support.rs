@@ -53,10 +53,35 @@ pub unsafe fn disable_irq()
     asm!("cpsid i" : : : "memory" : "volatile");
 }
 
-unsafe fn readmem(addr: u32) -> u32
+#[inline(always)]
+pub unsafe fn pendsv()
+{
+    writemem(0xe000ed04, (1 as u32) << (28 as u32));
+}
+
+#[inline(always)]
+pub fn dsb()
+{
+    unsafe{asm!("dsb" :::: "volatile");}
+}
+
+#[inline(always)]
+pub fn isb()
+{
+    unsafe{asm!("isb" :::: "volatile");}
+}
+
+#[inline(always)]
+pub unsafe fn readmem(addr: u32) -> u32
 {
     let p: *const u32 = mem::transmute(addr);
     return *p;
 }
 
+#[inline(always)]
+pub unsafe fn writemem(addr: u32, value: u32)
+{
+    let p: *mut u32 = mem::transmute(addr);
+    *p = value;
 }
+
