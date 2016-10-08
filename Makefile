@@ -198,7 +198,7 @@ clean:
 	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
 	rm -f $(patsubst %.rlib,%.ll,${SUPPORT_CRATES})
 	rm -f flash.map
-	rm -f ecfw ecfw.hex
+	rm -f ecfw ecfw.hex ecfw.disasm
 	rm -f deps.rust
 	rm -f ${LOCAL_OBJECTS:.o=.d}
 	rm -f ${ASF_OBJECTS:.o=.d}
