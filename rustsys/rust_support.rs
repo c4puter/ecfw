@@ -49,16 +49,19 @@ pub trait Error: fmt::Display {
     fn cause(&self) -> Option<&Error> {None}
 }
 
+#[inline(always)]
 pub fn nop()
 {
     unsafe{asm!("nop" : : : : "volatile");}
 }
 
+#[inline(always)]
 pub unsafe fn enable_irq()
 {
     asm!("cpsie i" : : : "memory" : "volatile");
 }
 
+#[inline(always)]
 pub unsafe fn disable_irq()
 {
     asm!("cpsid i" : : : "memory" : "volatile");
