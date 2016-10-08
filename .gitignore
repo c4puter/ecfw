@@ -9,3 +9,4 @@ flash.map
 *.ll
 deps.rust
 have-bindgen
+bindgen_*.rs
