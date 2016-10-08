@@ -7,7 +7,13 @@ find_header() {
         sed 's|[^/]*/||'
 }
 
+BINDGEN_TEMP="$(mktemp)"
+
 find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0' srcfile; do
+
+    if [[ "$(basename $srcfile)" == bindgen* ]]; then
+        continue
+    fi
 
     compiledsrc_base="$(basename "${srcfile}" | sed -e 's/^/lib/' -e 's/\.rs$/\.rlib/')"
     compiledsrc="$(dirname "${srcfile}")/${compiledsrc_base}"
@@ -19,12 +25,13 @@ find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0
         location_rust="$(find . -name resources -prune -o \( -name "${dep}.rs" -print -quit \) | head -n 1)"
         location_c="$(find_header "${without_bindgen}.h" | head -n 1)"
 
-        if [[ "$location_rust" != "" ]]; then
-            location="$location_rust"
-        elif [[ "$location_c" != "" && "$dep" == bindgen* ]]; then
-            echo -n " rustsys/ctypes.rs"
+        if [[ "$location_c" != "" && "$dep" == bindgen* ]]; then
+            echo -n " rustsys/ctypes.rs rustsys/libctypes.rlib"
             rustfn="$(basename "${location_c}" | sed -e 's/\.h$/\.rs/' -e 's/^/bindgen_/')"
             location="$(dirname "${location_c}")/$rustfn"
+            echo -n " $location" >> "$BINDGEN_TEMP"
+        elif [[ "$location_rust" != "" ]]; then
+            location="$location_rust"
         else
             continue
         fi
@@ -37,3 +44,8 @@ find . -name resources -prune -o \( -name '*.rs' -print0 \) | while read -d $'\0
     echo
 
 done
+
+echo -n "BINDGEN_FILES ="
+cat "$BINDGEN_TEMP"
+echo
+rm "$BINDGEN_TEMP"

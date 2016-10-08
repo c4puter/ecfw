@@ -194,6 +194,9 @@ clean:
 	rm -f ${LOCAL_OBJECTS}
 	rm -f ${RUST_CRATES}
 	rm -f ${SUPPORT_CRATES}
+	rm -f ${BINDGEN_FILES}
+	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.rlib,$(notdir ${rs})))
+	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.ll,$(notdir ${rs})))
 	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
 	rm -f $(patsubst %.rlib,%.ll,${SUPPORT_CRATES})
