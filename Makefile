@@ -113,7 +113,7 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
-all: ecfw.hex
+all: ecfw.hex ecfw.disasm
 	${SIZE} ecfw
 
 %.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
@@ -179,6 +179,10 @@ ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
 	@${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
 			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} \
 			${RUSTLIB_FILES} ${SUPPORT_CRATES} -o ecfw
+
+ecfw.disasm: ecfw
+	@echo "[OBJDUMP ] $@"
+	@${OBJDUMP} -CS $< > $@
 
 ecfw.hex: ecfw
 	@echo "[OBJCOPY ] $@"

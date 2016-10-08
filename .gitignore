@@ -1,6 +1,7 @@
 resources
 ecfw
 ecfw.hex
+ecfw.disasm
 flash.map
 *.o
 *.d
