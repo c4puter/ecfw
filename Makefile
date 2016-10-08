@@ -135,7 +135,7 @@ bindgen_%.rs: %.h have-bindgen
 	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
 	> $@
 
--include deps.rust
+include deps.rust
 -include ${LOCAL_OBJECTS:.o=.d}
 -include ${ASF_OBJECTS:.o=.d}
 
