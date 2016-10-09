@@ -81,6 +81,8 @@ impl Gpio for SamGpio {
     fn name(&self) -> &'static str { self.name }
 }
 
+unsafe impl Sync for SamGpio {}
+
 pub struct PcfGpio {
     pub dev: &'static twi::TwiDevice,
     pub pin: u8,
@@ -155,3 +157,5 @@ impl Gpio for PcfGpio {
 
     fn name(&self) -> &'static str { self.name }
 }
+
+unsafe impl Sync for PcfGpio {}

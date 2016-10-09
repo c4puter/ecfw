@@ -32,6 +32,8 @@ extern crate panicking;
 extern crate ec_io;
 extern crate twi;
 extern crate pins;
+extern crate leds;
+extern crate ledmatrix;
 extern crate freertos;
 extern crate esh;
 extern crate commands;
@@ -105,6 +107,27 @@ pub fn esh_task() {
     }
 }
 
+pub fn init_task()
+{
+    println!("Hand off to init task");
+    println!("Initialize LED matrix...");
+    unsafe{ ledmatrix::matrix_init(&leds::U801).unwrap(); }
+    freertos::delay(500);
+    ledmatrix::matrix().set_all(false).unwrap();
+
+    println_async!("Create task \"esh\"...");
+    freertos::Task::new(move || { esh_task() }, "esh", 1000, 0);
+
+    loop {
+        /*
+        ledmatrix::matrix().set_led(0xb1, true).unwrap();
+        freertos::delay(250);
+        ledmatrix::matrix().set_led(0xb1, false).unwrap();
+        freertos::delay(250);
+        */
+    }
+}
+
 #[no_mangle]
 #[allow(unreachable_code)]
 pub extern "C" fn main() -> i32 {
@@ -117,18 +140,19 @@ pub extern "C" fn main() -> i32 {
     println_async!("Initialized EC core and USART");
 
     println_async!("Initialize I2C...");
-    unsafe{ twi::twi0_init(100000).unwrap(); }
+    unsafe{ twi::twi0_init(400000).unwrap(); }
 
     println_async!("Initialize GPIO...");
     for &pin in pins::PIN_TABLE {
         pin.init();
     }
 
-    println_async!("Create task \"esh\"...");
-    freertos::Task::new(move || { esh_task() }, "esh", 1000, 0);
+    println_async!("Create task \"init\"...");
+    freertos::Task::new(move || { init_task() }, "init", 500, 0);
 
     println_async!("Start task scheduler...");
     freertos::run();
+
     loop {}
 
     return 0;

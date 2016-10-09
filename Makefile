@@ -50,10 +50,12 @@ SUPPORT_CRATES = \
 RUST_CRATES = \
 	main/libcommands.rlib \
 	main/libpins.rlib \
+	main/libleds.rlib \
 	rustsys/libpanicking.rlib \
 	rustsys/libec_io.rlib \
 	hardware/libtwi.rlib \
 	hardware/libgpio.rlib \
+	hardware/libledmatrix.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/liballoc_system.rlib \

@@ -88,6 +88,7 @@ extern "C" {
 
     // Utilities
     fn xPortGetFreeHeapSize() -> usize;
+    fn vTaskDelay(xTicksToDelay: u32);
 }
 
 extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
@@ -220,6 +221,10 @@ pub fn yield_task() {
     unsafe{ rust_support::pendsv(); }
     rust_support::dsb();
     rust_support::isb();
+}
+
+pub fn delay(ticks: u32) {
+    unsafe{ vTaskDelay(ticks); }
 }
 
 #[no_mangle]
