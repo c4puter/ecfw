@@ -28,8 +28,9 @@ extern crate freertos;
 extern crate twi;
 extern crate pins;
 extern crate ledmatrix;
+extern crate parseint;
 
-use core::str::FromStr;
+use parseint::ParseInt;
 use core::fmt;
 
 pub trait Args<'a> {
@@ -96,7 +97,7 @@ fn cmd_free(_args: &Args)
 
 fn cmd_i2c_probe(args: &Args)
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::from_str) {
+    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
         Some(v) => v,
         None => return
     };
@@ -111,13 +112,13 @@ fn cmd_i2c_probe(args: &Args)
 
 fn cmd_i2c_read(args: &Args)
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::from_str) {
+    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
         Some(v) => v,
         None => return };
-    let loc = match argv_parsed(args, 2, "LOCATION", u8::from_str) {
+    let loc = match argv_parsed(args, 2, "LOCATION", u8::parseint) {
         Some(v) => v,
         None => return };
-    let n = match argv_parsed(args, 3, "N", u8::from_str) {
+    let n = match argv_parsed(args, 3, "N", u8::parseint) {
         Some(v) => v,
         None => return };
     if n > 16 {
@@ -138,11 +139,11 @@ fn cmd_i2c_read(args: &Args)
 
 fn cmd_i2c_write(args: &Args)
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::from_str) {
+    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
         Some(v) => v,
         None => return
     };
-    let loc = match argv_parsed(args, 2, "LOCATION", u8::from_str) {
+    let loc = match argv_parsed(args, 2, "LOCATION", u8::parseint) {
         Some(v) => v,
         None => return
     };
@@ -155,7 +156,7 @@ fn cmd_i2c_write(args: &Args)
     let mut buffer = [0 as u8; 16];
     let n = args.argc() - 3;
     for i in 0..n {
-        let arg = match argv_parsed(args, i + 3, "BYTES", u8::from_str) {
+        let arg = match argv_parsed(args, i + 3, "BYTES", u8::parseint) {
             Some(v) => v,
             None => return };
         buffer[i] = arg;
@@ -190,7 +191,7 @@ fn cmd_gpio_write(args: &Args)
     let gpio_name = match args.argv(1) {
         Some(arg) => arg,
         None => { println!("GPIO not specified"); return; } };
-    let gpio_val = match argv_parsed(args, 2, "VALUE", i8::from_str) {
+    let gpio_val = match argv_parsed(args, 2, "VALUE", i8::parseint) {
         Some(v) => v,
         None => return };
 
@@ -206,10 +207,10 @@ fn cmd_gpio_write(args: &Args)
 
 fn cmd_set_led(args: &Args)
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::from_str) {
+    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
         Some(v) => v,
         None => return };
-    let val = match argv_parsed(args, 2, "VALUE", u8::from_str) {
+    let val = match argv_parsed(args, 2, "VALUE", u8::parseint) {
         Some(v) => v,
         None => return };
 
