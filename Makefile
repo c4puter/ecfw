@@ -47,6 +47,8 @@ SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
 	rustsys/libpanicking.rlib \
 
+LIBALLOC = rustsys/liballoc_system.rlib
+
 RUST_CRATES = \
 	main/libcommands.rlib \
 	main/libpins.rlib \
@@ -59,8 +61,8 @@ RUST_CRATES = \
 	hardware/libledmatrix.rlib \
 	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
-	rustsys/liballoc_system.rlib \
 	rustsys/libsmutex.rlib \
+	${LIBALLOC} \
 	esh/esh_rust/src/libesh.rlib \
 
 FREERTOS_OBJECTS = \
