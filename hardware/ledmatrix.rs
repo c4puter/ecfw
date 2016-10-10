@@ -176,3 +176,20 @@ impl LedMatrix
         Ok(())
     }
 }
+
+pub struct Led
+{
+    pub addr: u8,
+    pub name: &'static str,
+}
+
+impl Led
+{
+    pub fn set(&self, v: bool) -> Result<(), TwiResult> {
+        matrix().set_led(self.addr, v)
+    }
+
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+}

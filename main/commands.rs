@@ -27,7 +27,7 @@ extern crate ec_io;
 extern crate freertos;
 extern crate twi;
 extern crate pins;
-extern crate ledmatrix;
+extern crate leds;
 extern crate parseint;
 
 use parseint::ParseInt;
@@ -58,7 +58,7 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
-    Command{ name: "set_led",   f: cmd_set_led,     descr: "set led ADDR to VALUE" },
+    Command{ name: "led_write", f: cmd_led_write,   descr: "set led NAME to VALUE" },
 ];
 
 fn argv_parsed<T, U>(args: &Args, n: usize, name: &str, parser: fn(&str)->Result<T,U>) -> Option<T>
@@ -202,17 +202,24 @@ fn cmd_gpio_write(args: &Args)
         }
     }
 
-    println!("pin {} no found", gpio_name);
+    println!("pin {} not found", gpio_name);
 }
 
-fn cmd_set_led(args: &Args)
+fn cmd_led_write(args: &Args)
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
-        Some(v) => v,
-        None => return };
-    let val = match argv_parsed(args, 2, "VALUE", u8::parseint) {
+    let name = match args.argv(1) {
+        Some(arg) => arg,
+        None => { println!("LED not specified"); return; } };
+    let val = match argv_parsed(args, 2, "VALUE", i8::parseint) {
         Some(v) => v,
         None => return };
 
-    ledmatrix::matrix().set_led(addr, val != 0).unwrap();
+    for &led in leds::LED_TABLE {
+        if *(led.name()) == *name {
+            led.set(val != 0).unwrap();
+            return;
+        }
+    }
+
+    println!("LED {} not found", name);
 }
