@@ -23,10 +23,12 @@
 
 #![no_std]
 #![feature(const_fn)]
+extern crate ledmatrix;
 extern crate gpio;
 extern crate twi;
 extern crate smutex;
 use gpio::*;
+use ledmatrix::LedGpio;
 use twi::TwiDevice;
 use gpio::Mode::*;
 
@@ -49,6 +51,7 @@ macro_rules! pin_table {
     }
 }
 
+// PCF8575
 const OUTPUTS_U101: u16 = 0x0030;
 static U101: TwiDevice = TwiDevice {
     twi: twi::twi0,
@@ -56,6 +59,7 @@ static U101: TwiDevice = TwiDevice {
     mutex: smutex::StaticMutex{locked: false},
 };
 
+// PCF8575
 const OUTPUTS_U901: u16 = 0xcfff;
 static U901: TwiDevice = TwiDevice {
     twi: twi::twi0,
@@ -63,8 +67,19 @@ static U901: TwiDevice = TwiDevice {
     mutex: smutex::StaticMutex{locked: false},
 };
 
+// AS1130
+pub static U801: TwiDevice = TwiDevice {
+    twi: twi::twi0,
+    addr: 0x37,
+    mutex: smutex::StaticMutex{locked: false},
+};
+
 
 pin_table!{
+
+    ///////////////////////////////////
+    // MCU GPIOs: FPGA interface, PCI, interrupts, etc
+
     BRIDGE_SUSP,        SamGpio, port => PIOC, pin => 31, mode => Output, default => false, invert => false;
     CARDEN,             SamGpio, port => PIOC, pin => 28, mode => Output, default => false, invert => true;
     CARD,               SamGpio, port => PIOA, pin => 20, mode => Input,  default => false, invert => true;
@@ -99,6 +114,9 @@ pin_table!{
     USB_VBSENSE,        SamGpio, port => PIOA, pin =>  0, mode => Input,  default => false, invert => false;
     VREFEN,             SamGpio, port => PIOB, pin =>  0, mode => Output, default => false, invert => false;
 
+    ///////////////////////////////////
+    // Interface IO expander: switches, speaker, some LEDs
+
     ACT_LED,            PcfGpio, dev => &U101, pin => 14, outputs => OUTPUTS_U101, default => false, invert => true;
     DEBUG_BOOT,         PcfGpio, dev => &U101, pin =>  6, outputs => OUTPUTS_U101, default => false, invert => true;
     FLASH_BTN,          PcfGpio, dev => &U101, pin => 17, outputs => OUTPUTS_U101, default => false, invert => true;
@@ -127,4 +145,80 @@ pin_table!{
     EN_SAFETY,          PcfGpio, dev => &U901, pin =>  6, outputs => OUTPUTS_U901, default => true,  invert => false;
     EN_V75,             PcfGpio, dev => &U901, pin =>  0, outputs => OUTPUTS_U901, default => false, invert => false;
     EN_V75REF,          PcfGpio, dev => &U901, pin =>  1, outputs => OUTPUTS_U901, default => false, invert => false;
+
+    ///////////////////////////////////
+    // Power LEDs
+
+    P12V_PCI_R,         LedGpio, addr => 0x75;
+    P12V_PCI_G,         LedGpio, addr => 0x44;
+    P5V_PCI_A_R,        LedGpio, addr => 0x54;
+    P5V_PCI_A_G,        LedGpio, addr => 0x74;
+
+    P5V_PCI_B_R,        LedGpio, addr => 0x52;
+    P5V_PCI_B_G,        LedGpio, addr => 0x42;
+
+    P3V3_PCI_A_R,       LedGpio, addr => 0x53;
+    P3V3_PCI_A_G,       LedGpio, addr => 0x43;
+
+    P3V3_PCI_B_R,       LedGpio, addr => 0x50;
+    P3V3_PCI_B_G,       LedGpio, addr => 0x40;
+
+    N12V_PCI_R,         LedGpio, addr => 0x51;
+    N12V_PCI_G,         LedGpio, addr => 0x41;
+
+    P3V3_STBY_R,        LedGpio, addr => 0x25;
+    P3V3_STBY_G,        LedGpio, addr => 0x34;
+
+    P3V3_AUX_R,         LedGpio, addr => 0x23;
+    P3V3_AUX_G,         LedGpio, addr => 0x33;
+
+    P3V3_LOGIC_R,       LedGpio, addr => 0x72;
+    P3V3_LOGIC_G,       LedGpio, addr => 0x32;
+
+    P1V5_LOGIC_R,       LedGpio, addr => 0x22;
+    P1V5_LOGIC_G,       LedGpio, addr => 0x73;
+
+    P1V2_LOGIC_R,       LedGpio, addr => 0x20;
+    P1V2_LOGIC_G,       LedGpio, addr => 0x30;
+
+    PV75_TERM_R,        LedGpio, addr => 0x21;
+    PV75_TERM_G,        LedGpio, addr => 0x31;
+
+    ///////////////////////////////////
+    // Boot sequence LEDs
+    ECFW_R,             LedGpio, addr => 0x04;
+    ECFW_G,             LedGpio, addr => 0x14;
+
+    POWER_R,            LedGpio, addr => 0x03;
+    POWER_G,            LedGpio, addr => 0x31;
+
+    CARD_R,             LedGpio, addr => 0x01;
+    CARD_G,             LedGpio, addr => 0x11;
+
+    BIT_R,              LedGpio, addr => 0x02;
+    BIT_BRIDGE_G,       LedGpio, addr => 0x12;
+    BIT_CPU0_G,         LedGpio, addr => 0xA2;
+    BIT_CPU1_G,         LedGpio, addr => 0xB2;
+
+    MEM_R,              LedGpio, addr => 0x70;
+    MEM_G,              LedGpio, addr => 0x10;
+
+    RUN_R,              LedGpio, addr => 0x00;
+    RUN_G,              LedGpio, addr => 0x71;
+    UPDOG_G,            LedGpio, addr => 0xB1;
+
+    ///////////////////////////////////
+    // Uncommitted LEDs
+    UNC0_R,             LedGpio, addr => 0x95;
+    UNC0_G,             LedGpio, addr => 0x85;
+    UNC1_R,             LedGpio, addr => 0x94;
+    UNC1_G,             LedGpio, addr => 0x84;
+    UNC2_R,             LedGpio, addr => 0x92;
+    UNC2_G,             LedGpio, addr => 0x82;
+    UNC3_R,             LedGpio, addr => 0x93;
+    UNC3_G,             LedGpio, addr => 0x83;
+    UNC4_R,             LedGpio, addr => 0x90;
+    UNC4_G,             LedGpio, addr => 0x80;
+    UNC5_R,             LedGpio, addr => 0x91;
+    UNC5_G,             LedGpio, addr => 0x81;
 }

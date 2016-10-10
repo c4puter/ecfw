@@ -32,7 +32,6 @@ extern crate panicking;
 extern crate ec_io;
 extern crate twi;
 extern crate pins;
-extern crate leds;
 extern crate ledmatrix;
 extern crate freertos;
 extern crate esh;
@@ -111,7 +110,7 @@ pub fn init_task()
 {
     println!("Hand off to init task");
     println!("Initialize LED matrix...");
-    unsafe{ ledmatrix::matrix_init(&leds::U801).unwrap(); }
+    unsafe{ ledmatrix::matrix_init(&pins::U801).unwrap(); }
     freertos::delay(500);
     ledmatrix::matrix().set_all(false).unwrap();
 

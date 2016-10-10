@@ -52,7 +52,6 @@ LIBALLOC = rustsys/liballoc_system.rlib
 RUST_CRATES = \
 	main/libcommands.rlib \
 	main/libpins.rlib \
-	main/libleds.rlib \
 	main/libparseint.rlib \
 	rustsys/libpanicking.rlib \
 	rustsys/libec_io.rlib \

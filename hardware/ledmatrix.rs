@@ -25,6 +25,7 @@
 
 extern crate freertos;
 extern crate twi;
+extern crate gpio;
 use twi::TwiResult;
 
 static mut MATRIX: LedMatrix = LedMatrix{twi: None};
@@ -169,21 +170,44 @@ impl LedMatrix
 
         Ok(())
     }
+
+    pub fn get_led(&self, led: u8) -> Result<bool, TwiResult>
+    {
+        let segment = (led & 0xf0) >> 4;
+        let addr = 2 * segment;
+        let bit = 1 << (led & 0x0f);
+        let mut buffer = [0 as u8; 2];
+
+        let _lock = self.twi.unwrap().lock();
+
+        try!(self.switch_bank(RegBank::Frame0));
+        try!(self.twi.unwrap().read(&[addr], &mut buffer));
+
+        let register = (buffer[0] as u16) | ((buffer[1] as u16) << 8);
+
+        Ok(register & bit != 0)
+    }
 }
 
-pub struct Led
+pub struct LedGpio
 {
     pub addr: u8,
     pub name: &'static str,
 }
 
-impl Led
+impl gpio::Gpio for LedGpio
 {
-    pub fn set(&self, v: bool) -> Result<(), TwiResult> {
-        matrix().set_led(self.addr, v)
+    fn init(&self) {}
+
+    fn set(&self, v: bool) {
+        matrix().set_led(self.addr, v).unwrap();
     }
 
-    pub fn name(&self) -> &'static str {
+    fn get(&self) -> bool {
+        matrix().get_led(self.addr).unwrap()
+    }
+
+    fn name(&self) -> &'static str {
         self.name
     }
 }
