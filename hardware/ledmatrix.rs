@@ -146,7 +146,7 @@ impl LedMatrix
         let bit = 1 << (led & 0x0f);
 
         let _lock = self.twi.unwrap().lock();
-        self.switch_bank(RegBank::Frame0).unwrap();
+        try!(self.switch_bank(RegBank::Frame0));
         let mut buffer = [0 as u8; 2];
 
         try!(self.twi.unwrap().read(&[addr], &mut buffer));
@@ -165,13 +165,7 @@ impl LedMatrix
         buffer[0] = (register & 0xff) as u8;
         buffer[1] = ((register & 0xff00) >> 8) as u8;
 
-        self.twi.unwrap().write(&[addr], &buffer).unwrap();
-
-        self.switch_bank(RegBank::BlinkPwm0).unwrap();
-        // no blink
-        self.twi.unwrap().write(&[addr], &[0,0]).unwrap();
-        // middle PWM
-        self.twi.unwrap().write(&[0x18 + segment * 11 + (led & 0x0f)], &[0x80]).unwrap();
+        try!(self.twi.unwrap().write(&[addr], &buffer));
 
         Ok(())
     }

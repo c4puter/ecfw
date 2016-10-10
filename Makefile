@@ -122,12 +122,14 @@ all: ecfw.hex ecfw.disasm
 
 %.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
 	@echo "[RUSTC   ] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $<
+	@${RUSTC} ${RUSTFLAGS} -Z unstable-options --pretty expanded -o $(patsubst %.rlib,%.expanded,$@) $<
+	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $< 2>&1
 	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>/dev/null
 
 lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
 	@echo "[RUSTC   ] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+	@${RUSTC} ${RUSTFLAGS} -Z unstable-options --pretty expanded -o $(patsubst %.rlib,%.expanded,$@) $<
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< 2>&1
 	@${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $< 2>/dev/null
 
 esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs ${RUSTLIB_FILES} ${LIBALLOC}
@@ -201,8 +203,11 @@ clean:
 	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.rlib,$(notdir ${rs})))
 	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.ll,$(notdir ${rs})))
 	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
+	rm -f $(patsubst %.o,%.expanded,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
+	rm -f $(patsubst %.rlib,%.expanded,${RUST_CRATES})
 	rm -f $(patsubst %.rlib,%.ll,${SUPPORT_CRATES})
+	rm -f $(patsubst %.rlib,%.expanded,${SUPPORT_CRATES})
 	rm -f flash.map
 	rm -f ecfw ecfw.hex ecfw.disasm
 	rm -f deps.rust

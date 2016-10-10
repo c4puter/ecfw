@@ -22,6 +22,7 @@
  */
 
 #![no_std]
+#![feature(const_fn)]
 extern crate bindgen_mcu;
 extern crate twi;
 
@@ -52,6 +53,20 @@ pub struct SamGpio {
     pub default: bool,
     pub invert: bool,
     pub name: &'static str,
+}
+
+// Pending: figure out why the fuck this doesn't work in the macro expansion
+impl SamGpio {
+    pub const fn default() -> SamGpio {
+        return SamGpio {
+            port: PIOA,
+            pin: 0,
+            mode: Mode::Input,
+            default: false,
+            invert: false,
+            name: ""
+        };
+    }
 }
 
 impl Gpio for SamGpio {
