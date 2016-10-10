@@ -202,6 +202,7 @@ clean:
 	rm -f ${BINDGEN_FILES}
 	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.rlib,$(notdir ${rs})))
 	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.ll,$(notdir ${rs})))
+	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.expanded,$(notdir ${rs})))
 	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.o,%.expanded,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
