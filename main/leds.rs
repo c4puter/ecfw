@@ -36,17 +36,17 @@ pub static U801: TwiDevice = TwiDevice {
 
 macro_rules! led_table {
     (
-        $( $x:ident , $y:expr );* ;
+        $( $name:ident , $addr:expr );* ;
     ) => {
         pub static LED_TABLE: &'static [&'static Led] = &[
-            $( &$x ),*
+            $( &$name ),*
         ];
 
-        $( pub static $x: Led = Led { addr: $y, name: stringify!($x) }; )*
+        $( pub static $name: Led = Led { addr: $addr, name: stringify!($name) }; )*
     }
 }
 
-led_table!(
+led_table!{
     ///////////////////////////////////
     // Power section
     P12V_PCI_R,     0x75;
@@ -122,4 +122,4 @@ led_table!(
     UNC4_G,         0x80;
     UNC5_R,         0x91;
     UNC5_G,         0x81;
-);
+}
