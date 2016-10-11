@@ -47,14 +47,14 @@ impl<'a> commands::Args<'a> for EshArgAdapter<'a> {
     fn argc(&self) -> usize {
         return self.argarray.len();
     }
-    fn argv(&self, n: usize) -> Option<&str> {
+    fn argv(&self, n: usize) -> Result<&str, &'static str> {
         if n >= self.argarray.len() {
-            return None;
+            return Err("argv index out of bounds (not enough arguments?)");
         }
-        return match str::from_utf8(&self.argarray[n]) {
-            Ok(s) => Some(s),
-            _ => None,
-        };
+        match str::from_utf8(&self.argarray[n]) {
+            Ok(s) => Ok(s),
+            _ => Err("argument not valid UTF-8")
+        }
     }
 }
 
@@ -67,20 +67,13 @@ fn command_dispatch(_esh: &esh::Esh, args: &esh::EshArgArray)
             _ => "__invalid_command",
         };
 
-        let mut f: Option<fn(&commands::Args)> = None;
-
-        for i in 0..(commands::COMMAND_TABLE.len()) {
-            let ref cmd = commands::COMMAND_TABLE[i];
-            if *(cmd.name) == *argv0 {
-                f = Some(cmd.f);
-                break;
-            }
-        }
-
-        match f {
-            Some(f) => f(&argadapter),
+        match commands::COMMAND_TABLE.iter().find(|&cmd| {*(cmd.name) == *argv0}) {
+            Some(cmd) => match (cmd.f)(&argadapter) {
+                Ok(()) => (),
+                Err(s) => println!("error: {}", s),
+            },
             None => println!("unrecognized command: {}", argv0),
-        };
+        }
     }
 }
 
@@ -115,15 +108,9 @@ pub fn init_task()
     ledmatrix::matrix().set_all(false).unwrap();
 
     println_async!("Create task \"esh\"...");
-    freertos::Task::new(move || { esh_task() }, "esh", 1000, 0);
+    freertos::Task::new(|| { esh_task() }, "esh", 1000, 0);
 
     loop {
-        /*
-        ledmatrix::matrix().set_led(0xb1, true).unwrap();
-        freertos::delay(250);
-        ledmatrix::matrix().set_led(0xb1, false).unwrap();
-        freertos::delay(250);
-        */
     }
 }
 
@@ -147,7 +134,7 @@ pub extern "C" fn main() -> i32 {
     }
 
     println_async!("Create task \"init\"...");
-    freertos::Task::new(move || { init_task() }, "init", 500, 0);
+    freertos::Task::new(|| { init_task() }, "init", 500, 0);
 
     println_async!("Start task scheduler...");
     freertos::run();

@@ -36,13 +36,14 @@ pub trait Args<'a> {
     /// Return number of arguments, including argv[0]
     fn argc(&self) -> usize;
 
-    /// Return the argument as &str, or None if it didn't validate as UTF-8
-    fn argv(&self, n: usize) -> Option<&str>;
+    /// Return the argument as &str, or an error if it didn't validate as UTF-8
+    /// or exceeded bounds.
+    fn argv(&self, n: usize) -> Result<&str, &'static str>;
 }
 
 pub struct Command {
     pub name: &'static str,
-    pub f: fn(args: &Args),
+    pub f: fn(args: &Args) -> Result<(), &'static str>,
     pub descr: &'static str,
 }
 
@@ -58,69 +59,56 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 ];
 
-fn argv_parsed<T, U>(args: &Args, n: usize, name: &str, parser: fn(&str)->Result<T,U>) -> Option<T>
+fn argv_parsed<T, U>(args: &Args, n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
     where U: fmt::Display
 {
-    if n >= args.argc() {
-        println!("expected argument {}", name);
-        return None;
-    }
-
-    let arg_s = match args.argv(n) {
-        Some(arg) => arg,
-        None => { println!("cannot parse argument {}", name); return None; },
-    };
+    let arg_s = try!(args.argv(n));
 
     let arg_parsed = match parser(arg_s) {
         Ok(val) => val,
-        Err(e) => { println!("argument parse error for {}: {}", name, e); return None; },
+        Err(_) => { return Err("cannot parse argument"); }
     };
 
-    return Some(arg_parsed);
+    return Ok(arg_parsed);
 }
 
-fn cmd_help(_args: &Args)
+fn cmd_help(_args: &Args) -> Result<(), &'static str>
 {
     for i in 0..COMMAND_TABLE.len() {
         let ref cmd = COMMAND_TABLE[i];
         println!("{:12} - {}", cmd.name, cmd.descr);
     }
+
+    Ok(())
 }
 
-fn cmd_free(_args: &Args)
+fn cmd_free(_args: &Args) -> Result<(), &'static str>
 {
     println!("{} B", freertos::get_free_heap());
+
+    Ok(())
 }
 
-fn cmd_i2c_probe(args: &Args)
+fn cmd_i2c_probe(args: &Args) -> Result<(), &'static str>
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
-        Some(v) => v,
-        None => return
-    };
+    let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
     match twi::twi0().probe(addr) {
         Ok(is_present) => {
             if is_present { println!("address {} present", addr); }
             else          { println!("address {} does not respond", addr); }
+            Ok(())
         },
-        Err(s) => { println!("I2C error: {}", s); },
-    };
+        Err(e) => { Err(e.description()) }
+    }
 }
 
-fn cmd_i2c_read(args: &Args)
+fn cmd_i2c_read(args: &Args) -> Result<(), &'static str>
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
-        Some(v) => v,
-        None => return };
-    let loc = match argv_parsed(args, 2, "LOCATION", u8::parseint) {
-        Some(v) => v,
-        None => return };
-    let n = match argv_parsed(args, 3, "N", u8::parseint) {
-        Some(v) => v,
-        None => return };
+    let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
+    let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
+    let n = try!(argv_parsed(args, 3, "N", u8::parseint));
     if n > 16 {
-        println!("can only read up to 16 bytes");
-        return;
+        return Err("can only read up to 16 bytes");
     }
 
     let location_arr = [loc];
@@ -129,75 +117,57 @@ fn cmd_i2c_read(args: &Args)
     match twi::twi0().read(addr, &location_arr, &mut buffer[0..n as usize]) {
         Ok(_) => {
             println!("{:?}", &buffer[0..n as usize]);
+            Ok(())
         }
-        Err(s) => { println!("I2C error: {}", s); }
+        Err(e) => Err(e.description())
     }
 }
 
-fn cmd_i2c_write(args: &Args)
+fn cmd_i2c_write(args: &Args) -> Result<(), &'static str>
 {
-    let addr = match argv_parsed(args, 1, "ADDR", u8::parseint) {
-        Some(v) => v,
-        None => return
-    };
-    let loc = match argv_parsed(args, 2, "LOCATION", u8::parseint) {
-        Some(v) => v,
-        None => return
-    };
+    let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
+    let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
 
     if args.argc() > 19 {
-        println!("can only write up to 16 bytes");
-        return;
+        return Err("can only write up to 16 bytes");
     }
 
     let mut buffer = [0 as u8; 16];
     let n = args.argc() - 3;
     for i in 0..n {
-        let arg = match argv_parsed(args, i + 3, "BYTES", u8::parseint) {
-            Some(v) => v,
-            None => return };
+        let arg = try!(argv_parsed(args, i + 3, "BYTES", u8::parseint));
         buffer[i] = arg;
     }
 
     let location_arr = [loc];
 
     match twi::twi0().write(addr, &location_arr, &buffer[0..n as usize]) {
-        Ok(_) => {}
-        Err(s) => { println!("I2c error: {}", s); }
+        Ok(_) => Ok(()),
+        Err(e) => Err(e.description())
     }
 }
 
-fn cmd_gpio_read(args: &Args)
+fn cmd_gpio_read(args: &Args) -> Result<(), &'static str>
 {
-    let gpio_name = match args.argv(1) {
-        Some(arg) => arg,
-        None => { println!("GPIO not specified"); return; } };
+    let gpio_name = try!(args.argv(1));
 
-    for &pin in pins::PIN_TABLE {
-        if *(pin.name()) == *gpio_name {
-            println!("{}", pin.get());
-            return;
-        }
+    match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
+        Some(pin) => println!("{}", pin.get()),
+        None => println!("pin {} not found", gpio_name),
     }
 
-    println!("pin {} not found", gpio_name);
+    Ok(())
 }
 
-fn cmd_gpio_write(args: &Args)
+fn cmd_gpio_write(args: &Args) -> Result<(), &'static str>
 {
-    let gpio_name = match args.argv(1) {
-        Some(arg) => arg,
-        None => { println!("GPIO not specified"); return; } };
-    let gpio_val = match argv_parsed(args, 2, "VALUE", i8::parseint) {
-        Some(v) => v,
-        None => return };
+    let gpio_name = try!(args.argv(1));
+    let gpio_val = try!(argv_parsed(args, 2, "VALUE", i8::parseint));
 
-    for &pin in pins::PIN_TABLE {
-        if *(pin.name()) == *gpio_name {
-            pin.set(gpio_val != 0);
-            return;
-        }
+    match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
+        Some(pin) => pin.set(gpio_val != 0),
+        None => println!("pin {} not found", gpio_name),
     }
 
-    println!("pin {} not found", gpio_name);
+    Ok(())
 }

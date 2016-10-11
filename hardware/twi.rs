@@ -28,7 +28,6 @@ extern crate bindgen_mcu;
 extern crate freertos;
 extern crate smutex;
 type TwiHandle = u32;
-use rust_support::Error;
 use core::fmt;
 
 pub const TWI0_HANDLE: TwiHandle = 0x40018000;
@@ -64,8 +63,8 @@ pub struct TwiResult {
     code: TwiResultCode
 }
 
-impl Error for TwiResult {
-    fn description(&self) -> &str {
+impl TwiResult {
+    pub fn description(&self) -> &'static str {
         return match self.code {
             TwiResultCode::Success          => "success",
             TwiResultCode::InvalidArgument  => "invalid argument",
@@ -79,8 +78,6 @@ impl Error for TwiResult {
             TwiResultCode::ErrorTimeout     => "timeout",
         }
     }
-
-    fn cause(&self) -> Option<&Error> { None }
 }
 
 impl fmt::Display for TwiResult {
