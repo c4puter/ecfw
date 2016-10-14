@@ -23,10 +23,9 @@
 
 #![no_std]
 
-extern crate freertos;
-extern crate twi;
-extern crate gpio;
-use twi::TwiResult;
+use rustsys::freertos;
+use hardware::{gpio, twi};
+use hardware::twi::TwiResult;
 
 static mut MATRIX: LedMatrix = LedMatrix{twi: None};
 pub fn matrix() -> &'static LedMatrix { unsafe{&MATRIX} }

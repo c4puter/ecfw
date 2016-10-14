@@ -21,14 +21,9 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(lang_items)]
-
-#[macro_use]
-extern crate ec_io;
-extern crate rust_support;
+use rustsys::ec_io;
+use rustsys::rust_support::*;
 use core::fmt;
-use rust_support::*;
 
 #[lang="panic_fmt"]
 pub extern fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: u32) -> ! {

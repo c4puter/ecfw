@@ -21,16 +21,12 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(const_fn)]
-extern crate ledmatrix;
-extern crate gpio;
-extern crate twi;
-extern crate smutex;
-use gpio::*;
-use ledmatrix::LedGpio;
-use twi::TwiDevice;
-use gpio::Mode::*;
+use hardware::gpio::*;
+use hardware::ledmatrix::LedGpio;
+use hardware::twi;
+use hardware::twi::TwiDevice;
+use rustsys::smutex;
+use hardware::gpio::Mode::*;
 
 macro_rules! pin_table {
     (
@@ -41,6 +37,7 @@ macro_rules! pin_table {
         ];
 
         $(
+            #[allow(dead_code)]
             pub static $name: $kind = $kind {
                 name: stringify!($name),
                 $($key : $data),* ,

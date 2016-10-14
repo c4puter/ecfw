@@ -21,11 +21,8 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-extern crate pins;
-extern crate power;
-use power::*;
-use pins::*;
+use main::power::*;
+use main::pins::*;
 use core::sync::atomic::*;
 
 pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[

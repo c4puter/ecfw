@@ -22,10 +22,8 @@
  */
 
 #![no_std]
-#![allow(non_camel_case_types,
-         non_upper_case_globals,
-         non_snake_case)]
-
+#![allow(non_camel_case_types, non_upper_case_globals, non_snake_case)]
+#![crate_type = "lib"]
 
 pub type c_char = i8;
 pub type c_uint = u32;

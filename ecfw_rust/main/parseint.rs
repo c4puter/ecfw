@@ -21,8 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-
 /// A str->int parser that handles radix specifiers.
 ///
 ///     extern crate parseint;

@@ -21,12 +21,9 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
 #![allow(improper_ctypes, non_upper_case_globals)]
-#![feature(alloc)]
 
-extern crate alloc;
-extern crate rust_support;
+use rustsys::rust_support;
 use core::ptr;
 use core::str;
 use core::slice;

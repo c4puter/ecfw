@@ -21,7 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
 #![allow(mutable_transmutes)]
 
 /*!
@@ -37,8 +36,8 @@ definition and intent threadsafe.
 
 use core::mem;
 
-extern crate rust_support;
-extern crate freertos;
+use rustsys::rust_support;
+use rustsys::freertos;
 
 pub struct StaticMutex {
     pub locked: bool

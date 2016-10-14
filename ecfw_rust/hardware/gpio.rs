@@ -24,7 +24,7 @@
 #![no_std]
 #![feature(const_fn)]
 extern crate bindgen_mcu;
-extern crate twi;
+use hardware::twi;
 
 pub trait Gpio {
     fn init(&self);
@@ -36,12 +36,12 @@ pub trait Gpio {
 // These are 32x the values defined in ioport_pio.h, as IOPORT_CREATE_PIN
 // multiplies them by 32 and we can't do that "constexpr".
 pub type Ioport = u32;
-pub const PIOA: Ioport = 0 * 32;
-pub const PIOB: Ioport = 1 * 32;
-pub const PIOC: Ioport = 2 * 32;
-pub const PIOD: Ioport = 3 * 32;
-pub const PIOE: Ioport = 4 * 32;
-pub const PIOF: Ioport = 5 * 32;
+#[allow(dead_code)] pub const PIOA: Ioport = 0 * 32;
+#[allow(dead_code)] pub const PIOB: Ioport = 1 * 32;
+#[allow(dead_code)] pub const PIOC: Ioport = 2 * 32;
+#[allow(dead_code)] pub const PIOD: Ioport = 3 * 32;
+#[allow(dead_code)] pub const PIOE: Ioport = 4 * 32;
+#[allow(dead_code)] pub const PIOF: Ioport = 5 * 32;
 
 #[derive(PartialEq)]
 pub enum Mode { Input, Output }
@@ -53,20 +53,6 @@ pub struct SamGpio {
     pub default: bool,
     pub invert: bool,
     pub name: &'static str,
-}
-
-// Pending: figure out why the fuck this doesn't work in the macro expansion
-impl SamGpio {
-    pub const fn default() -> SamGpio {
-        return SamGpio {
-            port: PIOA,
-            pin: 0,
-            mode: Mode::Input,
-            default: false,
-            invert: false,
-            name: ""
-        };
-    }
 }
 
 impl Gpio for SamGpio {

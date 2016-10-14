@@ -21,16 +21,11 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#[macro_use]
-extern crate ec_io;
-extern crate freertos;
-extern crate twi;
-extern crate pins;
-extern crate supplies;
-extern crate parseint;
+use rustsys::{ec_io,freertos};
+use hardware::twi;
+use main::{pins, supplies};
 
-use parseint::ParseInt;
+use main::parseint::ParseInt;
 use core::fmt;
 
 pub trait Args<'a> {

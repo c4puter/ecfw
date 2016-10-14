@@ -21,21 +21,11 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-
-extern crate bindgen_mcu;
-extern crate bindgen_usart;
-
-extern crate rust_support;
-extern crate panicking;
-#[macro_use]
-extern crate ec_io;
-extern crate twi;
-extern crate pins;
-extern crate ledmatrix;
-extern crate freertos;
-extern crate esh;
-extern crate commands;
+use main::{commands, pins};
+use esh;
+use hardware::{ledmatrix, twi};
+use bindgen_mcu;
+use rustsys::{ec_io,freertos};
 
 use core::str;
 

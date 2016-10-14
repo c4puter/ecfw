@@ -21,14 +21,10 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(associated_consts)]
-extern crate gpio;
-extern crate freertos;
-extern crate twi;
-extern crate smutex;
-use gpio::Gpio;
-use twi::TwiDevice;
+use rustsys::{freertos,smutex};
+use hardware::twi;
+use hardware::gpio::Gpio;
+use hardware::twi::TwiDevice;
 use core::sync::atomic::*;
 
 static VRM901: TwiDevice = TwiDevice {

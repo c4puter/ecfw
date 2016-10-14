@@ -23,27 +23,26 @@
 
 #![no_std]
 
-extern crate rust_support;
+use rustsys::{freertos,smutex};
 extern crate bindgen_mcu;
-extern crate freertos;
-extern crate smutex;
 type TwiHandle = u32;
 use core::fmt;
 
-pub const TWI0_HANDLE: TwiHandle = 0x40018000;
-pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
+#[allow(dead_code)] pub const TWI0_HANDLE: TwiHandle = 0x40018000;
+#[allow(dead_code)] pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
 
-static mut TWI0_: Twi = Twi { p_twi: TWI0_HANDLE, mutex: None };
-static mut TWI1_: Twi = Twi { p_twi: TWI1_HANDLE, mutex: None };
+#[allow(dead_code)] static mut TWI0_: Twi = Twi { p_twi: TWI0_HANDLE, mutex: None };
+#[allow(dead_code)] static mut TWI1_: Twi = Twi { p_twi: TWI1_HANDLE, mutex: None };
 
-pub fn twi0() -> &'static Twi { return unsafe{&TWI0_}; }
-pub fn twi1() -> &'static Twi { return unsafe{&TWI1_}; }
+#[allow(dead_code)] pub fn twi0() -> &'static Twi { return unsafe{&TWI0_}; }
+#[allow(dead_code)] pub fn twi1() -> &'static Twi { return unsafe{&TWI1_}; }
 
-pub unsafe fn twi0_init(speed: u32) -> Result<(),TwiResult> { TWI0_.init(speed) }
-pub unsafe fn twi1_init(speed: u32) -> Result<(),TwiResult> { TWI1_.init(speed) }
+#[allow(dead_code)] pub unsafe fn twi0_init(speed: u32) -> Result<(),TwiResult> { TWI0_.init(speed) }
+#[allow(dead_code)] pub unsafe fn twi1_init(speed: u32) -> Result<(),TwiResult> { TWI1_.init(speed) }
 
 #[repr(u32)]
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum TwiResultCode {
     Success         = 0,
     InvalidArgument = 1,
@@ -205,6 +204,7 @@ impl TwiDevice {
     }
 
     /// Test if the device answers its address
+    #[allow(dead_code)]
     pub fn probe(&'static self) -> Result<bool, TwiResult> {
         (self.twi)().probe(self.addr)
     }

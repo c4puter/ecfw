@@ -21,67 +21,33 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(lang_items)]
-#![feature(asm)]
-
-use core::mem;
-use core::fmt;
-
-#[lang="eh_personality"] extern fn eh_personality() {}
-
-pub trait Error: fmt::Display {
-    fn description(&self) -> &str;
-    fn cause(&self) -> Option<&Error> {None}
+extern "C" {
+    fn pvPortMalloc(sz: usize) -> *mut u8;
 }
 
-#[inline(always)]
-pub fn nop()
-{
-    unsafe{asm!("nop" : : : : "volatile");}
+#[no_mangle]
+pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
+    return unsafe { pvPortMalloc(size) };
 }
 
-#[inline(always)]
-pub unsafe fn enable_irq()
-{
-    asm!("cpsie i" : : : "memory" : "volatile");
+#[no_mangle]
+pub extern fn __rust_deallocate(_ptr: *mut u8, _old_size: usize, _align: usize) {
+    panic!("cannot deallocate");
 }
 
-#[inline(always)]
-pub unsafe fn disable_irq()
-{
-    asm!("cpsid i" : : : "memory" : "volatile");
+#[no_mangle]
+pub extern fn __rust_reallocate(_ptr: *mut u8, _old_size: usize, _size: usize,
+                                _align: usize) -> *mut u8 {
+    panic!("cannot reallocate");
 }
 
-#[inline(always)]
-pub unsafe fn pendsv()
-{
-    writemem(0xe000ed04, (1 as u32) << (28 as u32));
+#[no_mangle]
+pub extern fn __rust_reallocate_inplace(_ptr: *mut u8, _old_size: usize,
+                                        _size: usize, _align: usize) -> usize {
+    panic!("cannot reallocate");
 }
 
-#[inline(always)]
-pub fn dsb()
-{
-    unsafe{asm!("dsb" :::: "volatile");}
+#[no_mangle]
+pub extern fn __rust_usable_size(size: usize, _align: usize) -> usize {
+    size
 }
-
-#[inline(always)]
-pub fn isb()
-{
-    unsafe{asm!("isb" :::: "volatile");}
-}
-
-#[inline(always)]
-pub unsafe fn readmem(addr: u32) -> u32
-{
-    let p: *const u32 = mem::transmute(addr);
-    return *p;
-}
-
-#[inline(always)]
-pub unsafe fn writemem(addr: u32, value: u32)
-{
-    let p: *mut u32 = mem::transmute(addr);
-    *p = value;
-}
-

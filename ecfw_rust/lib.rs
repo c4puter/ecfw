@@ -22,36 +22,21 @@
  */
 
 #![no_std]
+#![feature(associated_consts)]
+#![feature(const_fn)]
+#![feature(lang_items)]
+#![feature(asm)]
+#![feature(alloc)]
 #![feature(allocator)]
+#![crate_type = "rlib"]
 #![allocator]
 
-extern "C" {
-    fn pvPortMalloc(sz: usize) -> *mut u8;
-}
+extern crate esh;
+extern crate alloc;
+extern crate bindgen_mcu;
+extern crate bindgen_usart;
 
-#[no_mangle]
-pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
-    return unsafe { pvPortMalloc(size) };
-}
-
-#[no_mangle]
-pub extern fn __rust_deallocate(_ptr: *mut u8, _old_size: usize, _align: usize) {
-    panic!("cannot deallocate");
-}
-
-#[no_mangle]
-pub extern fn __rust_reallocate(_ptr: *mut u8, _old_size: usize, _size: usize,
-                                _align: usize) -> *mut u8 {
-    panic!("cannot reallocate");
-}
-
-#[no_mangle]
-pub extern fn __rust_reallocate_inplace(_ptr: *mut u8, _old_size: usize,
-                                        _size: usize, _align: usize) -> usize {
-    panic!("cannot reallocate");
-}
-
-#[no_mangle]
-pub extern fn __rust_usable_size(size: usize, _align: usize) -> usize {
-    size
-}
+#[macro_use]
+pub mod rustsys;
+pub mod main;
+mod hardware;

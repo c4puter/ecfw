@@ -42,28 +42,25 @@ LOCAL_OBJECTS = \
 	esh/esh.o \
 	esh/esh_hist.o \
 
-SUPPORT_CRATES = \
-	rustsys/librust_support.rlib \
-	rustsys/libctypes.rlib \
-	${LIBALLOC} \
-
 LIBALLOC = rustsys/liballoc_system.rlib
 
 RUST_CRATES = \
-	rustsys/libpanicking.rlib \
-	main/libmain.rlib \
-	main/libcommands.rlib \
-	main/libpins.rlib \
-	main/libparseint.rlib \
-	main/libsupplies.rlib \
-	main/libpower.rlib \
-	rustsys/libec_io.rlib \
-	hardware/libtwi.rlib \
-	hardware/libgpio.rlib \
-	hardware/libledmatrix.rlib \
-	rustsys/libfreertos.rlib \
-	rustsys/libsmutex.rlib \
+	libecfw_rust.rlib \
+
+SUPPORT_CRATES = \
+	libctypes.rlib \
 	esh/esh_rust/src/libesh.rlib \
+
+BINDGEN_CRATES = \
+	hardware/libbindgen_mcu.rlib \
+	hardware/libbindgen_usart.rlib \
+
+ALL_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES} ${BINDGEN_CRATES}
+
+# Crates for which dependencies will be calculated. Do not include the
+# bindgen crates here! That will result in bindgen being run at inappropriate
+# times.
+DEP_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES}
 
 FREERTOS_OBJECTS = \
 	${FREERTOS}/Source/queue.o \
@@ -101,7 +98,7 @@ CFLAGS = \
 
 RUSTFLAGS = \
 	-C opt-level=3 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	-L ${RUSTLIB_DIR} -L main -L hardware -L rustsys -L esh/esh_rust/src
+	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src
 
 
 LDFLAGS = \
@@ -119,22 +116,30 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
+-include ${LOCAL_OBJECTS:.o=.d}
+-include ${ASF_OBJECTS:.o=.d}
+-include $(patsubst %,%.d,${DEP_CRATES})
+
 all: ecfw.hex ecfw.disasm
 	${SIZE} ecfw
 
-${RUST_CRATES}: ${SUPPORT_CRATES}
+${RUST_CRATES}: ${SUPPORT_CRATES} ${BINDGEN_CRATES}
+
+${BINDGEN_CRATES}: ${SUPPORT_CRATES}
 
 lib%.rlib: %.rs ${RUSTLIB_FILES}
-	@echo "[RUSTC   ] $@"
-	# Uncomment to debug macros
-	#@${RUSTC} ${RUSTFLAGS} -Z unstable-options --pretty expanded -o $(patsubst %.rlib,%.expanded,$@) $<
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $< 2>/dev/null
+	@echo "[RUSTC rs] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< && \
+	if [[ "$@" =~ "${DEP_CRATES}" ]]; then \
+	 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit dep-info -o $@.d $< 2>/dev/null ; \
+	fi
 
-main/libmain.rlib: esh/esh_rust/src/libesh.rlib
-esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs
-	@echo "[RUSTC   ] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+lib%.rlib: % ${RUSTLIB_FILES}
+	@echo "[RUSTC  /] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs && \
+	if [[ "$@" =~ "${DEP_CRATES}" ]]; then \
+		${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null ; \
+	fi
 
 bindgen_%.rs: %.h have-bindgen
 	@echo "[BINDGEN ] $@"
@@ -142,10 +147,6 @@ bindgen_%.rs: %.h have-bindgen
 	  $$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $< ) | \
 	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
 	> $@
-
-include deps.rust
--include ${LOCAL_OBJECTS:.o=.d}
--include ${ASF_OBJECTS:.o=.d}
 
 deps.rust:
 	@echo "[RUSTDEPS]"
@@ -180,11 +181,10 @@ ${RUSTLIB_DIR}/lib%.rlib:
 	@${CC} -c  ${CFLAGS} $*.c -o $*.o
 	@${CC} -MM ${CFLAGS} $*.c  > $*.d
 
-ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} ${SUPPORT_CRATES}
+ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${ALL_CRATES}
 	@echo "[CC LINK ] $@"
 	@${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
-			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${RUST_CRATES} \
-			${RUSTLIB_FILES} ${SUPPORT_CRATES} -o ecfw
+			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${ALL_CRATES} ${RUSTLIB_FILES} -o ecfw
 
 ecfw.disasm: ecfw
 	@echo "[OBJDUMP ] $@"
@@ -199,10 +199,7 @@ clean:
 	rm -f ${LOCAL_OBJECTS}
 	rm -f ${RUST_CRATES}
 	rm -f ${SUPPORT_CRATES}
-	rm -f ${BINDGEN_FILES}
-	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.rlib,$(notdir ${rs})))
-	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.ll,$(notdir ${rs})))
-	rm -f $(foreach rs,${BINDGEN_FILES},$(dir ${rs})$(patsubst %.rs,lib%.expanded,$(notdir ${rs})))
+	rm -f ${BINDGEN_CRATES}
 	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.o,%.expanded,${LOCAL_OBJECTS})
 	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
@@ -214,6 +211,7 @@ clean:
 	rm -f deps.rust
 	rm -f ${LOCAL_OBJECTS:.o=.d}
 	rm -f ${ASF_OBJECTS:.o=.d}
+	rm -f $(patsubst %,%.d,${DEP_CRATES})
 	rm -f have-bindgen
 
 genclean: clean

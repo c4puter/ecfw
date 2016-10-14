@@ -21,12 +21,10 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-
 use core::fmt;
 
 extern crate bindgen_usart;
-extern crate freertos;
+use rustsys::freertos;
 
 struct UartWriter {}
 struct UartWriterAsync {}
