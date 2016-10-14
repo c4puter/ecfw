@@ -27,6 +27,7 @@ extern crate ec_io;
 extern crate freertos;
 extern crate twi;
 extern crate pins;
+extern crate supplies;
 extern crate parseint;
 
 use parseint::ParseInt;
@@ -57,6 +58,10 @@ pub static COMMAND_TABLE: &'static [Command] = &[
 
     Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
+
+    Command{ name: "pwr_stat",  f: cmd_pwr_stat,    descr: "display status of SUPPLY" },
+    Command{ name: "pwr_up",    f: cmd_pwr_up,      descr: "raise reference count of SUPPLY" },
+    Command{ name: "pwr_dn",    f: cmd_pwr_dn,      descr: "lower reference count of SUPPLY" },
 ];
 
 fn argv_parsed<T, U>(args: &Args, n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
@@ -169,5 +174,37 @@ fn cmd_gpio_write(args: &Args) -> Result<(), &'static str>
         None => println!("pin {} not found", gpio_name),
     }
 
+    Ok(())
+}
+
+fn cmd_pwr_stat(args: &Args) -> Result<(), &'static str>
+{
+    let supply_name = try!(args.argv(1));
+    match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
+        Some(supply) => println!("supply {} up? {}", supply_name, try!(supply.is_up())),
+        None => println!("supply {} not found", supply_name),
+    }
+    Ok(())
+}
+
+fn cmd_pwr_up(args: &Args) -> Result<(), &'static str>
+{
+    let supply_name = try!(args.argv(1));
+    match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
+        Some(supply) => println!("supply {} state changed? {}",
+                                 supply_name, try!(supply.refcount_up())),
+        None => println!("supply {} not found", supply_name),
+    }
+    Ok(())
+}
+
+fn cmd_pwr_dn(args: &Args) -> Result<(), &'static str>
+{
+    let supply_name = try!(args.argv(1));
+    match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
+        Some(supply) => println!("supply {} state changed? {}",
+                                 supply_name, try!(supply.refcount_down())),
+        None => println!("supply {} not found", supply_name),
+    }
     Ok(())
 }

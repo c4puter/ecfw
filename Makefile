@@ -36,7 +36,6 @@ RUSTLIBS = core alloc
 RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
 
 LOCAL_OBJECTS = \
-	main/main.o \
 	hardware/mcu.o \
 	hardware/usart.o \
 	esh/esh_argparser.o \
@@ -45,23 +44,25 @@ LOCAL_OBJECTS = \
 
 SUPPORT_CRATES = \
 	rustsys/librust_support.rlib \
-	rustsys/libpanicking.rlib \
+	rustsys/libctypes.rlib \
+	${LIBALLOC} \
 
 LIBALLOC = rustsys/liballoc_system.rlib
 
 RUST_CRATES = \
+	rustsys/libpanicking.rlib \
+	main/libmain.rlib \
 	main/libcommands.rlib \
 	main/libpins.rlib \
 	main/libparseint.rlib \
-	rustsys/libpanicking.rlib \
+	main/libsupplies.rlib \
+	main/libpower.rlib \
 	rustsys/libec_io.rlib \
 	hardware/libtwi.rlib \
 	hardware/libgpio.rlib \
 	hardware/libledmatrix.rlib \
-	rustsys/libctypes.rlib \
 	rustsys/libfreertos.rlib \
 	rustsys/libsmutex.rlib \
-	${LIBALLOC} \
 	esh/esh_rust/src/libesh.rlib \
 
 FREERTOS_OBJECTS = \
@@ -121,19 +122,17 @@ LIBS = -lm -lc -lgcc -lnosys
 all: ecfw.hex ecfw.disasm
 	${SIZE} ecfw
 
-%.o: %.rs ${RUSTLIB_FILES} ${RUST_CRATES}
-	@echo "[RUSTC   ] $@"
-	@${RUSTC} ${RUSTFLAGS} -Z unstable-options --pretty expanded -o $(patsubst %.rlib,%.expanded,$@) $<
-	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit obj -o $@ $< 2>&1
-	@${RUSTC} ${RUSTFLAGS} --crate-type staticlib --emit llvm-ir -o $(patsubst %.o,%.ll,$@) $< 2>/dev/null
+${RUST_CRATES}: ${SUPPORT_CRATES}
 
-lib%.rlib: %.rs ${RUSTLIB_FILES} ${LIBALLOC}
+lib%.rlib: %.rs ${RUSTLIB_FILES}
 	@echo "[RUSTC   ] $@"
-	@${RUSTC} ${RUSTFLAGS} -Z unstable-options --pretty expanded -o $(patsubst %.rlib,%.expanded,$@) $<
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< 2>&1
+	# Uncomment to debug macros
+	#@${RUSTC} ${RUSTFLAGS} -Z unstable-options --pretty expanded -o $(patsubst %.rlib,%.expanded,$@) $<
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 	@${RUSTC} ${RUSTFLAGS} --crate-type lib --emit llvm-ir -o $(patsubst %.rlib,%.ll,$@) $< 2>/dev/null
 
-esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs ${RUSTLIB_FILES} ${LIBALLOC}
+main/libmain.rlib: esh/esh_rust/src/libesh.rlib
+esh/esh_rust/src/libesh.rlib: esh/esh_rust/src/lib.rs
 	@echo "[RUSTC   ] $@"
 	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
 
