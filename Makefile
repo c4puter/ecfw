@@ -35,13 +35,6 @@ FREERTOS = FreeRTOS
 RUSTLIBS = core alloc
 RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
 
-LOCAL_OBJECTS = \
-	hardware/mcu.o \
-	hardware/usart.o \
-	esh/esh_argparser.o \
-	esh/esh.o \
-	esh/esh_hist.o \
-
 LIBALLOC = rustsys/liballoc_system.rlib
 
 RUST_CRATES = \
@@ -62,7 +55,12 @@ ALL_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES} ${BINDGEN_CRATES}
 # times.
 DEP_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES}
 
-FREERTOS_OBJECTS = \
+OBJECTS = \
+	hardware/mcu.o \
+	hardware/usart.o \
+	esh/esh_argparser.o \
+	esh/esh.o \
+	esh/esh_hist.o \
 	${FREERTOS}/Source/queue.o \
 	${FREERTOS}/Source/list.o \
 	${FREERTOS}/Source/timers.o \
@@ -71,8 +69,6 @@ FREERTOS_OBJECTS = \
 	${FREERTOS}/Source/event_groups.o \
 	${FREERTOS}/Source/portable/MemMang/heap_1.o \
 	${FREERTOS}/Source/portable/GCC/ARM_CM3/port.o \
-
-ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \
 	${ASF_UNF_DIR}/asf/drivers/pio/pio.o \
@@ -81,7 +77,6 @@ ASF_OBJECTS = \
 	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
 	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
-	${FREERTOS_OBJECTS} \
 
 CFLAGS = \
 	-Os -g -pipe -std=c99 -Wall -Wextra \
@@ -116,8 +111,7 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
--include ${LOCAL_OBJECTS:.o=.d}
--include ${ASF_OBJECTS:.o=.d}
+-include ${OBJECTS:.o=.d}
 -include $(patsubst %,%.d,${DEP_CRATES})
 
 all: ecfw.hex ecfw.disasm
@@ -148,10 +142,6 @@ bindgen_%.rs: %.h have-bindgen
 	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
 	> $@
 
-deps.rust:
-	@echo "[RUSTDEPS]"
-	@bash ./scripts/gen-rust-dependencies.sh > $@
-
 have-bindgen:
 	@echo -n "[LOCATE  ] bindgen... "
 	@( command -v bindgen >$@ && command -v bindgen | tee $@ ) || \
@@ -181,10 +171,10 @@ ${RUSTLIB_DIR}/lib%.rlib:
 	@${CC} -c  ${CFLAGS} $*.c -o $*.o
 	@${CC} -MM ${CFLAGS} $*.c  > $*.d
 
-ecfw: ${LOCAL_OBJECTS} ${ASF_OBJECTS} ${ALL_CRATES}
+ecfw: ${OBJECTS} ${ALL_CRATES}
 	@echo "[CC LINK ] $@"
 	@${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
-			${LOCAL_OBJECTS} ${ASF_OBJECTS} ${ALL_CRATES} ${RUSTLIB_FILES} -o ecfw
+			${OBJECTS} ${ALL_CRATES} ${RUSTLIB_FILES} -o ecfw
 
 ecfw.disasm: ecfw
 	@echo "[OBJDUMP ] $@"
@@ -195,22 +185,11 @@ ecfw.hex: ecfw
 	@${OBJCOPY} -O ihex $< $@
 
 clean:
-	rm -f ${ASF_OBJECTS}
-	rm -f ${LOCAL_OBJECTS}
-	rm -f ${RUST_CRATES}
-	rm -f ${SUPPORT_CRATES}
-	rm -f ${BINDGEN_CRATES}
-	rm -f $(patsubst %.o,%.ll,${LOCAL_OBJECTS})
-	rm -f $(patsubst %.o,%.expanded,${LOCAL_OBJECTS})
-	rm -f $(patsubst %.rlib,%.ll,${RUST_CRATES})
-	rm -f $(patsubst %.rlib,%.expanded,${RUST_CRATES})
-	rm -f $(patsubst %.rlib,%.ll,${SUPPORT_CRATES})
-	rm -f $(patsubst %.rlib,%.expanded,${SUPPORT_CRATES})
+	rm -f ${OBJECTS}
+	rm -f ${ALL_CRATES}
 	rm -f flash.map
 	rm -f ecfw ecfw.hex ecfw.disasm
-	rm -f deps.rust
-	rm -f ${LOCAL_OBJECTS:.o=.d}
-	rm -f ${ASF_OBJECTS:.o=.d}
+	rm -f ${OBJECTS:.o=.d}
 	rm -f $(patsubst %,%.d,${DEP_CRATES})
 	rm -f have-bindgen
 
