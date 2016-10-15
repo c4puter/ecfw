@@ -1,0 +1,14 @@
+-DBOARD=USER_BOARD
+-D__SAM4S16C__
+-std=c99
+-Wall
+-Wextra
+-Wno-unused-parameter
+-Wno-attributes
+-I config
+-I resources/asf-unf/asf/utils/cmsis/sam4s/include
+-I resources/asf-unf/asf/thirdparty/CMSIS/Include
+-I FreeRTOS/Source/include
+-I FreeRTOS/Source/portable/GCC/ARM_CM3
+-I resources/asf-unf
+-I esh
