@@ -197,6 +197,13 @@ impl Twi {
 }
 
 impl TwiDevice {
+    pub const fn new(twi: fn() -> &'static Twi, addr: u8) -> TwiDevice {
+        TwiDevice {
+            twi: twi,
+            addr: addr,
+            mutex: smutex::StaticMutex{locked: false}}
+    }
+
     /// Obtain and return a lock on this device. This is an RAII lock that will
     /// be released when it goes out of scope.
     pub fn lock(&'static self) -> smutex::StaticMutexLock {

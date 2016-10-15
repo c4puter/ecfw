@@ -27,11 +27,7 @@ use hardware::gpio::Gpio;
 use hardware::twi::TwiDevice;
 use core::sync::atomic::*;
 
-static VRM901: TwiDevice = TwiDevice {
-    twi: twi::twi0,
-    addr: 0x47,
-    mutex: smutex::StaticMutex{locked: false},
-};
+static VRM901: TwiDevice = TwiDevice::new(twi::twi0, 0x47);
 
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change
