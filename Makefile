@@ -108,11 +108,11 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
--include ${OBJECTS:.o=.d}
--include $(patsubst %,%.d,${DEP_CRATES})
-
 all: ecfw.hex ecfw.disasm
 	${SIZE} ecfw
+
+-include ${OBJECTS:.o=.d}
+-include $(patsubst %,%.d,${DEP_CRATES})
 
 ${RUST_CRATES}: ${SUPPORT_CRATES} ${BINDGEN_CRATES}
 
@@ -121,15 +121,17 @@ ${BINDGEN_CRATES}: ${SUPPORT_CRATES}
 lib%.rlib: %.rs ${RUSTLIB_FILES}
 	@echo "[RUSTC rs] $@"
 	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< && \
-	if [[ "$@" =~ "${DEP_CRATES}" ]]; then \
+	if [[ "${DEP_CRATES}" == *"$@"* ]]; then \
 	 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit dep-info -o $@.d $< 2>/dev/null ; \
+		sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
 	fi
 
 lib%.rlib: % ${RUSTLIB_FILES}
 	@echo "[RUSTC  /] $@"
 	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs && \
-	if [[ "$@" =~ "${DEP_CRATES}" ]]; then \
+	if [[ "${DEP_CRATES}" == *"$@"* ]]; then \
 		${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null ; \
+		sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
 	fi
 
 bindgen_%.rs: %.h have-bindgen
