@@ -81,7 +81,7 @@ OBJECTS = \
 CFLAGS = \
 	-Os -g -pipe -std=c99 -Wall -Wextra \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
-	-mcpu=cortex-m4 -mthumb -mlong-calls \
+	-mcpu=cortex-m4 -mthumb \
 	-fdata-sections -ffunction-sections \
 	-iquote config \
 	-isystem ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/include \
@@ -92,19 +92,16 @@ CFLAGS = \
 	-I esh \
 
 RUSTFLAGS = \
-	-C opt-level=3 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src
-
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
-	-Wl,--cref \
 	-mcpu=cortex-m4 -mthumb \
 	-D__sam4s16c__ \
 	-specs=nosys.specs \
 	-Wl,--gc-sections \
 	-Wl,-T,${ASF_UNF_DIR}/asf/utils/linker_scripts/sam4s/sam4s16/gcc/flash.ld \
-	-Wl,-Map=flash.map,--cref \
 
 LIBS = -lm -lc -lgcc -lnosys
 
@@ -187,7 +184,6 @@ ecfw.hex: ecfw
 clean:
 	rm -f ${OBJECTS}
 	rm -f ${ALL_CRATES}
-	rm -f flash.map
 	rm -f ecfw ecfw.hex ecfw.disasm
 	rm -f ${OBJECTS:.o=.d}
 	rm -f $(patsubst %,%.d,${DEP_CRATES})
