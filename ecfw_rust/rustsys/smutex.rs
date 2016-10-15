@@ -21,26 +21,16 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![allow(mutable_transmutes)]
-
 /*!
 Static mutex. Lighter than FreeRTOS's static mutex and requires no
 initialization.
-
-This casts a const ref to self to a mut ref to self, bypassing Rust's
-protections against modifying mutable statics without unsafe{} blocks.
-The reason for this is that Rust's protections aren't needed - they serve
-to restrict concurrent access to shared data, but everything here is by
-definition and intent threadsafe.
 */
 
-use core::mem;
-
-use rustsys::rust_support;
 use rustsys::freertos;
+use core::sync::atomic::*;
 
 pub struct StaticMutex {
-    pub locked: bool
+    pub locked: AtomicBool
 }
 
 pub struct StaticMutexLock {
@@ -48,33 +38,24 @@ pub struct StaticMutexLock {
 }
 
 impl StaticMutex {
-    pub fn take(&self) {
-        unsafe {
-            let mutself: &mut StaticMutex = mem::transmute(self);
-            loop {
-                rust_support::disable_irq();
-                let was_locked = mutself.locked;
-                mutself.locked = true;
-                rust_support::dsb();
-                rust_support::enable_irq();
+    pub const fn new() -> StaticMutex {
+        StaticMutex {locked: ATOMIC_BOOL_INIT}
+    }
 
-                if was_locked {
-                    freertos::yield_task();
-                } else {
-                    return;
-                }
+    pub fn take(&self) {
+        loop {
+            let was_locked = self.locked.swap(true, Ordering::AcqRel);
+
+            if was_locked {
+                freertos::yield_task();
+            } else {
+                return;
             }
         }
     }
 
     pub fn give(&self) {
-        unsafe {
-            let mutself: &mut StaticMutex = mem::transmute(self);
-            rust_support::disable_irq();
-            mutself.locked = false;
-            rust_support::dsb();
-            rust_support::enable_irq();
-        }
+        self.locked.store(false, Ordering::AcqRel);
     }
 
     pub fn lock(&'static self) -> StaticMutexLock {

@@ -32,7 +32,7 @@ static VRM901: TwiDevice = TwiDevice::new(twi::twi0, 0x47);
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change
 /// is complete and settled.
-pub static POWER_MUTEX: smutex::StaticMutex = smutex::StaticMutex {locked: false};
+pub static POWER_MUTEX: smutex::StaticMutex = smutex::StaticMutex::new();
 
 pub trait Supply {
     /// Return the supply's name. Override the default if not wrapping a

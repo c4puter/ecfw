@@ -201,7 +201,7 @@ impl TwiDevice {
         TwiDevice {
             twi: twi,
             addr: addr,
-            mutex: smutex::StaticMutex{locked: false}}
+            mutex: smutex::StaticMutex::new()}
     }
 
     /// Obtain and return a lock on this device. This is an RAII lock that will
