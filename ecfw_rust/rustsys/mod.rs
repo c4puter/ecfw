@@ -27,4 +27,4 @@ pub mod alloc_system;
 pub mod panicking;
 pub mod rust_support;
 pub mod freertos;
-pub mod smutex;
+pub mod mutex;

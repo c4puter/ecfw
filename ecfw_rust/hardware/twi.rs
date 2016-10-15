@@ -23,7 +23,7 @@
 
 #![no_std]
 
-use rustsys::{freertos,smutex};
+use rustsys::{freertos,mutex};
 extern crate bindgen_mcu;
 type TwiHandle = u32;
 use core::fmt;
@@ -118,7 +118,7 @@ pub struct Twi {
 pub struct TwiDevice {
     pub twi: fn() -> &'static Twi,
     pub addr: u8,
-    pub mutex: smutex::StaticMutex,
+    pub mutex: mutex::Mutex,
 }
 
 impl Twi {
@@ -201,12 +201,12 @@ impl TwiDevice {
         TwiDevice {
             twi: twi,
             addr: addr,
-            mutex: smutex::StaticMutex::new()}
+            mutex: mutex::Mutex::new()}
     }
 
     /// Obtain and return a lock on this device. This is an RAII lock that will
     /// be released when it goes out of scope.
-    pub fn lock(&'static self) -> smutex::StaticMutexLock {
+    pub fn lock(&'static self) -> mutex::MutexLock {
         self.mutex.lock()
     }
 

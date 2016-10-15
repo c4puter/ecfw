@@ -29,17 +29,17 @@ initialization.
 use rustsys::freertos;
 use core::sync::atomic::*;
 
-pub struct StaticMutex {
+pub struct Mutex {
     pub locked: AtomicBool
 }
 
-pub struct StaticMutexLock {
-    mutex: &'static StaticMutex
+pub struct MutexLock<'a> {
+    mutex: &'a Mutex
 }
 
-impl StaticMutex {
-    pub const fn new() -> StaticMutex {
-        StaticMutex {locked: ATOMIC_BOOL_INIT}
+impl Mutex {
+    pub const fn new() -> Mutex {
+        Mutex {locked: ATOMIC_BOOL_INIT}
     }
 
     pub fn take(&self) {
@@ -58,13 +58,13 @@ impl StaticMutex {
         self.locked.store(false, Ordering::AcqRel);
     }
 
-    pub fn lock(&'static self) -> StaticMutexLock {
+    pub fn lock(&self) -> MutexLock {
         self.take();
-        StaticMutexLock{mutex: self}
+        MutexLock{mutex: self}
     }
 }
 
-impl Drop for StaticMutexLock {
+impl <'a> Drop for MutexLock<'a> {
     fn drop(&mut self) {
         self.mutex.give();
     }
