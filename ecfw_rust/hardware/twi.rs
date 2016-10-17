@@ -25,8 +25,10 @@
 
 use rustsys::{freertos,mutex};
 extern crate bindgen_mcu;
-type TwiHandle = u32;
 use core::fmt;
+use alloc::rc::*;
+
+type TwiHandle = u32;
 
 #[allow(dead_code)] pub const TWI0_HANDLE: TwiHandle = 0x40018000;
 #[allow(dead_code)] pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
@@ -112,7 +114,7 @@ extern "C" {
 #[derive(Copy,Clone)]
 pub struct Twi {
     p_twi: TwiHandle,
-    mutex: Option<freertos::Mutex>,
+    mutex: Rc<mutex::Mutex>,
 }
 
 pub struct TwiDevice {

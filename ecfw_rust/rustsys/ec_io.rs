@@ -24,13 +24,13 @@
 use core::fmt;
 
 extern crate bindgen_usart;
-use rustsys::freertos;
+use rustsys::{freertos,mutex};
 
 struct UartWriter {}
 struct UartWriterAsync {}
 
 static mut stdout_queue: Option<freertos::Queue<u8>> = None;
-static mut stdout_mutex: Option<freertos::Mutex> = None;
+static stdout_mutex: mutex::Mutex = mutex::Mutex::new();
 
 fn putc_task(q: freertos::Queue<u8>)
 {
@@ -83,22 +83,12 @@ impl<'a> fmt::Write for UartWriterAsync {
     }
 }
 
-fn mutex_lock(waitticks: usize) -> Result<freertos::MutexLock, &'static str>
-{
-    match unsafe{stdout_mutex} {
-        Some(m) => m.lock(waitticks),
-        None => panic!("no mutex configured yet")
-    }
-}
-
 /// Initialize EC IO. Starts a FreeRTOS task.
 pub fn init()
 {
     let q = freertos::Queue::<u8>::new(72);
-    let m = freertos::Mutex::new();
     unsafe {
         stdout_queue = Some(q);
-        stdout_mutex = Some(m);
         bindgen_usart::ec_usart_init();
     }
     freertos::Task::new(move || { putc_task(q); }, "ec_io", 200, 0);
@@ -109,12 +99,12 @@ fn _print(args: fmt::Arguments) {
 }
 
 pub fn print(args: fmt::Arguments) {
-    let _lock = mutex_lock(1000).unwrap();
+    let _lock = stdout_mutex.lock();
     _print(args);
 }
 
 pub fn println(args: fmt::Arguments) {
-    let _lock = mutex_lock(1000).unwrap();
+    let _lock = stdout_mutex.lock();
     _print(args);
     fmt::Write::write_str(&mut UartWriter{}, "\n").unwrap();
 }

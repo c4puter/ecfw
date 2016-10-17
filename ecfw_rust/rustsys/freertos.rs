@@ -52,15 +52,6 @@ pub struct Queue<T> {
 
 pub struct Task { }
 
-#[derive(Copy, Clone)]
-pub struct Mutex {
-    handle: QueueHandle
-}
-
-pub struct MutexLock {
-    mutex: Mutex
-}
-
 extern "C" {
     fn xTaskCreate(
         pxTaskCode: extern "C" fn(task: *mut Void),
@@ -162,45 +153,6 @@ impl <T> Queue<T> {
 
     pub fn reset(&self) {
         unsafe{ xQueueReset(self.handle); }
-    }
-}
-
-impl Mutex {
-    pub fn new() -> Mutex {
-        let hnd = unsafe{xQueueCreateMutex(queueQUEUE_TYPE_MUTEX)};
-        Mutex{handle: hnd}
-    }
-
-    pub fn take(&self, waitticks: usize) -> Result<(), &'static str> {
-        let res = unsafe{ xQueueGenericReceive(
-                self.handle, ptr::null_mut(), waitticks, pdFALSE ) };
-        return match res {
-            pdTRUE => Ok(()),
-            _ => Err("timeout")
-        };
-    }
-
-    pub fn give(&self) -> Result<(), &'static str> {
-        let res = unsafe {
-            xQueueGenericSend(self.handle, ptr::null(), semGIVE_BLOCK_TIME, queueSEND_TO_BACK)
-        };
-        return match res {
-            pdTRUE => Ok(()),
-            _ => Err("timeout")
-        };
-    }
-
-    pub fn lock(&self, waitticks: usize) -> Result<MutexLock, &'static str> {
-        match self.take(waitticks) {
-            Ok(_) => Ok(MutexLock{mutex: *self}),
-            Err(e) => Err(e),
-        }
-    }
-}
-
-impl Drop for MutexLock {
-    fn drop(&mut self) {
-        self.mutex.give().unwrap();
     }
 }
 
