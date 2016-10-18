@@ -44,7 +44,7 @@ impl Mutex {
 
     pub fn take(&self) {
         loop {
-            let was_locked = self.locked.swap(true, Ordering::AcqRel);
+            let was_locked = self.locked.swap(true, Ordering::SeqCst);
 
             if was_locked {
                 freertos::yield_task();
@@ -55,7 +55,7 @@ impl Mutex {
     }
 
     pub fn give(&self) {
-        self.locked.store(false, Ordering::AcqRel);
+        self.locked.store(false, Ordering::SeqCst);
     }
 
     pub fn lock(&self) -> MutexLock {

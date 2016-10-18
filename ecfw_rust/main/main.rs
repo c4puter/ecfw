@@ -29,36 +29,16 @@ use rustsys::{ec_io,freertos};
 
 use core::str;
 
-struct EshArgAdapter<'a> {
-    argarray: &'a esh::EshArgArray
-}
-
-impl<'a> commands::Args<'a> for EshArgAdapter<'a> {
-    fn argc(&self) -> usize {
-        return self.argarray.len();
-    }
-    fn argv(&self, n: usize) -> Result<&str, &'static str> {
-        if n >= self.argarray.len() {
-            return Err("argv index out of bounds (not enough arguments?)");
-        }
-        match str::from_utf8(&self.argarray[n]) {
-            Ok(s) => Ok(s),
-            _ => Err("argument not valid UTF-8")
-        }
-    }
-}
-
 fn command_dispatch(_esh: &esh::Esh, args: &esh::EshArgArray)
 {
     if args.len() >= 1 {
-        let argadapter = EshArgAdapter{argarray: args};
-        let argv0 = match str::from_utf8(&args[0]) {
+        let argv0 = match args.get_str(0) {
             Ok(s) => s,
             _ => "__invalid_command",
         };
 
         match commands::COMMAND_TABLE.iter().find(|&cmd| {*(cmd.name) == *argv0}) {
-            Some(cmd) => match (cmd.f)(&argadapter) {
+            Some(cmd) => match (cmd.f)(args) {
                 Ok(()) => (),
                 Err(s) => println!("error: {}", s),
             },
@@ -67,12 +47,12 @@ fn command_dispatch(_esh: &esh::Esh, args: &esh::EshArgArray)
     }
 }
 
-fn esh_print_cb(_esh: &esh::Esh, c: u8)
+fn esh_print_cb(_esh: &esh::Esh, c: char)
 {
-    if c == b'\n' {
-        ec_io::putc(b'\r');
+    if c == '\n' {
+        print!("\r");
     }
-    ec_io::putc(c);
+    print!("{}", c);
 }
 
 pub fn esh_task() {
