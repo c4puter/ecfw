@@ -105,10 +105,13 @@ LDFLAGS = \
 
 LIBS = -lm -lc -lgcc -lnosys
 
-.PHONY: all clean genclean distclean debug program
+.PHONY: all all-with-asf clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
-all: ecfw.hex ecfw.disasm
+all: ${ASF_UNF_DIR}
+	${MAKE} all-with-asf
+
+all-with-asf: ecfw.hex ecfw.disasm
 	${SIZE} ecfw
 
 -include ${OBJECTS:.o=.d}
