@@ -76,7 +76,7 @@ pin_table!{
     FPGA_DONE1,         SamGpio, port => PIOA, pin =>  7, mode => Input,  default => false, invert => false;
     FPGA_DONE2,         SamGpio, port => PIOA, pin =>  6, mode => Input,  default => false, invert => false;
     FPGA_INIT,          SamGpio, port => PIOA, pin =>  5, mode => Output, default => false, invert => false;
-    PANELINT,           SamGpio, port => PIOC, pin => 17, mode => Input,  default => false, invert => true;
+    PANELINT,           SamGpio, port => PIOC, pin => 17, mode => Pullup, default => false, invert => true;
     PCIM66EN,           SamGpio, port => PIOC, pin => 24, mode => Input,  default => false, invert => false;
     PCIPME,             SamGpio, port => PIOC, pin => 23, mode => Input,  default => false, invert => true;
     PCIRST,             SamGpio, port => PIOC, pin => 22, mode => Output, default => false, invert => true;
@@ -92,9 +92,13 @@ pin_table!{
     PRSNT2_2,           SamGpio, port => PIOA, pin =>  1, mode => Input,  default => false, invert => true;
     PRSNT2_3,           SamGpio, port => PIOC, pin => 10, mode => Input,  default => false, invert => true;
     REQ,                SamGpio, port => PIOA, pin => 16, mode => Input,  default => false, invert => false;
+    RS232_RX,           SamGpio, port => PIOA, pin => 21, mode => PerA,   default => false, invert => false;
+    RS232_TX,           SamGpio, port => PIOA, pin => 22, mode => PerA,   default => false, invert => false;
     RTCINT,             SamGpio, port => PIOC, pin => 25, mode => Input,  default => false, invert => true;
     SDRAM_EVENT,        SamGpio, port => PIOC, pin => 18, mode => Input,  default => false, invert => true;
     SDRAM_RST,          SamGpio, port => PIOB, pin => 13, mode => Output, default => false, invert => true;
+    TWI0_SCL,           SamGpio, port => PIOA, pin => 4,  mode => PerA,   default => false, invert => false;
+    TWI0_SDA,           SamGpio, port => PIOA, pin => 3,  mode => PerA,   default => false, invert => false;
     USB_VBSENSE,        SamGpio, port => PIOA, pin =>  0, mode => Input,  default => false, invert => false;
     VREFEN,             SamGpio, port => PIOB, pin =>  0, mode => Output, default => false, invert => false;
 

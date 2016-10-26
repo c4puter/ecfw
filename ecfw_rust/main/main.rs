@@ -89,7 +89,6 @@ pub fn init_task()
 pub extern "C" fn main() -> i32 {
     unsafe {
         bindgen_mcu::mcu_init();
-        bindgen_mcu::board_init();
     }
 
     ec_io::init();

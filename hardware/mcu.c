@@ -28,42 +28,13 @@
 #include <FreeRTOS.h>
 #include "mcu.h"
 
-#define LED_GPIO IOPORT_CREATE_PIN(PIOC, 0)
-//#define LED_GPIO IOPORT_CREATE_PIN(PIOC, 17)
-
-#define UART0_TX_PIN IOPORT_CREATE_PIN(PIOA, 22)
-#define UART0_RX_PIN IOPORT_CREATE_PIN(PIOA, 21)
-#define TWI0_SCL_PIN IOPORT_CREATE_PIN(PIOA, 4)
-#define TWI0_SDA_PIN IOPORT_CREATE_PIN(PIOA, 3)
-
 void mcu_init(void)
 {
     WDT->WDT_MR = WDT_MR_WDDIS;
     sysclk_init();
     NVIC_SetPriorityGrouping(0);
     ioport_init();
-}
-
-void board_init(void)
-{
-    ioport_set_pin_dir(LED_GPIO, IOPORT_DIR_OUTPUT);
-    ioport_enable_pin(LED_GPIO);
-
-    ioport_set_pin_mode(UART0_TX_PIN, IOPORT_MODE_MUX_A);
-    ioport_disable_pin(UART0_TX_PIN);
-    ioport_set_pin_mode(UART0_RX_PIN, IOPORT_MODE_MUX_A);
-    ioport_disable_pin(UART0_RX_PIN);
-
-    ioport_set_pin_mode(TWI0_SCL_PIN, IOPORT_MODE_MUX_A);
-    ioport_disable_pin(TWI0_SCL_PIN);
-    ioport_set_pin_mode(TWI0_SDA_PIN, IOPORT_MODE_MUX_A);
-    ioport_disable_pin(TWI0_SDA_PIN);
     sysclk_enable_peripheral_clock(ID_TWI0);
-}
-
-void do_toggle_led(void)
-{
-    ioport_toggle_pin_level(LED_GPIO);
 }
 
 unsigned int mcu_get_peripheral_hz(void)
@@ -83,14 +54,25 @@ void mcu_set_pin_level(unsigned int pin, bool value)
     ioport_set_pin_level(pin, value);
 }
 
-void mcu_init_pin(unsigned int pin, bool is_output, bool default_value)
+void mcu_init_pin(unsigned int pin, unsigned int mode_mask, bool default_value)
 {
-    ioport_set_pin_mode(pin, 0);
-    if (is_output) {
-        ioport_set_pin_level(pin, default_value);
-        ioport_set_pin_dir(pin, IOPORT_DIR_OUTPUT);
+    // Mask: see definitions in gpio.rs
+    bool is_periph = mode_mask & 0x80000000u;
+    bool is_output = mode_mask & 0x40000000u;
+    uint32_t ioport_mode = mode_mask & 0xffffu;
+
+    ioport_set_pin_mode(pin, ioport_mode);
+
+    if (is_periph) {
+        ioport_disable_pin(pin);
     } else {
-        ioport_set_pin_dir(pin, IOPORT_DIR_INPUT);
+        if (is_output) {
+            ioport_set_pin_level(pin, default_value);
+            ioport_set_pin_dir(pin, IOPORT_DIR_OUTPUT);
+        } else {
+            ioport_set_pin_dir(pin, IOPORT_DIR_INPUT);
+        }
+        ioport_enable_pin(pin);
     }
 }
 

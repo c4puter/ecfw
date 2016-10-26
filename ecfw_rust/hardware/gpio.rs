@@ -43,8 +43,25 @@ pub type Ioport = u32;
 #[allow(dead_code)] pub const PIOE: Ioport = 4 * 32;
 #[allow(dead_code)] pub const PIOF: Ioport = 5 * 32;
 
-#[derive(PartialEq)]
-pub enum Mode { Input, Output }
+// Mode values are chosen for easy translation to the ones ASF uses.
+// bit 31 on = peripheral mode
+// bit 30 on = output
+// value & 0xffff = ASF ioport mode
+#[derive(PartialEq,Copy,Clone)]
+#[allow(dead_code)]
+#[repr(u32)]
+pub enum Mode {
+    Input   = 0x00000000,
+    Output  = 0x40000000,
+    Pullup  = 0x00000008,
+    Pulldn  = 0x00000010,
+    OpnDrn  = 0x40000020,
+    ODPull  = 0x40000028,
+    PerA    = 0x80000000,
+    PerB    = 0x80000001,
+    PerC    = 0x80000002,
+    PerD    = 0x80000003,
+}
 
 pub struct SamGpio {
     pub port: Ioport,
@@ -60,7 +77,7 @@ impl Gpio for SamGpio {
         unsafe {
             bindgen_mcu::mcu_init_pin(
                 self.port + self.pin,
-                (self.mode == Mode::Output) as u8,
+                self.mode as u32,
                 self.default as u8);
         }
     }

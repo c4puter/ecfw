@@ -27,12 +27,10 @@
 #include <stdbool.h>
 
 void mcu_init(void);
-void board_init(void);
-void do_toggle_led(void);
 
 unsigned int mcu_get_peripheral_hz(void);
 bool mcu_get_pin_level(unsigned int pin);
 void mcu_set_pin_level(unsigned int pin, bool value);
-void mcu_init_pin(unsigned int pin, bool is_output, bool default_value);
+void mcu_init_pin(unsigned int pin, unsigned int mode_mask, bool default_value);
 
 #endif // MCU_H
