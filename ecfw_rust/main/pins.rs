@@ -125,8 +125,8 @@ pin_table!{
     DISCH_3VB,          PcfGpio, dev => &U901, pin => 11, outputs => OUTPUTS_U901, default => true,  invert => true;
     DISCH_5VA,          PcfGpio, dev => &U901, pin => 13, outputs => OUTPUTS_U901, default => true,  invert => false;
     DISCH_5VB,          PcfGpio, dev => &U901, pin => 14, outputs => OUTPUTS_U901, default => true,  invert => false;
-    EN_1V2,             PcfGpio, dev => &U901, pin =>  2, outputs => OUTPUTS_U901, default => false, invert => false;
-    EN_1V5,             PcfGpio, dev => &U901, pin =>  3, outputs => OUTPUTS_U901, default => false, invert => false;
+    EN_1V2,             PcfGpio, dev => &U901, pin =>  2, outputs => OUTPUTS_U901, default => false, invert => true;
+    EN_1V5,             PcfGpio, dev => &U901, pin =>  3, outputs => OUTPUTS_U901, default => false, invert => true;
     EN_5V_PCI_B,        PcfGpio, dev => &U901, pin => 15, outputs => OUTPUTS_U901, default => false, invert => true;
     EN_P12V_PCI,        PcfGpio, dev => &U901, pin => 16, outputs => OUTPUTS_U901, default => false, invert => false;
     EN_P3V3_S0B,        PcfGpio, dev => &U901, pin => 12, outputs => OUTPUTS_U901, default => false, invert => true;
