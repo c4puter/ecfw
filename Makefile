@@ -133,7 +133,7 @@ filepatsubst = $(dir ${3})$(patsubst ${1},${2},$(notdir ${3}))
 
 # Get the nth element of a :-separated list
 # $(call nth,n,list)
-# $(call 2,a:b:c)	-> b
+# $(call nth,2,a:b:c)	-> b
 nth = $(word ${1},$(subst :, ,${2}))
 
 # All Rust crates to be linked into the final executable.
