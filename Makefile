@@ -35,7 +35,23 @@ FREERTOS = FreeRTOS
 RUSTLIBS = core alloc
 RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
 
+# Apply patsubst to just the file part of a path
+# $(call filepatsubst,pattern,replacement,path)
+filepatsubst = $(dir ${3})$(patsubst ${1},${2},$(notdir ${3}))
+
+# Get the nth element of a :-separated list
+# $(call nth,n,list)
+# $(call 2,a:b:c)	-> b
+nth = $(word ${1},$(subst :, ,${2}))
+
 LIBALLOC = rustsys/liballoc_system.rlib
+
+BINDGEN_SOURCES = \
+	hardware/bindgen_mcu.rs:hardware/mcu.h \
+	hardware/bindgen_usart.rs:hardware/usart.h \
+
+BINDGEN_CRATES = $(foreach i,${BINDGEN_SOURCES}, \
+				 $(call filepatsubst,%.rs,lib%.rlib,$(call nth,1,${i})))
 
 RUST_CRATES = \
 	libecfw_rust.rlib \
@@ -43,12 +59,11 @@ RUST_CRATES = \
 SUPPORT_CRATES = \
 	libctypes.rlib \
 	esh/esh_rust/src/libesh.rlib \
-
-BINDGEN_CRATES = \
 	hardware/libbindgen_mcu.rlib \
 	hardware/libbindgen_usart.rlib \
+	${BINDGEN_CRATES}
 
-ALL_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES} ${BINDGEN_CRATES}
+ALL_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES}
 
 # Crates for which dependencies will be calculated. Do not include the
 # bindgen crates here! That will result in bindgen being run at inappropriate
@@ -108,7 +123,7 @@ LIBS = -lm -lc -lgcc -lnosys
 .PHONY: all all-with-asf clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
-all: ${ASF_UNF_DIR}
+all: do-bindgen ${ASF_UNF_DIR}
 	${MAKE} all-with-asf
 
 all-with-asf: ecfw.hex ecfw.disasm
@@ -117,9 +132,7 @@ all-with-asf: ecfw.hex ecfw.disasm
 -include ${OBJECTS:.o=.d}
 -include $(patsubst %,%.d,${DEP_CRATES})
 
-${RUST_CRATES}: ${SUPPORT_CRATES} ${BINDGEN_CRATES}
-
-${BINDGEN_CRATES}: ${SUPPORT_CRATES}
+${RUST_CRATES}: ${SUPPORT_CRATES}
 
 lib%.rlib: %.rs ${RUSTLIB_FILES}
 	@echo "[RUSTC rs] $@"
@@ -151,6 +164,19 @@ have-bindgen:
 	( echo -e "\n[INSTALL ] bindgen" && cargo install bindgen && \
 			(( command -v bindgen >/dev/null 2>&1 && command -v bindgen > $@ ) || \
 			 ( [ -x ${HOME}/.cargo/bin/bindgen ] && echo "${HOME}/.cargo/bin/bindgen" > $@ )))
+
+define bindgen
+	@echo "[BINDGEN ] $(2)"
+	@( echo '#![no_std]'; \
+		$$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $(1) ) | \
+		sed -e 's/)]$$/\0\nextern crate ctypes;/' \
+		> $(2)
+
+endef
+
+do-bindgen: have-bindgen $(foreach i,${BINDGEN_SOURCES},$(call nth,2,${i}))
+	$(foreach i,${BINDGEN_SOURCES}, \
+		$(call bindgen,$(call nth,2,${i}),$(call nth,1,${i})))
 
 ${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
 	@if ! [ -e ${ASF_SOURCE} ]; then \
@@ -189,6 +215,7 @@ ecfw.hex: ecfw
 clean:
 	rm -f ${OBJECTS}
 	rm -f ${ALL_CRATES}
+	rm -f $(foreach i,${BINDGEN_SOURCES},$(word 1,$(subst :, ,${i})))
 	rm -f ecfw ecfw.hex ecfw.disasm
 	rm -f ${OBJECTS:.o=.d}
 	rm -f $(patsubst %,%.d,${DEP_CRATES})
