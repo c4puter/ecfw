@@ -26,8 +26,6 @@
 #include "conf_usart.h"
 #include "usart.h"
 
-#define ALL_INTERRUPT_MASK  0xffffffff
-
 void ec_usart_init(void)
 {
     static const sam_usart_opt_t usart_settings = {
