@@ -22,22 +22,28 @@
  */
 
 use core::fmt;
-
-extern crate bindgen_usart;
+extern crate bindgen_mcu;
+extern crate asf_usart;
 use rustsys::freertos;
+
+#[allow(dead_code)]
+const USART0: *mut asf_usart::Usart = 0x40024000u32 as *mut asf_usart::Usart;
+const USART1: *mut asf_usart::Usart = 0x40028000u32 as *mut asf_usart::Usart;
+
+const USART_DBG: *mut asf_usart::Usart = USART1;
 
 struct UartWriter {}
 struct UartWriterAsync {}
 
-static mut stdout_queue: Option<freertos::Queue<u8>> = None;
-static mut stdout_mutex: Option<freertos::Mutex> = None;
+static mut STDOUT_QUEUE: Option<freertos::Queue<u8>> = None;
+static mut STDOUT_MUTEX: Option<freertos::Mutex> = None;
 
 fn putc_task(q: freertos::Queue<u8>)
 {
     loop {
         match q.receive(100) {
             Some(c) => unsafe {
-                bindgen_usart::ec_usart_putc(c as i8)
+                asf_usart::usart_putchar(USART_DBG, c as u32);
             },
             None => {}
         }
@@ -45,18 +51,26 @@ fn putc_task(q: freertos::Queue<u8>)
 }
 
 pub fn putc(c: u8) {
-    match unsafe{stdout_queue} {
+    match unsafe{STDOUT_QUEUE} {
         Some(q) => q.send(&c, 1000).unwrap(),
         None => ()
     }
 }
 
 pub fn putc_async(c: u8) {
-    unsafe{bindgen_usart::ec_usart_putc(c as i8)};
+    unsafe{asf_usart::usart_putchar(USART_DBG, c as u32)};
 }
 
 pub fn getc_async() -> u8 {
-    unsafe{bindgen_usart::ec_usart_getc() as u8}
+    loop {
+        let mut c = 0u32;
+        unsafe {
+            asf_usart::usart_getchar(USART_DBG, &mut c);
+        }
+        if c > 0 && c <= 255 {
+            return c as u8;
+        }
+    }
 }
 
 impl<'a> fmt::Write for UartWriter {
@@ -85,7 +99,7 @@ impl<'a> fmt::Write for UartWriterAsync {
 
 fn mutex_lock(waitticks: usize) -> Result<freertos::MutexLock, &'static str>
 {
-    match unsafe{stdout_mutex} {
+    match unsafe{STDOUT_MUTEX} {
         Some(m) => m.lock(waitticks),
         None => panic!("no mutex configured yet")
     }
@@ -94,12 +108,25 @@ fn mutex_lock(waitticks: usize) -> Result<freertos::MutexLock, &'static str>
 /// Initialize EC IO. Starts a FreeRTOS task.
 pub fn init()
 {
+    let usart_settings = asf_usart::sam_usart_opt_t {
+        baudrate: 115200,
+        char_length: asf_usart::US_MR_CHRL_8_BIT as u32,
+        parity_type: asf_usart::US_MR_PAR_NO as u32,
+        stop_bits: asf_usart::US_MR_NBSTOP_1_BIT as u32,
+        channel_mode: asf_usart::US_MR_CHMODE_NORMAL as u32,
+        irda_filter: 0,
+    };
+
     let q = freertos::Queue::<u8>::new(72);
     let m = freertos::Mutex::new();
     unsafe {
-        stdout_queue = Some(q);
-        stdout_mutex = Some(m);
-        bindgen_usart::ec_usart_init();
+        STDOUT_QUEUE = Some(q);
+        STDOUT_MUTEX = Some(m);
+
+        asf_usart::usart_init_rs232(
+            USART_DBG, &usart_settings, bindgen_mcu::mcu_get_peripheral_hz());
+        asf_usart::usart_enable_tx(USART_DBG);
+        asf_usart::usart_enable_rx(USART_DBG);
     }
     freertos::Task::new(move || { putc_task(q); }, "ec_io", 200, 0);
 }

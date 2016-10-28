@@ -35,6 +35,7 @@ void mcu_init(void)
     NVIC_SetPriorityGrouping(0);
     ioport_init();
     sysclk_enable_peripheral_clock(ID_TWI0);
+    sysclk_enable_peripheral_clock(ID_USART1);
 }
 
 unsigned int mcu_get_peripheral_hz(void)

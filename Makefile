@@ -39,7 +39,6 @@ PYTHON  ?= python
 
 OBJECTS = \
 	hardware/mcu.o \
-	hardware/usart.o \
 	esh/esh_argparser.o \
 	esh/esh.o \
 	esh/esh_hist.o \
@@ -69,7 +68,6 @@ SUPPORT_CRATES = \
 	libctypes.rlib \
 	esh/esh_rust/src/libesh.rlib \
 	hardware/libbindgen_mcu.rlib \
-	hardware/libbindgen_usart.rlib \
 	${BINDGEN_CRATES}
 
 # }}}
@@ -79,7 +77,7 @@ SUPPORT_CRATES = \
 
 BINDGEN_SOURCES = \
 	hardware/bindgen_mcu.rs:hardware/mcu.h \
-	hardware/bindgen_usart.rs:hardware/usart.h \
+	asf_usart.rs:${ASF_UNF_DIR}/asf/drivers/usart/usart.h \
 
 ASF_UNF_DIR = resources/asf-unf
 
@@ -197,10 +195,12 @@ have-bindgen:
 
 define bindgen
 	@echo "[BINDGEN ] $(2)"
-	@( echo '#![no_std]'; \
-		$$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $(1) ) | \
-		sed -e 's/)]$$/\0\nextern crate ctypes;/' \
-		> $(2)
+	@( ( echo '#![no_std]'; \
+		$$(cat have-bindgen) --use-core --convert-macros --builtins \
+			--ctypes-prefix=ctypes --no-rust-enums $(1) -- \
+			$(filter-out -mcpu=cortex-m4 -mthumb,${CFLAGS}) ) | \
+		sed -e '0,/)]$$/ s//\0\n#![allow(improper_ctypes)]\nextern crate ctypes;/' \
+		> $(2) ) 2>&1 | sed -e '/^WARN:bindgen/d' >&2
 
 endef
 
