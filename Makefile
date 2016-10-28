@@ -1,3 +1,5 @@
+# vim:foldmethod=marker:foldlevel=0
+
 # The MIT License (MIT)
 # Copyright (c) 2016 Chris Pavlina
 #
@@ -19,6 +21,9 @@
 # OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE
 # OR OTHER DEALINGS IN THE SOFTWARE.
 
+# TOOLCHAIN DEFINITIONS	{{{
+###############################################################################
+
 CROSS_COMPILE ?= arm-none-eabi-
 CC 		= ${CROSS_COMPILE}gcc
 OBJCOPY	= ${CROSS_COMPILE}objcopy
@@ -27,31 +32,35 @@ SIZE    = ${CROSS_COMPILE}size
 RUSTC   = rustc
 PYTHON  ?= python
 
-ASF_UNF_DIR = resources/asf-unf
-ASF_SOURCE ?= resources/asf
-RUSTLIB_DIR ?= resources/rustlibs
-FREERTOS = FreeRTOS
+# }}}
+
+# COMPILED OBJECTS {{{
+###############################################################################
+
+OBJECTS = \
+	hardware/mcu.o \
+	hardware/usart.o \
+	esh/esh_argparser.o \
+	esh/esh.o \
+	esh/esh_hist.o \
+	FreeRTOS/Source/queue.o \
+	FreeRTOS/Source/list.o \
+	FreeRTOS/Source/timers.o \
+	FreeRTOS/Source/tasks.o \
+	FreeRTOS/Source/croutine.o \
+	FreeRTOS/Source/event_groups.o \
+	FreeRTOS/Source/portable/MemMang/heap_1.o \
+	FreeRTOS/Source/portable/GCC/ARM_CM3/port.o \
+	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
+	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \
+	${ASF_UNF_DIR}/asf/drivers/pio/pio.o \
+	${ASF_UNF_DIR}/asf/drivers/pmc/pmc.o \
+	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
+	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
+	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
+	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
 
 RUSTLIBS = core alloc
-RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
-
-# Apply patsubst to just the file part of a path
-# $(call filepatsubst,pattern,replacement,path)
-filepatsubst = $(dir ${3})$(patsubst ${1},${2},$(notdir ${3}))
-
-# Get the nth element of a :-separated list
-# $(call nth,n,list)
-# $(call 2,a:b:c)	-> b
-nth = $(word ${1},$(subst :, ,${2}))
-
-LIBALLOC = rustsys/liballoc_system.rlib
-
-BINDGEN_SOURCES = \
-	hardware/bindgen_mcu.rs:hardware/mcu.h \
-	hardware/bindgen_usart.rs:hardware/usart.h \
-
-BINDGEN_CRATES = $(foreach i,${BINDGEN_SOURCES}, \
-				 $(call filepatsubst,%.rs,lib%.rlib,$(call nth,1,${i})))
 
 RUST_CRATES = \
 	libecfw_rust.rlib \
@@ -63,35 +72,21 @@ SUPPORT_CRATES = \
 	hardware/libbindgen_usart.rlib \
 	${BINDGEN_CRATES}
 
-ALL_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES}
+# }}}
 
-# Crates for which dependencies will be calculated. Do not include the
-# bindgen crates here! That will result in bindgen being run at inappropriate
-# times.
-DEP_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES}
+# GENERATED SOURCES {{{
+###############################################################################
 
-OBJECTS = \
-	hardware/mcu.o \
-	hardware/usart.o \
-	esh/esh_argparser.o \
-	esh/esh.o \
-	esh/esh_hist.o \
-	${FREERTOS}/Source/queue.o \
-	${FREERTOS}/Source/list.o \
-	${FREERTOS}/Source/timers.o \
-	${FREERTOS}/Source/tasks.o \
-	${FREERTOS}/Source/croutine.o \
-	${FREERTOS}/Source/event_groups.o \
-	${FREERTOS}/Source/portable/MemMang/heap_1.o \
-	${FREERTOS}/Source/portable/GCC/ARM_CM3/port.o \
-	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
-	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \
-	${ASF_UNF_DIR}/asf/drivers/pio/pio.o \
-	${ASF_UNF_DIR}/asf/drivers/pmc/pmc.o \
-	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
-	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
-	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
-	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
+BINDGEN_SOURCES = \
+	hardware/bindgen_mcu.rs:hardware/mcu.h \
+	hardware/bindgen_usart.rs:hardware/usart.h \
+
+ASF_UNF_DIR = resources/asf-unf
+
+# }}}
+
+# BUILD FLAGS {{{
+###############################################################################
 
 CFLAGS = \
 	-Os -g -pipe -std=c99 -Wall -Wextra \
@@ -101,8 +96,8 @@ CFLAGS = \
 	-iquote config \
 	-isystem ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/include \
 	-isystem ${ASF_UNF_DIR}/asf/thirdparty/CMSIS/Include \
-	-isystem ${FREERTOS}/Source/include \
-	-isystem ${FREERTOS}/Source/portable/GCC/ARM_CM3 \
+	-isystem FreeRTOS/Source/include \
+	-isystem FreeRTOS/Source/portable/GCC/ARM_CM3 \
 	-isystem ${ASF_UNF_DIR} \
 	-I esh \
 
@@ -120,6 +115,42 @@ LDFLAGS = \
 
 LIBS = -lm -lc -lgcc -lnosys
 
+# }}}
+
+# RESOURCES {{{
+
+ASF_SOURCE ?= resources/asf
+RUSTLIB_DIR ?= resources/rustlibs
+
+# }}}
+
+# FUNCTIONS AND COLLECTIONS {{{
+###############################################################################
+
+# Apply patsubst to just the file part of a path
+# $(call filepatsubst,pattern,replacement,path)
+filepatsubst = $(dir ${3})$(patsubst ${1},${2},$(notdir ${3}))
+
+# Get the nth element of a :-separated list
+# $(call nth,n,list)
+# $(call 2,a:b:c)	-> b
+nth = $(word ${1},$(subst :, ,${2}))
+
+# All Rust crates to be linked into the final executable.
+ALL_CRATES = ${RUST_CRATES} ${SUPPORT_CRATES}
+
+# Crates built from Rust standard libs (libcore, liballoc, etc)
+RUSTLIB_FILES = $(patsubst %,${RUSTLIB_DIR}/lib%.rlib,${RUSTLIBS})
+
+# Crates built from bindgen-generated sources
+BINDGEN_CRATES = $(foreach i,${BINDGEN_SOURCES}, \
+				 $(call filepatsubst,%.rs,lib%.rlib,$(call nth,1,${i})))
+
+# }}}
+
+# COMMAND TARGETS {{{
+###############################################################################
+
 .PHONY: all all-with-asf clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
@@ -129,33 +160,32 @@ all: do-bindgen ${ASF_UNF_DIR}
 all-with-asf: ecfw.hex ecfw.disasm
 	${SIZE} ecfw
 
--include ${OBJECTS:.o=.d}
--include $(patsubst %,%.d,${DEP_CRATES})
+clean:
+	rm -f ${OBJECTS}
+	rm -f ${ALL_CRATES}
+	rm -f $(foreach i,${BINDGEN_SOURCES},$(word 1,$(subst :, ,${i})))
+	rm -f ecfw ecfw.hex ecfw.disasm
+	rm -f ${OBJECTS:.o=.d}
+	rm -f $(patsubst %,%.d,${ALL_CRATES})
+	rm -f have-bindgen
 
-${RUST_CRATES}: ${SUPPORT_CRATES}
+genclean: clean
+	rm -rf ${ASF_UNF_DIR}
+	rm -rf ${RUSTLIB_FILES}
 
-lib%.rlib: %.rs ${RUSTLIB_FILES}
-	@echo "[RUSTC rs] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< && \
-	if [[ "${DEP_CRATES}" == *"$@"* ]]; then \
-	 	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit dep-info -o $@.d $< 2>/dev/null ; \
-		sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
-	fi
+distclean: genclean
+	rm -rf resources/rustsrc
 
-lib%.rlib: % ${RUSTLIB_FILES}
-	@echo "[RUSTC  /] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs && \
-	if [[ "${DEP_CRATES}" == *"$@"* ]]; then \
-		${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null ; \
-		sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
-	fi
+debug: ecfw
+	bash ./scripts/debug
 
-bindgen_%.rs: %.h have-bindgen
-	@echo "[BINDGEN ] $@"
-	@( echo '#![no_std]'; \
-	  $$(cat have-bindgen) --use-core --convert-macros --ctypes-prefix=ctypes $< ) | \
-	sed -e 's/)]$$/\0\nextern crate ctypes;/' \
-	> $@
+program: ecfw
+	bash ./scripts/program
+
+# }}}
+
+# INTERNAL COMMAND TARGETS {{{
+###############################################################################
 
 have-bindgen:
 	@echo -n "[LOCATE  ] bindgen... "
@@ -178,6 +208,33 @@ do-bindgen: have-bindgen $(foreach i,${BINDGEN_SOURCES},$(call nth,2,${i}))
 	$(foreach i,${BINDGEN_SOURCES}, \
 		$(call bindgen,$(call nth,2,${i}),$(call nth,1,${i})))
 
+# }}}
+
+# PATTERN TARGETS {{{
+###############################################################################
+
+lib%.rlib: %.rs ${RUSTLIB_FILES}
+	@echo "[RUSTC rs] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< && \
+	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit dep-info -o $@.d $< 2>/dev/null ; \
+	sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
+
+lib%.rlib: % ${RUSTLIB_FILES}
+	@echo "[RUSTC  /] $@"
+	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs && \
+	${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null ; \
+	sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
+
+%.o: %.c ${ASF_UNF_DIR}
+	@echo "[CC      ] $@"
+	@${CC} -c  ${CFLAGS} $*.c -o $*.o
+	@${CC} -MM ${CFLAGS} $*.c  > $*.d
+
+# }}}
+
+# RESOURCE TARGETS {{{
+###############################################################################
+
 ${ASF_UNF_DIR}: ./scripts/unfuck-asf.py
 	@if ! [ -e ${ASF_SOURCE} ]; then \
 		echo ERROR - you must provide the Atmel ASF source, via either ASF_SOURCE= ; \
@@ -194,11 +251,10 @@ ${RUSTLIB_DIR}/lib%.rlib:
 	@echo "[RUSTLIB ] $@"
 	@bash ./scripts/build-rust-lib.sh $*
 
-%.o: %.c ${ASF_UNF_DIR}
-	@echo "[CC      ] $@"
-	@${CC} -c  ${CFLAGS} $*.c -o $*.o
-	@${CC} -MM ${CFLAGS} $*.c  > $*.d
+# }}}
 
+# FINAL EXECUTABLE TARGETS {{{
+###############################################################################
 ecfw: ${OBJECTS} ${ALL_CRATES}
 	@echo "[CC LINK ] $@"
 	@${CC} ${CFLAGS} ${LDFLAGS} ${LIBS} \
@@ -212,24 +268,14 @@ ecfw.hex: ecfw
 	@echo "[OBJCOPY ] $@"
 	@${OBJCOPY} -O ihex $< $@
 
-clean:
-	rm -f ${OBJECTS}
-	rm -f ${ALL_CRATES}
-	rm -f $(foreach i,${BINDGEN_SOURCES},$(word 1,$(subst :, ,${i})))
-	rm -f ecfw ecfw.hex ecfw.disasm
-	rm -f ${OBJECTS:.o=.d}
-	rm -f $(patsubst %,%.d,${DEP_CRATES})
-	rm -f have-bindgen
+# }}}
 
-genclean: clean
-	rm -rf ${ASF_UNF_DIR}
-	rm -rf ${RUSTLIB_FILES}
+# ADDITIONAL DEPENDENCIES {{{
+###############################################################################
 
-distclean: genclean
-	rm -rf resources/rustsrc
+-include ${OBJECTS:.o=.d}
+-include $(patsubst %,%.d,${ALL_CRATES})
+${RUST_CRATES}: ${SUPPORT_CRATES}
 
-debug: ecfw
-	bash ./scripts/debug
+# }}}
 
-program: ecfw
-	bash ./scripts/program
