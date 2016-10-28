@@ -277,6 +277,7 @@ ecfw.hex: ecfw
 -include ${OBJECTS:.o=.d}
 -include $(patsubst %,%.d,${ALL_CRATES})
 ${RUST_CRATES}: ${SUPPORT_CRATES}
+${BINDGEN_CRATES}: libctypes.rlib
 
 # }}}
 
