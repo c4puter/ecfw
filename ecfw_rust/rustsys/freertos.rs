@@ -76,6 +76,11 @@ extern "C" {
     // Queue management
     fn xQueueGenericCreate(queuelen: usize, itemsize: usize, qtype: u8) -> QueueHandle;
     fn xQueueGenericSend(queue: QueueHandle, item: *const Void, waitticks: usize, copypos: i32) -> i32;
+    fn xQueueGenericSendFromISR(
+        xQueue: QueueHandle,
+        pvItemToQueue: *const Void,
+        pxHigherPriorityTaskWoken: *mut i32,
+        xCopyPosition: i32 ) -> i32;
     fn xQueueGenericReceive(queue: QueueHandle, item: *mut Void, waitticks: usize, peek: i32) -> i32;
     fn uxQueueMessagesWaiting(queue: QueueHandle) -> usize;
     fn uxQueueSpacesAvailable(queue: QueueHandle) -> usize;
@@ -126,12 +131,27 @@ impl <T> Queue<T> {
         };
     }
 
+    fn send_generic_from_isr(&self, item: &T, copypos: i32) -> Result<(), &str> {
+        let res = unsafe {
+            xQueueGenericSendFromISR(self.handle, mem::transmute(item), ptr::null_mut(), copypos)
+        };
+        return match res {
+            pdTRUE => Ok(()),
+            errQUEUE_FULL => Err("queue full"),
+            _ => Err("unknown queue error")
+        };
+    }
+
     pub fn send(&self, item: &T, waitticks: usize) -> Result<(), &str> {
         return self.send_generic(item, waitticks, queueSEND_TO_BACK);
     }
 
     pub fn send_to_front(&self, item: &T, waitticks: usize) -> Result<(), &str> {
         return self.send_generic(item, waitticks, queueSEND_TO_FRONT);
+    }
+
+    pub fn send_from_isr(&self, item: &T) -> Result<(), &str> {
+        return self.send_generic_from_isr(item, queueSEND_TO_BACK);
     }
 
     fn receive_generic(&self, waitticks: usize, peek: bool) -> Option<T> {

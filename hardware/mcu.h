@@ -33,4 +33,8 @@ bool mcu_get_pin_level(unsigned int pin);
 void mcu_set_pin_level(unsigned int pin, bool value);
 void mcu_init_pin(unsigned int pin, unsigned int mode_mask, bool default_value);
 
+void mcu_enable_irq(int irqn);
+void mcu_disable_irq(int irqn);
+void mcu_set_irq_prio(int irqn, int preempt, int sub);
+
 #endif // MCU_H

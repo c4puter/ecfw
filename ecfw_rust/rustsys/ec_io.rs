@@ -35,6 +35,7 @@ const USART_DBG: *mut asf_usart::Usart = USART1;
 struct UartWriter {}
 struct UartWriterAsync {}
 
+static mut STDIN_QUEUE:  Option<freertos::Queue<u8>> = None;
 static mut STDOUT_QUEUE: Option<freertos::Queue<u8>> = None;
 static mut STDOUT_MUTEX: Option<freertos::Mutex> = None;
 
@@ -63,12 +64,28 @@ pub fn putc_async(c: u8) {
 
 pub fn getc_async() -> u8 {
     loop {
-        let mut c = 0u32;
-        unsafe {
-            asf_usart::usart_getchar(USART_DBG, &mut c);
-        }
-        if c > 0 && c <= 255 {
-            return c as u8;
+        match unsafe{STDIN_QUEUE} {
+            Some(q) => match q.receive(10) {
+                Some(c) => {return c;},
+                None => () },
+            None => panic!("getc_async() before usart is initialized")
+        };
+    }
+}
+
+#[no_mangle]
+#[allow(unreachable_code,non_snake_case)]
+pub extern "C" fn USART1_Handler() {
+    let status = unsafe{asf_usart::usart_get_status(USART_DBG)};
+    if status & (asf_usart::US_CSR_RXRDY as u32) != 0 {
+        let mut rxdata = 0u32;
+        unsafe{asf_usart::usart_read(USART_DBG, &mut rxdata)};
+        if rxdata > 0 && rxdata <= 255 {
+            let rxbyte = rxdata as u8;
+            match unsafe{STDIN_QUEUE} {
+                Some(q) => {let _ = q.send_from_isr(&rxbyte);},
+                None => ()
+            }
         }
     }
 }
@@ -117,18 +134,23 @@ pub fn init()
         irda_filter: 0,
     };
 
-    let q = freertos::Queue::<u8>::new(72);
+    let qin = freertos::Queue::<u8>::new(256);
+    let qout = freertos::Queue::<u8>::new(72);
     let m = freertos::Mutex::new();
     unsafe {
-        STDOUT_QUEUE = Some(q);
+        STDIN_QUEUE = Some(qin);
+        STDOUT_QUEUE = Some(qout);
         STDOUT_MUTEX = Some(m);
 
         asf_usart::usart_init_rs232(
             USART_DBG, &usart_settings, bindgen_mcu::mcu_get_peripheral_hz());
         asf_usart::usart_enable_tx(USART_DBG);
         asf_usart::usart_enable_rx(USART_DBG);
+        asf_usart::usart_enable_interrupt(USART_DBG, asf_usart::US_IER_RXRDY as u32);
+        bindgen_mcu::mcu_set_irq_prio(asf_usart::USART1_IRQn, 4, 1);
+        bindgen_mcu::mcu_enable_irq(asf_usart::USART1_IRQn);
     }
-    freertos::Task::new(move || { putc_task(q); }, "ec_io", 200, 0);
+    freertos::Task::new(move || { putc_task(qout); }, "ec_io", 200, 0);
 }
 
 fn _print(args: fmt::Arguments) {

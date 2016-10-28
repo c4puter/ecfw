@@ -32,7 +32,7 @@ void mcu_init(void)
 {
     WDT->WDT_MR = WDT_MR_WDDIS;
     sysclk_init();
-    NVIC_SetPriorityGrouping(0);
+
     ioport_init();
     sysclk_enable_peripheral_clock(ID_TWI0);
     sysclk_enable_peripheral_clock(ID_USART1);
@@ -75,6 +75,22 @@ void mcu_init_pin(unsigned int pin, unsigned int mode_mask, bool default_value)
         }
         ioport_enable_pin(pin);
     }
+}
+
+void mcu_enable_irq(int irqn)
+{
+    NVIC_EnableIRQ(irqn);
+}
+
+void mcu_disable_irq(int irqn)
+{
+    NVIC_DisableIRQ(irqn);
+}
+
+void mcu_set_irq_prio(int irqn, int preempt, int sub)
+{
+    int g = NVIC_GetPriorityGrouping();
+    NVIC_SetPriority(irqn, NVIC_EncodePriority(g, preempt, sub));
 }
 
 /*
