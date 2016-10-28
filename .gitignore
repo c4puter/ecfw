@@ -11,3 +11,4 @@ flash.map
 deps.rust
 have-bindgen
 bindgen_*.rs
+do-bindgen
