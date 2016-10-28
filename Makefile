@@ -167,7 +167,7 @@ clean:
 	rm -f ecfw ecfw.hex ecfw.disasm
 	rm -f ${OBJECTS:.o=.d}
 	rm -f $(patsubst %,%.d,${ALL_CRATES})
-	rm -f have-bindgen
+	rm -f have-bindgen do-bindgen
 
 genclean: clean
 	rm -rf ${ASF_UNF_DIR}
@@ -207,6 +207,7 @@ endef
 do-bindgen: have-bindgen $(foreach i,${BINDGEN_SOURCES},$(call nth,2,${i}))
 	$(foreach i,${BINDGEN_SOURCES}, \
 		$(call bindgen,$(call nth,2,${i}),$(call nth,1,${i})))
+	@touch do-bindgen
 
 # }}}
 
