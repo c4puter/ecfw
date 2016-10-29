@@ -25,6 +25,7 @@ use core::fmt;
 extern crate bindgen_mcu;
 extern crate asf_usart;
 use rustsys::freertos;
+use rustsys::mutex;
 
 #[allow(dead_code)]
 const USART0: *mut asf_usart::Usart = 0x40024000u32 as *mut asf_usart::Usart;
@@ -37,7 +38,7 @@ struct UartWriterAsync {}
 
 static mut STDIN_QUEUE:  Option<freertos::Queue<u8>> = None;
 static mut STDOUT_QUEUE: Option<freertos::Queue<u8>> = None;
-static mut STDOUT_MUTEX: Option<freertos::Mutex> = None;
+static STDOUT_MUTEX: mutex::Mutex = mutex::Mutex::new();
 
 fn putc_task(q: freertos::Queue<u8>)
 {
@@ -114,14 +115,6 @@ impl<'a> fmt::Write for UartWriterAsync {
     }
 }
 
-fn mutex_lock(waitticks: usize) -> Result<freertos::MutexLock, &'static str>
-{
-    match unsafe{STDOUT_MUTEX} {
-        Some(m) => m.lock(waitticks),
-        None => panic!("no mutex configured yet")
-    }
-}
-
 /// Initialize EC IO. Starts a FreeRTOS task.
 pub fn init()
 {
@@ -136,12 +129,9 @@ pub fn init()
 
     let qin = freertos::Queue::<u8>::new(256);
     let qout = freertos::Queue::<u8>::new(72);
-    let m = freertos::Mutex::new();
     unsafe {
         STDIN_QUEUE = Some(qin);
         STDOUT_QUEUE = Some(qout);
-        STDOUT_MUTEX = Some(m);
-
         asf_usart::usart_init_rs232(
             USART_DBG, &usart_settings, bindgen_mcu::mcu_get_peripheral_hz());
         asf_usart::usart_enable_tx(USART_DBG);
@@ -158,12 +148,12 @@ fn _print(args: fmt::Arguments) {
 }
 
 pub fn print(args: fmt::Arguments) {
-    let _lock = mutex_lock(1000).unwrap();
+    let _lock = STDOUT_MUTEX.lock();
     _print(args);
 }
 
 pub fn println(args: fmt::Arguments) {
-    let _lock = mutex_lock(1000).unwrap();
+    let _lock = STDOUT_MUTEX.lock();
     _print(args);
     fmt::Write::write_str(&mut UartWriter{}, "\n").unwrap();
 }
