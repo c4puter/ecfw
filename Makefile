@@ -70,6 +70,9 @@ SUPPORT_CRATES = \
 	hardware/libbindgen_mcu.rlib \
 	${BINDGEN_CRATES}
 
+RUST_PLUGINS = \
+	plugins/librepeat.so \
+
 # }}}
 
 # GENERATED SOURCES {{{
@@ -101,7 +104,7 @@ CFLAGS = \
 
 RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
-	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src
+	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
 
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
@@ -152,7 +155,7 @@ BINDGEN_CRATES = $(foreach i,${BINDGEN_SOURCES}, \
 .PHONY: all all-with-asf clean genclean distclean debug program
 .SECONDARY: ${RUSTLIB_FILES}
 
-all: do-bindgen ${ASF_UNF_DIR}
+all: do-bindgen ${RUST_PLUGINS} ${ASF_UNF_DIR}
 	${MAKE} all-with-asf
 
 all-with-asf: ecfw.hex ecfw.disasm
@@ -165,6 +168,7 @@ clean:
 	rm -f ecfw ecfw.hex ecfw.disasm
 	rm -f ${OBJECTS:.o=.d}
 	rm -f $(patsubst %,%.d,${ALL_CRATES})
+	rm -f ${RUST_PLUGINS}
 	rm -f have-bindgen do-bindgen
 
 genclean: clean
@@ -225,6 +229,11 @@ lib%.rlib: % ${RUSTLIB_FILES}
 	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs && \
 	${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null ; \
 	sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
+
+# rustc plugins
+lib%.so: %.rs
+	@echo "[RUSTC so] $@"
+	@${RUSTC} --crate-type dylib -o $@ $<
 
 %.o: %.c ${ASF_UNF_DIR}
 	@echo "[CC      ] $@"

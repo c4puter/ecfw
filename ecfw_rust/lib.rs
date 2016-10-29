@@ -28,6 +28,10 @@
 #![feature(asm)]
 #![feature(alloc)]
 #![feature(allocator)]
+
+#![feature(plugin)]
+#![plugin(repeat)]
+
 #![crate_type = "rlib"]
 #![allocator]
 

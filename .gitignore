@@ -4,6 +4,7 @@ ecfw.hex
 ecfw.disasm
 flash.map
 *.o
+*.so
 *.d
 *.rlib
 *.ll
