@@ -22,6 +22,8 @@
  */
 
 #[macro_use]
+pub mod queue;
+#[macro_use]
 pub mod ec_io;
 pub mod alloc_system;
 pub mod panicking;

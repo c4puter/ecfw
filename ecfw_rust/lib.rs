@@ -28,6 +28,7 @@
 #![feature(asm)]
 #![feature(alloc)]
 #![feature(allocator)]
+#![feature(heap_api)]
 
 #![feature(plugin)]
 #![plugin(repeat)]
