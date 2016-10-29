@@ -23,7 +23,7 @@
 
 #![no_std]
 
-use rustsys::{freertos,mutex};
+use rustsys::mutex;
 extern crate bindgen_mcu;
 type TwiHandle = u32;
 use core::fmt;
@@ -31,8 +31,8 @@ use core::fmt;
 #[allow(dead_code)] pub const TWI0_HANDLE: TwiHandle = 0x40018000;
 #[allow(dead_code)] pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
 
-#[allow(dead_code)] static mut TWI0_: Twi = Twi { p_twi: TWI0_HANDLE, mutex: None };
-#[allow(dead_code)] static mut TWI1_: Twi = Twi { p_twi: TWI1_HANDLE, mutex: None };
+#[allow(dead_code)] static mut TWI0_: Twi = Twi { p_twi: TWI0_HANDLE, mutex: mutex::Mutex::new() };
+#[allow(dead_code)] static mut TWI1_: Twi = Twi { p_twi: TWI1_HANDLE, mutex: mutex::Mutex::new() };
 
 #[allow(dead_code)] pub fn twi0() -> &'static Twi { return unsafe{&TWI0_}; }
 #[allow(dead_code)] pub fn twi1() -> &'static Twi { return unsafe{&TWI1_}; }
@@ -109,10 +109,9 @@ extern "C" {
     fn twi_master_write(p_twi: TwiHandle, p_packet: *mut TwiPacket) -> TwiResult;
 }
 
-#[derive(Copy,Clone)]
 pub struct Twi {
     p_twi: TwiHandle,
-    mutex: Option<freertos::Mutex>,
+    mutex: mutex::Mutex,
 }
 
 pub struct TwiDevice {
@@ -122,8 +121,7 @@ pub struct TwiDevice {
 }
 
 impl Twi {
-    pub fn init(&mut self, speed: u32) -> Result<(),TwiResult> {
-        self.mutex = Some(freertos::Mutex::new());
+    pub fn init(&self, speed: u32) -> Result<(),TwiResult> {
         let opts = TwiOptions {
             master_clk: unsafe{bindgen_mcu::mcu_get_peripheral_hz()},
             speed: speed,
@@ -138,7 +136,7 @@ impl Twi {
 
     /// Test if a device answers a given address
     pub fn probe(&self, addr: u8) -> Result<bool,TwiResult> {
-        let _lock = self.mutex.unwrap().lock(1000).unwrap();
+        let _lock = self.mutex.lock();
         let rc = unsafe{twi_probe(self.p_twi, addr)};
         return match rc.code {
             TwiResultCode::Success      => Ok(true),
@@ -152,7 +150,7 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
     pub fn read(&self, addr: u8, location: &[u8], buffer: &mut [u8]) -> Result<(), TwiResult> {
-        let _lock = self.mutex.unwrap().lock(1000).unwrap();
+        let _lock = self.mutex.lock();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
         }
@@ -176,7 +174,7 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
     pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> Result<(), TwiResult> {
-        let _lock = self.mutex.unwrap().lock(1000).unwrap();
+        let _lock = self.mutex.lock();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
         }
