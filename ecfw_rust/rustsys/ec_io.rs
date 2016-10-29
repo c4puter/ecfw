@@ -26,6 +26,7 @@ extern crate bindgen_mcu;
 extern crate asf_usart;
 use rustsys::freertos;
 use rustsys::mutex;
+use rustsys::queue;
 
 #[allow(dead_code)]
 const USART0: *mut asf_usart::Usart = 0x40024000u32 as *mut asf_usart::Usart;
@@ -36,27 +37,22 @@ const USART_DBG: *mut asf_usart::Usart = USART1;
 struct UartWriter {}
 struct UartWriterAsync {}
 
-static mut STDIN_QUEUE:  Option<freertos::Queue<u8>> = None;
-static mut STDOUT_QUEUE: Option<freertos::Queue<u8>> = None;
+queue_static_new!(STDIN_QUEUE, u8, 256);
+queue_static_new!(STDOUT_QUEUE, u8, 72);
 static STDOUT_MUTEX: mutex::Mutex = mutex::Mutex::new();
 
-fn putc_task(q: freertos::Queue<u8>)
+fn putc_task(q: &'static queue::Queue<'static, u8>)
 {
     loop {
-        match q.receive(100) {
-            Some(c) => unsafe {
-                asf_usart::usart_putchar(USART_DBG, c as u32);
-            },
-            None => {}
+        let c = q.receive_wait();
+        unsafe {
+            asf_usart::usart_putchar(USART_DBG, c as u32);
         }
     }
 }
 
 pub fn putc(c: u8) {
-    match unsafe{STDOUT_QUEUE} {
-        Some(q) => q.send(&c, 1000).unwrap(),
-        None => ()
-    }
+    STDOUT_QUEUE.send_wait(c);
 }
 
 pub fn putc_async(c: u8) {
@@ -64,14 +60,7 @@ pub fn putc_async(c: u8) {
 }
 
 pub fn getc_async() -> u8 {
-    loop {
-        match unsafe{STDIN_QUEUE} {
-            Some(q) => match q.receive(10) {
-                Some(c) => {return c;},
-                None => () },
-            None => panic!("getc_async() before usart is initialized")
-        };
-    }
+    STDIN_QUEUE.receive_wait()
 }
 
 #[no_mangle]
@@ -83,9 +72,8 @@ pub extern "C" fn USART1_Handler() {
         unsafe{asf_usart::usart_read(USART_DBG, &mut rxdata)};
         if rxdata > 0 && rxdata <= 255 {
             let rxbyte = rxdata as u8;
-            match unsafe{STDIN_QUEUE} {
-                Some(q) => {let _ = q.send_from_isr(&rxbyte);},
-                None => ()
+            if !STDIN_QUEUE.send_no_wait(rxbyte) {
+                println_async(format_args!("\n\nUSART BUFFER OVERFLOW\n"));
             }
         }
     }
@@ -127,11 +115,7 @@ pub fn init()
         irda_filter: 0,
     };
 
-    let qin = freertos::Queue::<u8>::new(256);
-    let qout = freertos::Queue::<u8>::new(72);
     unsafe {
-        STDIN_QUEUE = Some(qin);
-        STDOUT_QUEUE = Some(qout);
         asf_usart::usart_init_rs232(
             USART_DBG, &usart_settings, bindgen_mcu::mcu_get_peripheral_hz());
         asf_usart::usart_enable_tx(USART_DBG);
@@ -140,7 +124,7 @@ pub fn init()
         bindgen_mcu::mcu_set_irq_prio(asf_usart::USART1_IRQn, 4, 1);
         bindgen_mcu::mcu_enable_irq(asf_usart::USART1_IRQn);
     }
-    freertos::Task::new(move || { putc_task(qout); }, "ec_io", 200, 0);
+    freertos::Task::new(move || { putc_task(&STDOUT_QUEUE); }, "ec_io", 200, 0);
 }
 
 fn _print(args: fmt::Arguments) {
