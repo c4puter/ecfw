@@ -91,6 +91,9 @@ fn cmd_free(_args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_i2c_probe(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 2 {
+        return Err("expected argument(s)");
+    }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
     match twi::twi0().probe(addr) {
         Ok(is_present) => {
@@ -104,6 +107,9 @@ fn cmd_i2c_probe(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_i2c_read(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 4 {
+        return Err("expected argument(s)");
+    }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
     let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
     let n = try!(argv_parsed(args, 3, "N", u8::parseint));
@@ -125,6 +131,9 @@ fn cmd_i2c_read(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_i2c_write(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 3 {
+        return Err("expected argument(s)");
+    }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
     let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
 
@@ -149,6 +158,9 @@ fn cmd_i2c_write(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_gpio_read(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 2 {
+        return Err("expected argument(s)");
+    }
     let gpio_name = try_utf8!(args.get_str(1));
 
     match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
@@ -161,6 +173,9 @@ fn cmd_gpio_read(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_gpio_write(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 3 {
+        return Err("expected argument(s)");
+    }
     let gpio_name = try_utf8!(args.get_str(1));
     let gpio_val = try!(argv_parsed(args, 2, "VALUE", i8::parseint));
 
@@ -174,6 +189,9 @@ fn cmd_gpio_write(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_pwr_stat(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 2 {
+        return Err("expected argument(s)");
+    }
     let supply_name = try_utf8!(args.get_str(1));
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} up? {}", supply_name, try!(supply.is_up())),
@@ -184,6 +202,9 @@ fn cmd_pwr_stat(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_pwr_up(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 2 {
+        return Err("expected argument(s)");
+    }
     let supply_name = try_utf8!(args.get_str(1));
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} state changed? {}",
@@ -195,6 +216,9 @@ fn cmd_pwr_up(args: &EshArgArray) -> Result<(), &'static str>
 
 fn cmd_pwr_dn(args: &EshArgArray) -> Result<(), &'static str>
 {
+    if args.len() < 2 {
+        return Err("no supply specified");
+    }
     let supply_name = try_utf8!(args.get_str(1));
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} state changed? {}",
