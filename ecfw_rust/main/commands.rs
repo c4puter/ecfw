@@ -22,7 +22,7 @@
  */
 
 use rustsys::{ec_io,freertos};
-use hardware::twi;
+use hardware::twi::TWI0;
 use main::{pins, supplies};
 
 use main::parseint::ParseInt;
@@ -95,7 +95,7 @@ fn cmd_i2c_probe(args: &EshArgArray) -> Result<(), &'static str>
         return Err("expected argument(s)");
     }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
-    match twi::twi0().probe(addr) {
+    match TWI0.probe(addr) {
         Ok(is_present) => {
             if is_present { println!("address {} present", addr); }
             else          { println!("address {} does not respond", addr); }
@@ -120,7 +120,7 @@ fn cmd_i2c_read(args: &EshArgArray) -> Result<(), &'static str>
     let location_arr = [loc];
     let mut buffer = [0 as u8; 16];
 
-    match twi::twi0().read(addr, &location_arr, &mut buffer[0..n as usize]) {
+    match TWI0.read(addr, &location_arr, &mut buffer[0..n as usize]) {
         Ok(_) => {
             println!("{:?}", &buffer[0..n as usize]);
             Ok(())
@@ -150,7 +150,7 @@ fn cmd_i2c_write(args: &EshArgArray) -> Result<(), &'static str>
 
     let location_arr = [loc];
 
-    match twi::twi0().write(addr, &location_arr, &buffer[0..n as usize]) {
+    match TWI0.write(addr, &location_arr, &buffer[0..n as usize]) {
         Ok(_) => Ok(()),
         Err(e) => Err(e.description())
     }

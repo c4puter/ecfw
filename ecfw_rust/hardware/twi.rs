@@ -27,18 +27,13 @@ use rustsys::mutex;
 extern crate bindgen_mcu;
 type TwiHandle = u32;
 use core::fmt;
+use core::sync::atomic::*;
 
 #[allow(dead_code)] pub const TWI0_HANDLE: TwiHandle = 0x40018000;
 #[allow(dead_code)] pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
 
-#[allow(dead_code)] static mut TWI0_: Twi = Twi { p_twi: TWI0_HANDLE, mutex: mutex::Mutex::new() };
-#[allow(dead_code)] static mut TWI1_: Twi = Twi { p_twi: TWI1_HANDLE, mutex: mutex::Mutex::new() };
-
-#[allow(dead_code)] pub fn twi0() -> &'static Twi { return unsafe{&TWI0_}; }
-#[allow(dead_code)] pub fn twi1() -> &'static Twi { return unsafe{&TWI1_}; }
-
-#[allow(dead_code)] pub unsafe fn twi0_init(speed: u32) -> Result<(),TwiResult> { TWI0_.init(speed) }
-#[allow(dead_code)] pub unsafe fn twi1_init(speed: u32) -> Result<(),TwiResult> { TWI1_.init(speed) }
+#[allow(dead_code)] pub static TWI0: Twi = Twi::new(TWI0_HANDLE);
+#[allow(dead_code)] pub static TWI1: Twi = Twi::new(TWI1_HANDLE);
 
 #[repr(u32)]
 #[derive(Debug)]
@@ -112,16 +107,33 @@ extern "C" {
 pub struct Twi {
     p_twi: TwiHandle,
     mutex: mutex::Mutex,
+    initialized: AtomicBool,
 }
 
 pub struct TwiDevice {
-    pub twi: fn() -> &'static Twi,
+    pub twi: &'static Twi,
     pub addr: u8,
     pub mutex: mutex::Mutex,
 }
 
+/// Threadsafe wrapper around TWI peripheral. This must be initialized before
+/// use; use before init() or a double-init() will panic.
 impl Twi {
+    pub const fn new(p_twi: TwiHandle) -> Twi {
+        Twi {
+            p_twi: p_twi,
+            mutex: mutex::Mutex::new(),
+            initialized: ATOMIC_BOOL_INIT,
+        }
+    }
+
+    /// Initialize the TWI; panic if double-initialized.
     pub fn init(&self, speed: u32) -> Result<(),TwiResult> {
+        let was_initialized = self.initialized.swap(true, Ordering::Relaxed);
+        if was_initialized {
+            panic!("TWI: double init()");
+        }
+
         let opts = TwiOptions {
             master_clk: unsafe{bindgen_mcu::mcu_get_peripheral_hz()},
             speed: speed,
@@ -136,6 +148,10 @@ impl Twi {
 
     /// Test if a device answers a given address
     pub fn probe(&self, addr: u8) -> Result<bool,TwiResult> {
+        if !self.initialized.load(Ordering::Relaxed) {
+            panic!("TWI: use before init()");
+        }
+
         let _lock = self.mutex.lock();
         let rc = unsafe{twi_probe(self.p_twi, addr)};
         return match rc.code {
@@ -150,6 +166,9 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
     pub fn read(&self, addr: u8, location: &[u8], buffer: &mut [u8]) -> Result<(), TwiResult> {
+        if !self.initialized.load(Ordering::Relaxed) {
+            panic!("TWI: use before init()");
+        }
         let _lock = self.mutex.lock();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
@@ -174,6 +193,9 @@ impl Twi {
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
     pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> Result<(), TwiResult> {
+        if !self.initialized.load(Ordering::Relaxed) {
+            panic!("TWI: use before init()");
+        }
         let _lock = self.mutex.lock();
         if location.len() > 3 {
             return Err(TwiResult{code: TwiResultCode::InvalidArgument});
@@ -195,7 +217,7 @@ impl Twi {
 }
 
 impl TwiDevice {
-    pub const fn new(twi: fn() -> &'static Twi, addr: u8) -> TwiDevice {
+    pub const fn new(twi: &'static Twi, addr: u8) -> TwiDevice {
         TwiDevice {
             twi: twi,
             addr: addr,
@@ -211,7 +233,7 @@ impl TwiDevice {
     /// Test if the device answers its address
     #[allow(dead_code)]
     pub fn probe(&'static self) -> Result<bool, TwiResult> {
-        (self.twi)().probe(self.addr)
+        self.twi.probe(self.addr)
     }
 
     /// Read from 'location' into 'buffer'
@@ -220,7 +242,7 @@ impl TwiDevice {
     pub fn read(&'static self, location: &[u8], buffer: &mut [u8])
             -> Result<(), TwiResult>
     {
-        (self.twi)().read(self.addr, location, buffer)
+        self.twi.read(self.addr, location, buffer)
     }
 
     /// Write to 'location' from 'buffer'.
@@ -229,6 +251,6 @@ impl TwiDevice {
     pub fn write(&'static self, location: &[u8], buffer: &[u8])
             -> Result<(), TwiResult>
     {
-        (self.twi)().write(self.addr, location, buffer)
+        self.twi.write(self.addr, location, buffer)
     }
 }

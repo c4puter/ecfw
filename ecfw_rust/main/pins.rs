@@ -49,14 +49,14 @@ macro_rules! pin_table {
 
 // PCF8575
 const OUTPUTS_U101: u16 = 0x0030;
-static U101: TwiDevice = TwiDevice::new(twi::twi0, 0x21);
+static U101: TwiDevice = TwiDevice::new(&twi::TWI0, 0x21);
 
 // PCF8575
 const OUTPUTS_U901: u16 = 0xcfff;
-static U901: TwiDevice = TwiDevice::new(twi::twi0, 0x20);
+static U901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x20);
 
 // AS1130
-pub static U801: TwiDevice = TwiDevice::new(twi::twi0, 0x37);
+pub static U801: TwiDevice = TwiDevice::new(&twi::TWI0, 0x37);
 
 
 pin_table!{
