@@ -12,8 +12,6 @@ use syntax::ptr::P;
 use rustc_plugin::Registry;
 use syntax::util::small_vector::SmallVector;
 use syntax::ast;
-use syntax::ast::Lit;
-use std::error::Error;
 
 fn expand_repeat(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult + 'static> {
     let mut parser = cx.new_parser_from_tts(tts);
