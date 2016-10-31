@@ -194,7 +194,7 @@ fn cmd_pwr_stat(args: &EshArgArray) -> Result<(), &'static str>
     }
     let supply_name = try_utf8!(args.get_str(1));
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
-        Some(supply) => println!("supply {} up? {}", supply_name, try!(supply.is_up())),
+        Some(supply) => println!("supply {} status: {:?}", supply_name, try!(supply.status())),
         None => println!("supply {} not found", supply_name),
     }
     Ok(())
