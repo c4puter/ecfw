@@ -232,15 +232,15 @@ do-bindgen: have-bindgen $(foreach i,${BINDGEN_SOURCES},$(call nth,2,${i}))
 
 lib%.rlib: %.rs ${RUSTLIB_FILES}
 	@echo "[RUSTC rs] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $< && \
-	${RUSTC} ${RUSTFLAGS} --crate-type lib --emit dep-info -o $@.d $< 2>/dev/null ; \
-	sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib -o $@ $<
+	@${RUSTC} ${RUSTFLAGS} --crate-type lib --emit dep-info -o $@.d $< 2>/dev/null
+	@sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d
 
 lib%.rlib: % ${RUSTLIB_FILES}
 	@echo "[RUSTC  /] $@"
-	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs && \
-	${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null ; \
-	sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d ; \
+	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) -o $@ $</lib.rs
+	@${RUSTC} ${RUSTFLAGS} --crate-name=$$(basename $<) --emit dep-info -o $@.d $</lib.rs 2>/dev/null
+	@sed -i -e 's/\.rlib\.d:/\.rlib:/' $@.d
 
 # rustc plugins
 lib%.so: %.rs
