@@ -33,11 +33,13 @@ const RSTC: *mut asf_rstc::Rstc = 0x400E1400u32 as *mut asf_rstc::Rstc;
 /// after a timeout.
 pub fn hard_reset()
 {
-    // Grab a lock on the VRM before disabling interrupts. This allows any
-    // pending transactions to complete, avoiding putting the VRM's I2C slave
+    // Grab locks before suspending tasks. This allows any pending
+    // transactions to complete, avoiding putting the VRM's I2C slave
     // in an unknown state.
     println!("\nHard reset");
-    println!("    Acquire VRM lock");
+    println!("    Acquire power control lock");
+    let _plock = power::POWER_MUTEX.lock();
+    println!("    Acquire VRM I2C lock");
     let _lock = power::VRM901.lock();
 
     // Unsafe: shuts down the task scheduler

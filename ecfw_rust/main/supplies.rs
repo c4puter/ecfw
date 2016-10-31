@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use main::power::*;
+pub use main::power::*;
 use main::pins::*;
 
 pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[
