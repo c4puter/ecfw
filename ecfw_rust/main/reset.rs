@@ -38,9 +38,9 @@ pub fn hard_reset()
     // in an unknown state.
     println!("\nHard reset");
     println!("    Acquire power control lock");
-    let _plock = power::POWER_MUTEX.lock();
+    let _plock = power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
     println!("    Acquire VRM I2C lock");
-    let _lock = power::VRM901.lock();
+    let _lock = power::VRM901.lock_timeout(1000).expect("timeout");
 
     // Unsafe: shuts down the task scheduler
     println!("    Suspend tasks");

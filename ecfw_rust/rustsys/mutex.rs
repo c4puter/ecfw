@@ -44,23 +44,61 @@ impl Mutex {
 
     pub fn take(&self) {
         loop {
-            let was_locked = self.locked.swap(true, Ordering::SeqCst);
+            let was_locked = self.locked.swap(true, Ordering::Relaxed);
 
             if was_locked {
-                freertos::yield_task();
+                freertos::yield_safe();
             } else {
                 return;
             }
         }
     }
 
+    pub fn try_take(&self) -> bool {
+        let was_locked = self.locked.swap(true, Ordering::Relaxed);
+        return !was_locked;
+    }
+
+    pub fn take_timeout(&self, nticks: u32) -> bool {
+        let end_tick = freertos::ticks().wrapping_add(nticks);
+        while end_tick < freertos::ticks() {
+            if self.try_take() {
+                return true;
+            }
+            freertos::yield_safe();
+        }
+        while freertos::ticks() < end_tick {
+            if self.try_take() {
+                return true;
+            }
+            freertos::yield_safe();
+        }
+        false
+    }
+
     pub fn give(&self) {
-        self.locked.store(false, Ordering::SeqCst);
+        self.locked.store(false, Ordering::Relaxed);
     }
 
     pub fn lock(&self) -> MutexLock {
         self.take();
         MutexLock{mutex: self}
+    }
+
+    pub fn try_lock(&self) -> Option<MutexLock> {
+        if self.try_take() {
+            Some(MutexLock{mutex: self})
+        } else {
+            None
+        }
+    }
+
+    pub fn lock_timeout(&self, nticks: u32) -> Option<MutexLock> {
+        if self.take_timeout(nticks) {
+            Some(MutexLock{mutex: self})
+        } else {
+            None
+        }
     }
 }
 

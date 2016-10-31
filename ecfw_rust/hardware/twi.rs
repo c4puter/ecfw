@@ -230,6 +230,12 @@ impl TwiDevice {
         self.mutex.lock()
     }
 
+    /// Obtain and return a lock on this device. This is an RAII lock that will
+    /// be released when it goes out of scope.
+    pub fn lock_timeout(&'static self, nticks: u32) -> Option<mutex::MutexLock> {
+        self.mutex.lock_timeout(nticks)
+    }
+
     /// Test if the device answers its address
     #[allow(dead_code)]
     pub fn probe(&'static self) -> Result<bool, TwiResult> {

@@ -32,6 +32,7 @@ use core::sync::atomic::*;
 use alloc::boxed::Box;
 
 static TICK_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+static SUSPEND_LEVEL: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub enum Void {}
 pub type TaskHandle = u32;
@@ -95,6 +96,17 @@ pub fn yield_task() {
     rust_support::isb();
 }
 
+/// Yield if tasks are not suspended, otherwise do nothing.
+pub fn yield_safe() {
+    unsafe{ rust_support::disable_irq(); }
+    if SUSPEND_LEVEL.load(Ordering::Relaxed) == 0 {
+        unsafe{ rust_support::pendsv(); }
+    }
+    unsafe{ rust_support::enable_irq(); }
+    rust_support::dsb();
+    rust_support::isb();
+}
+
 pub fn delay(nticks: u32) {
     unsafe{ vTaskDelay(nticks); }
 }
@@ -104,10 +116,10 @@ pub fn susp_safe_delay(nticks: u32) {
     let end_tick = ticks().wrapping_add(nticks);
     // If the addition wrapped, wait for the tick counter to catch up
     while end_tick < ticks() {
-        //yield_task();
+        yield_safe();
     }
     while ticks() < end_tick {
-        //yield_task();
+        yield_safe();
     }
 }
 
@@ -118,11 +130,16 @@ pub fn ticks() -> u32 {
 }
 
 pub unsafe fn suspend_all() {
+    SUSPEND_LEVEL.fetch_add(1, Ordering::Relaxed);
     vTaskSuspendAll();
 }
 
 pub unsafe fn resume_all() {
-    vTaskResumeAll();
+    if SUSPEND_LEVEL.fetch_sub(1, Ordering::Relaxed) == 0 {
+        SUSPEND_LEVEL.fetch_add(1, Ordering::Relaxed);
+    } else {
+        vTaskResumeAll();
+    }
 }
 
 #[no_mangle]
