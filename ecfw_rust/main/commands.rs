@@ -23,7 +23,7 @@
 
 use rustsys::{ec_io,freertos};
 use hardware::twi::TWI0;
-use main::{pins, supplies};
+use main::{pins, supplies, reset};
 
 use main::parseint::ParseInt;
 use esh::{EshArgArray,Utf8Error};
@@ -39,6 +39,8 @@ pub struct Command {
 pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "help",      f: cmd_help,    descr: "display commands and their descriptions" },
     Command{ name: "free",      f: cmd_free,    descr: "display free heap" },
+    Command{ name: "srst",      f: cmd_srst,    descr: "soft reset" },
+    Command{ name: "hrst",      f: cmd_hrst,    descr: "hard reset" },
 
     Command{ name: "i2c_probe", f: cmd_i2c_probe,   descr: "probe I2C for an ADDR" },
     Command{ name: "i2c_read",  f: cmd_i2c_read,    descr: "read I2C from ADDR at LOCATION, N bytes" },
@@ -85,8 +87,19 @@ fn cmd_help(_args: &EshArgArray) -> Result<(), &'static str>
 fn cmd_free(_args: &EshArgArray) -> Result<(), &'static str>
 {
     println!("{} B", freertos::get_free_heap());
-
     Ok(())
+}
+
+fn cmd_srst(_args: &EshArgArray) -> Result<(), &'static str>
+{
+    reset::soft_reset();
+    Err("did not reset")    // should never happen
+}
+
+fn cmd_hrst(_args: &EshArgArray) -> Result<(), &'static str>
+{
+    reset::hard_reset();
+    Err("did not reset")    // should never happen
 }
 
 fn cmd_i2c_probe(args: &EshArgArray) -> Result<(), &'static str>

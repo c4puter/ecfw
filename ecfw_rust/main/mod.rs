@@ -27,3 +27,4 @@ mod parseint;
 mod pins;
 mod power;
 mod supplies;
+mod reset;

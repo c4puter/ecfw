@@ -28,7 +28,10 @@ use core::ptr;
 use core::str;
 use core::slice;
 use core::mem;
+use core::sync::atomic::*;
 use alloc::boxed::Box;
+
+static TICK_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
 pub enum Void {}
 pub type TaskHandle = u32;
@@ -53,6 +56,8 @@ extern "C" {
     // Utilities
     fn xPortGetFreeHeapSize() -> usize;
     fn vTaskDelay(xTicksToDelay: u32);
+    fn vTaskSuspendAll();
+    fn vTaskResumeAll();
 }
 
 extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
@@ -90,8 +95,34 @@ pub fn yield_task() {
     rust_support::isb();
 }
 
-pub fn delay(ticks: u32) {
-    unsafe{ vTaskDelay(ticks); }
+pub fn delay(nticks: u32) {
+    unsafe{ vTaskDelay(nticks); }
+}
+
+/// Delay, even if the scheduler is suspended
+pub fn susp_safe_delay(nticks: u32) {
+    let end_tick = ticks().wrapping_add(nticks);
+    // If the addition wrapped, wait for the tick counter to catch up
+    while end_tick < ticks() {
+        //yield_task();
+    }
+    while ticks() < end_tick {
+        //yield_task();
+    }
+}
+
+/// Get the total number of ticks elapsed since run(). This is an independent
+/// tick counter that runs even when the scheduler is suspended.
+pub fn ticks() -> u32 {
+    TICK_COUNT.load(Ordering::Relaxed) as u32
+}
+
+pub unsafe fn suspend_all() {
+    vTaskSuspendAll();
+}
+
+pub unsafe fn resume_all() {
+    vTaskResumeAll();
 }
 
 #[no_mangle]
@@ -110,4 +141,11 @@ pub extern "C" fn vApplicationStackOverflowHook(taskhnd: *const Void, pname: *co
 pub extern "C" fn vApplicationMallocFailedHook()
 {
     panic!("Out of memory");
+}
+
+#[no_mangle]
+#[allow(non_snake_case)]
+pub extern "C" fn vApplicationTickHook()
+{
+    TICK_COUNT.fetch_add(1, Ordering::Relaxed);
 }

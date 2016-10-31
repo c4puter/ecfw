@@ -54,6 +54,7 @@ OBJECTS = \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \
 	${ASF_UNF_DIR}/asf/drivers/pio/pio.o \
 	${ASF_UNF_DIR}/asf/drivers/pmc/pmc.o \
+	${ASF_UNF_DIR}/asf/drivers/rstc/rstc.o \
 	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
 	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
@@ -81,6 +82,7 @@ RUST_PLUGINS = \
 BINDGEN_SOURCES = \
 	hardware/bindgen_mcu.rs:hardware/mcu.h \
 	asf_usart.rs:${ASF_UNF_DIR}/asf/drivers/usart/usart.h \
+	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
 
 ASF_UNF_DIR = resources/asf-unf
 

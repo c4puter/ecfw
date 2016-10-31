@@ -63,6 +63,10 @@ pub fn getc_async() -> u8 {
     STDIN_QUEUE.receive_wait()
 }
 
+pub fn flush_output() {
+    STDOUT_QUEUE.flush();
+}
+
 #[no_mangle]
 #[allow(unreachable_code,non_snake_case)]
 pub extern "C" fn USART1_Handler() {

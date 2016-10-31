@@ -27,7 +27,7 @@ use hardware::gpio::Gpio;
 use hardware::twi::TwiDevice;
 use core::sync::atomic::*;
 
-static VRM901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x47);
+pub static VRM901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x47);
 
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change
@@ -63,7 +63,7 @@ pub trait Supply {
                     else {
                         if to_timeout > 0 {
                             to_timeout -= 1;
-                            freertos::delay(1);
+                            freertos::susp_safe_delay(1);
                         } else {
                             panic!("timeout waiting for supply {} state change: {:?} -> {:?}",
                                    self.name(), s, status)
@@ -166,6 +166,7 @@ pub trait Supply {
 pub struct VrmSupply {
     virt: VirtualSupply,
     vrm_id: u8,         // ID used by the VRM I2C interface
+    disch: Option<(&'static Gpio, u32)>,
     set_state: AtomicBool,
     transitioning: AtomicBool,
 }
@@ -174,6 +175,7 @@ pub struct VrmSupply {
 pub struct GpioSwitchedSupply {
     virt: VirtualSupply,
     gpio: &'static Gpio,
+    disch: Option<(&'static Gpio, u32)>,
     wait_ticks: u32,    // Number of 1ms ticks to wait after switching
                         // to consider the supply settled
 }
@@ -196,6 +198,23 @@ impl VrmSupply {
         VrmSupply {
             virt: VirtualSupply::new(name, deps),
             vrm_id: vrm_id,
+            disch: None,
+            set_state: ATOMIC_BOOL_INIT,
+            transitioning: ATOMIC_BOOL_INIT,
+        }
+    }
+
+    pub const fn new_disch(
+        name: &'static str,
+        deps: &'static [&'static Supply],
+        vrm_id: u8,
+        disch: &'static Gpio,
+        dischwait: u32) -> VrmSupply
+    {
+        VrmSupply {
+            virt: VirtualSupply::new(name, deps),
+            vrm_id: vrm_id,
+            disch: Some((disch, dischwait)),
             set_state: ATOMIC_BOOL_INIT,
             transitioning: ATOMIC_BOOL_INIT,
         }
@@ -229,6 +248,12 @@ impl Supply for VrmSupply {
     }
 
     fn enable(&self) -> Result<(), &'static str> {
+        match self.disch {
+            Some((gpio, wait)) => {
+                gpio.set(false);
+            },
+            None => ()
+        }
         match VRM901.write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED]) {
             Ok(_) => {
                 self.set_state.store(true, Ordering::Relaxed);
@@ -243,6 +268,13 @@ impl Supply for VrmSupply {
             Ok(_) => {
                 self.set_state.store(false, Ordering::Relaxed);
                 self.transitioning.store(false, Ordering::Relaxed);
+                match self.disch {
+                    Some((gpio, wait)) => {
+                        gpio.set(true);
+                        freertos::susp_safe_delay(wait);
+                    },
+                    None => ()
+                };
                 Ok(()) },
             Err(e) => Err(e.description())
         }
@@ -263,6 +295,23 @@ impl GpioSwitchedSupply {
         GpioSwitchedSupply {
             virt: VirtualSupply::new(name, deps),
             gpio: gpio,
+            disch: None,
+            wait_ticks: wait_ticks,
+        }
+    }
+
+    pub const fn new_disch(
+        name: &'static str,
+        deps: &'static [&'static Supply],
+        gpio: &'static Gpio,
+        wait_ticks: u32,
+        disch: &'static Gpio,
+        dischwait: u32) -> GpioSwitchedSupply
+    {
+        GpioSwitchedSupply {
+            virt: VirtualSupply::new(name, deps),
+            gpio: gpio,
+            disch: Some((disch, dischwait)),
             wait_ticks: wait_ticks,
         }
     }
@@ -274,14 +323,29 @@ impl Supply for GpioSwitchedSupply {
     }
 
     fn enable(&self) -> Result<(), &'static str> {
+        match self.disch {
+            Some((disgpio, wait)) => {
+                disgpio.set(false);
+            },
+            None => ()
+        }
         self.gpio.set(true);
-        freertos::delay(self.wait_ticks);
+        freertos::susp_safe_delay(self.wait_ticks);
         Ok(())
     }
 
     fn disable(&self) -> Result<(), &'static str> {
+        let mut max_wait = self.wait_ticks;
+
         self.gpio.set(false);
-        freertos::delay(self.wait_ticks);
+        match self.disch {
+            Some((disgpio, wait)) => {
+                disgpio.set(true);
+                if wait > max_wait { max_wait = wait; }
+            },
+            None => ()
+        };
+        freertos::susp_safe_delay(max_wait);
         Ok(())
     }
 

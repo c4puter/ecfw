@@ -37,11 +37,12 @@ pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[
     &BUCK_1V2,
     &SW1,
     &SW2,
+    &SW3,
 ];
 
-pub static BUCK_5VA: VrmSupply = VrmSupply::new("BUCK_5VA", &[], 1);
-pub static BUCK_5VB: VrmSupply = VrmSupply::new("BUCK_5VB", &[], 2);
-pub static BUCK_3VA: VrmSupply = VrmSupply::new("BUCK_3VA", &[], 3);
+pub static BUCK_5VA: VrmSupply = VrmSupply::new_disch("BUCK_5VA", &[], 1, &DISCH_5VA, 72);
+pub static BUCK_5VB: VrmSupply = VrmSupply::new_disch("BUCK_5VB", &[], 2, &DISCH_5VB, 72);
+pub static BUCK_3VA: VrmSupply = VrmSupply::new_disch("BUCK_3VA", &[], 3, &DISCH_3VA, 36);
 pub static BUCK_3VB: VrmSupply = VrmSupply::new("BUCK_3VB", &[], 4);
 pub static INV_N12: VrmSupply = VrmSupply::new("INV_N12", &[&BUCK_5VA, &BUCK_5VB], 5);
 
@@ -57,17 +58,15 @@ pub static LDO_S0: GpioSwitchedSupply = GpioSwitchedSupply::new(
     &EN_V75,
     1);
 
-pub static BUCK_1V5: GpioSwitchedSupply = GpioSwitchedSupply::new(
-    "BUCK_1V5",
-    &[&BUCK_5VB],
-    &EN_1V5,
-    10);
+pub static BUCK_1V5: GpioSwitchedSupply = GpioSwitchedSupply::new_disch(
+    "BUCK_1V5", &[&BUCK_5VB],
+    &EN_1V5, 10,
+    &DISCH_1V5, 12);
 
-pub static BUCK_1V2: GpioSwitchedSupply = GpioSwitchedSupply::new(
-    "BUCK_1V2",
-    &[&BUCK_5VA],
-    &EN_1V2,
-    10);
+pub static BUCK_1V2: GpioSwitchedSupply = GpioSwitchedSupply::new_disch(
+    "BUCK_1V2", &[&BUCK_5VA],
+    &EN_1V2, 10,
+    &DISCH_1V2, 12);
 
 pub static SW1: GpioSwitchedSupply = GpioSwitchedSupply::new(
     "SW1",
@@ -80,3 +79,10 @@ pub static SW2: GpioSwitchedSupply = GpioSwitchedSupply::new(
     &[&BUCK_5VB],
     &EN_P5V_PCI_B,
     1);
+
+pub static SW3: GpioSwitchedSupply = GpioSwitchedSupply::new_disch(
+    "SW3",
+    &[&BUCK_3VB],
+    &EN_P3V3_S0B,
+    1,
+    &DISCH_3VB, 36);

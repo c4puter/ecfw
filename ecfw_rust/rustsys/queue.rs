@@ -39,6 +39,7 @@ pub struct Queue<'a, T> where T: 'a + Send + Copy + Sized {
     iread: AtomicUsize,
     imaxread: AtomicUsize,
     iwrite: AtomicUsize,
+    flushing: AtomicBool,
 }
 
 macro_rules! queue_static_init {
@@ -74,6 +75,7 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
             iread: ATOMIC_USIZE_INIT,
             imaxread: ATOMIC_USIZE_INIT,
             iwrite: ATOMIC_USIZE_INIT,
+            flushing: ATOMIC_BOOL_INIT,
         }
     }
 
@@ -91,12 +93,17 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
             iread: ATOMIC_USIZE_INIT,
             imaxread: ATOMIC_USIZE_INIT,
             iwrite: ATOMIC_USIZE_INIT,
+            flushing: ATOMIC_BOOL_INIT,
         }
     }
 
-    /// Send the value. If the queue is full, return false.
+    /// Send the value. If the queue is full or being flushed, return false.
     pub fn send_no_wait(&'a self, val: T) -> bool {
         let mut iwrite;
+
+        if self.flushing.load(Ordering::Relaxed) {
+            return false;
+        }
 
         loop {
             iwrite = self.iwrite.load(Ordering::SeqCst);
@@ -161,6 +168,24 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
                 None => (),
             };
             freertos::yield_task();
+        }
+    }
+
+    /// Flush the queue.
+    pub fn flush(&self) {
+        if self.flushing.swap(true, Ordering::Relaxed) {
+            // Already being flushed by another thread, simply wait until done.
+            while self.flushing.load(Ordering::Relaxed) {}
+        } else {
+            // Now we're flushing it
+            loop {
+                let iread = self.iread.load(Ordering::Relaxed);
+                let imaxread = self.imaxread.load(Ordering::Relaxed);
+                if iread == imaxread {
+                    self.flushing.store(false, Ordering::Relaxed);
+                    return;
+                }
+            }
         }
     }
 }
