@@ -26,9 +26,8 @@ use hardware::twi::TWI0;
 use main::{pins, supplies, reset};
 
 use main::parseint::ParseInt;
-use esh::{EshArgArray,Utf8Error};
+use esh::{EshArgArray};
 use core::fmt;
-use core::convert::From;
 
 pub struct Command {
     pub name: &'static str,

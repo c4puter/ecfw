@@ -23,7 +23,6 @@
 
 use main::power::*;
 use main::pins::*;
-use core::sync::atomic::*;
 
 pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[
     &BUCK_5VA,

@@ -249,7 +249,7 @@ impl Supply for VrmSupply {
 
     fn enable(&self) -> Result<(), &'static str> {
         match self.disch {
-            Some((gpio, wait)) => {
+            Some((gpio, _wait)) => {
                 gpio.set(false);
             },
             None => ()
@@ -324,7 +324,7 @@ impl Supply for GpioSwitchedSupply {
 
     fn enable(&self) -> Result<(), &'static str> {
         match self.disch {
-            Some((disgpio, wait)) => {
+            Some((disgpio, _wait)) => {
                 disgpio.set(false);
             },
             None => ()

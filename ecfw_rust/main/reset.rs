@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::{ec_io,rust_support,freertos};
+use rustsys::{ec_io,freertos};
 use main::{power,supplies};
 use main::power::Supply;
 extern crate asf_rstc;

@@ -26,7 +26,7 @@ use esh;
 use hardware::{ledmatrix, twi};
 use hardware::gpio::Gpio;
 use bindgen_mcu;
-use rustsys::{ec_io,freertos,mutex};
+use rustsys::{ec_io,freertos};
 
 use core::str;
 
