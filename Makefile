@@ -125,8 +125,6 @@ LIBS = -lm -lc -lgcc -lnosys
 
 export GIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo '(no git)')
 export BUILD_ID := ${GIT_HASH}, $(shell date)
-# Touch main.rs because the build ID has been updated
-$(shell touch ecfw_rust/main/main.rs)
 
 # }}}
 
