@@ -28,12 +28,19 @@
 #include <FreeRTOS.h>
 #include "mcu.h"
 
+#define RS232_TX IOPORT_CREATE_PIN(PIOA, 22)
+
 void mcu_init(void)
 {
     WDT->WDT_MR = WDT_MR_WDDIS;
     sysclk_init();
 
     ioport_init();
+
+    // Configure RS232 tx early, for debug output
+    ioport_set_pin_mode(RS232_TX, IOPORT_MODE_MUX_A);
+    ioport_disable_pin(RS232_TX);
+
     sysclk_enable_peripheral_clock(ID_TWI0);
     sysclk_enable_peripheral_clock(ID_USART1);
 }
