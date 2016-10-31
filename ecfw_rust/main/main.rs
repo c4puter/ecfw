@@ -24,8 +24,9 @@
 use main::{commands, pins};
 use esh;
 use hardware::{ledmatrix, twi};
+use hardware::gpio::Gpio;
 use bindgen_mcu;
-use rustsys::{ec_io,freertos};
+use rustsys::{ec_io,freertos,mutex};
 
 use core::str;
 
@@ -56,6 +57,7 @@ fn esh_print_cb(_esh: &esh::Esh, c: char)
 }
 
 pub fn esh_task() {
+    println!("Start task \"esh\"");
     let mut esh = esh::Esh::init().unwrap();
     esh.register_command(command_dispatch);
     esh.register_print(esh_print_cb);
@@ -72,13 +74,15 @@ pub fn esh_task() {
 
 pub fn init_task()
 {
-    println!("Hand off to init task");
-    println!("Initialize LED matrix...");
+    println!("success");
+    println!("Initialize LED matrix");
     unsafe{ ledmatrix::matrix_init(&pins::U801).unwrap(); }
-    freertos::delay(500);
+    freertos::delay(250);
+    pins::SPEAKER.set(true);
+    freertos::delay(250);
+    pins::SPEAKER.set(false);
     ledmatrix::matrix().set_all(false).unwrap();
 
-    println_async!("Create task \"esh\"...");
     freertos::Task::new(|| { esh_task() }, "esh", 1000, 0);
 
     loop {
@@ -104,18 +108,17 @@ pub extern "C" fn main() -> i32 {
     println_async!("");
     println_async!("Initialized EC core and USART");
 
-    println_async!("Initialize I2C...");
+    println_async!("Initialize I2C");
     twi::TWI0.init(400000).unwrap();
 
-    println_async!("Initialize GPIO...");
+    println_async!("Initialize GPIO");
     for &pin in pins::PIN_TABLE {
         pin.init();
     }
 
-    println_async!("Create task \"init\"...");
     freertos::Task::new(|| { init_task() }, "init", 500, 0);
 
-    println_async!("Start task scheduler...");
+    print_async!("Start scheduler and hand off to init task...");
     freertos::run();
 
     loop {}

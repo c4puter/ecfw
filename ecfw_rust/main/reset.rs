@@ -36,18 +36,18 @@ pub fn hard_reset()
     // Grab a lock on the VRM before disabling interrupts. This allows any
     // pending transactions to complete, avoiding putting the VRM's I2C slave
     // in an unknown state.
-    println!("\nHard reset...");
-    println!("    Acquire VRM lock...");
+    println!("\nHard reset");
+    println!("    Acquire VRM lock");
     let _lock = power::VRM901.lock();
 
     // Unsafe: shuts down the task scheduler
-    println!("    Suspend tasks...");
+    println!("    Suspend tasks");
     ec_io::flush_output();
     unsafe {freertos::suspend_all()};
 
-    println_async!("    Shut down supplies...");
+    println_async!("    Shut down supplies");
     shutdown_supplies_cleanly();
-    println_async!("    Shut down standby rail...");
+    println_async!("    Shut down standby rail");
     shutdown_final();
 
     loop {}
@@ -59,14 +59,14 @@ pub fn hard_reset()
 pub fn soft_reset()
 {
     // Unsafe: shuts down the task scheduler
-    println!("\nSoft reset...");
-    println!("    Suspend tasks...");
+    println!("\nSoft reset");
+    println!("    Suspend tasks");
     ec_io::flush_output();
     unsafe {freertos::suspend_all()};
 
     // Unsafe: external C code
     // Unsafe: performs software reset
-    println_async!("    Trigger software reset...");
+    println_async!("    Trigger software reset");
     // Very short delay to make sure the last message was transmitted in full
     freertos::susp_safe_delay(1);
     unsafe {
