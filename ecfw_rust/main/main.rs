@@ -59,6 +59,7 @@ pub fn esh_task() {
     let mut esh = esh::Esh::init().unwrap();
     esh.register_command(command_dispatch);
     esh.register_print(esh_print_cb);
+    esh.rx(b'\n');
 
     loop {
         let c = ec_io::getc_async();
@@ -92,6 +93,15 @@ pub extern "C" fn main() -> i32 {
     }
 
     ec_io::init();
+    println_async!("");
+    println_async!("==================================================");
+    println_async!("# Booting EC firmware");
+    match option_env!("BUILD_ID") {
+        Some(s) => println_async!("# Build ID: {}", s),
+        None    => println_async!("# No build ID"),
+    };
+    println_async!("==================================================");
+    println_async!("");
     println_async!("Initialized EC core and USART");
 
     println_async!("Initialize I2C...");
