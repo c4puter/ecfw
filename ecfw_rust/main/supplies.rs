@@ -24,64 +24,83 @@
 pub use main::power::*;
 use main::pins::*;
 
-pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[
-    &BUCK_5VA,
-    &BUCK_5VB,
-    &BUCK_3VA,
-    &BUCK_3VB,
-    &INV_N12,
-    &LDO_S3,
-    &LDO_S0,
-    &BUCK_1V5,
-    &BUCK_1V2,
-    &SW1,
-    &SW2,
-    &SW3,
-];
+macro_rules! supply_table {
+    (
+        $( $name:ident, $kind:tt, $( $arg:expr ),* );* ;
+    ) => {
+        pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[
+            $( &$name ),*
+        ];
 
-pub static BUCK_5VA: VrmSupply = VrmSupply::new_disch("BUCK_5VA", &[], 1, &DISCH_5VA, 72);
-pub static BUCK_5VB: VrmSupply = VrmSupply::new_disch("BUCK_5VB", &[], 2, &DISCH_5VB, 72);
-pub static BUCK_3VA: VrmSupply = VrmSupply::new_disch("BUCK_3VA", &[], 3, &DISCH_3VA, 36);
-pub static BUCK_3VB: VrmSupply = VrmSupply::new("BUCK_3VB", &[], 4);
-pub static INV_N12: VrmSupply = VrmSupply::new("INV_N12", &[&BUCK_5VA, &BUCK_5VB], 5);
+        $(
+            #[allow(dead_code)]
+            pub static $name: $kind = $kind::new( stringify!($name), $( $arg ),* );
+        )*
+    }
+}
 
-pub static LDO_S3: GpioSwitchedSupply = GpioSwitchedSupply::new(
-    "LDO_S3",
-    &[&BUCK_1V5],
-    &EN_V75REF,
-    1);
+supply_table!{
 
-pub static LDO_S0: GpioSwitchedSupply = GpioSwitchedSupply::new(
-    "LDO_S0",
-    &[&LDO_S3],
-    &EN_V75,
-    1);
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // VrmSupply (regulator units in the voltage regulator module)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // supply name
+    // |                    dependencies
+    // |                    |                           supply ID
+    // |                    |                           |   Discharge pin
+    // |                    |                           |   |                   Discharge time (ms)
+    BUCK_5VA,   VrmSupply,  &[],                        1,  Some((&DISCH_5VA,   72));
+    BUCK_5VB,   VrmSupply,  &[],                        2,  Some((&DISCH_5VB,   72));
+    BUCK_3VA,   VrmSupply,  &[],                        3,  Some((&DISCH_3VA,   36));
+    BUCK_3VB,   VrmSupply,  &[],                        4,  None;
+    INV_N12,    VrmSupply,  &[&BUCK_5VA, &BUCK_5VB],    5,  None;
 
-pub static BUCK_1V5: GpioSwitchedSupply = GpioSwitchedSupply::new_disch(
-    "BUCK_1V5", &[&BUCK_5VB],
-    &EN_1V5, 10,
-    &DISCH_1V5, 12);
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // GpioSwitchedSupply (supplies enabled by a GPIO)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // supply name
+    //                              dependencies
+    //                                                  GPIO control
+    //                                                                  Enable/disable time (ms)
+    //                                                                      Discharge pin
+    //                                                                                          Dsch
+    //                                                                                          time
+    //                                                                                          (ms)
+    LDO_S3,     GpioSwitchedSupply, &[&BUCK_1V5],       &EN_V75REF,     1,  None;
+    LDO_S0,     GpioSwitchedSupply, &[&LDO_S3],         &EN_V75,        1,  None;
+    BUCK_1V5,   GpioSwitchedSupply, &[&BUCK_5VB],       &EN_1V5,        10, Some((&DISCH_1V5,   12));
+    BUCK_1V2,   GpioSwitchedSupply, &[&BUCK_5VA],       &EN_1V2,        10, Some((&DISCH_1V2,   12));
+    SW1,        GpioSwitchedSupply, &[],                &EN_P12V_PCI,   1,  None;
+    SW2,        GpioSwitchedSupply, &[&BUCK_5VB],       &EN_P5V_PCI_B,  1,  None;
+    SW3,        GpioSwitchedSupply, &[&BUCK_3VB],       &EN_P3V3_S0B,   6,  Some((&DISCH_3VB,   36));
 
-pub static BUCK_1V2: GpioSwitchedSupply = GpioSwitchedSupply::new_disch(
-    "BUCK_1V2", &[&BUCK_5VA],
-    &EN_1V2, 10,
-    &DISCH_1V2, 12);
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // VirtualSupply (virtual named rails)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    P12V_PCI,           VirtualSupply,  &[&SW1];
+    P5V_PCI_A,          VirtualSupply,  &[&BUCK_5VA];
+    P5V_PCI_B,          VirtualSupply,  &[&SW2];
+    P3V3_PCI_A,         VirtualSupply,  &[&BUCK_3VA, &P1V2_CORE];
+    P3V3_PCI_B,         VirtualSupply,  &[&SW3, &P1V2_CORE];
+    N12V_PCI,           VirtualSupply,  &[&INV_N12];
+    P1V2_CORE,          VirtualSupply,  &[&BUCK_1V2];
+    P1V5_BRIDGE,        VirtualSupply,  &[&BUCK_1V5, &P1V2_CORE];
+    P3V3_BRIDGE,        VirtualSupply,  &[&SW3, &P1V2_CORE];
+    PV75_SDRAM_VTT,     VirtualSupply,  &[&LDO_S0, &P1V5_BRIDGE];
+    PV75_SDRAM_VREF,    VirtualSupply,  &[&LDO_S3, &P1V5_BRIDGE];
+    P3V3_CPU,           VirtualSupply,  &[&SW3, &P1V2_CORE];
+    P3V3_AUX,           VirtualSupply,  &[&BUCK_3VA, &P1V2_CORE];
+    P3V3_STBY,          VirtualSupply,  &[&BUCK_3VB];
 
-pub static SW1: GpioSwitchedSupply = GpioSwitchedSupply::new(
-    "SW1",
-    &[],
-    &EN_P12V_PCI,
-    1);
-
-pub static SW2: GpioSwitchedSupply = GpioSwitchedSupply::new(
-    "SW2",
-    &[&BUCK_5VB],
-    &EN_P5V_PCI_B,
-    1);
-
-pub static SW3: GpioSwitchedSupply = GpioSwitchedSupply::new_disch(
-    "SW3",
-    &[&BUCK_3VB],
-    &EN_P3V3_S0B,
-    1,
-    &DISCH_3VB, 36);
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    // VirtualSupply (power states)
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    S0,                 VirtualSupply,  &[&P12V_PCI, &P5V_PCI_A, &P5V_PCI_B,
+                                          &N12V_PCI, &P3V3_PCI_A, &P3V3_PCI_B,
+                                          &P1V2_CORE, &P1V5_BRIDGE, &P3V3_BRIDGE,
+                                          &PV75_SDRAM_VTT, &PV75_SDRAM_VREF,
+                                          &P3V3_CPU, &P3V3_AUX, &P3V3_STBY];
+    S3,                 VirtualSupply,  &[&P1V2_CORE, &P1V5_BRIDGE,
+                                          &PV75_SDRAM_VREF, &P3V3_STBY];
+    S5,                 VirtualSupply,  &[&P3V3_STBY];
+}

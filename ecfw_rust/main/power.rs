@@ -193,28 +193,13 @@ impl VrmSupply {
     pub const fn new(
         name: &'static str,
         deps: &'static [&'static Supply],
-        vrm_id: u8) -> VrmSupply
-    {
-        VrmSupply {
-            virt: VirtualSupply::new(name, deps),
-            vrm_id: vrm_id,
-            disch: None,
-            set_state: ATOMIC_BOOL_INIT,
-            transitioning: ATOMIC_BOOL_INIT,
-        }
-    }
-
-    pub const fn new_disch(
-        name: &'static str,
-        deps: &'static [&'static Supply],
         vrm_id: u8,
-        disch: &'static Gpio,
-        dischwait: u32) -> VrmSupply
+        disch: Option<(&'static Gpio, u32)>) -> VrmSupply
     {
         VrmSupply {
             virt: VirtualSupply::new(name, deps),
             vrm_id: vrm_id,
-            disch: Some((disch, dischwait)),
+            disch: disch,
             set_state: ATOMIC_BOOL_INIT,
             transitioning: ATOMIC_BOOL_INIT,
         }
@@ -290,28 +275,13 @@ impl GpioSwitchedSupply {
         name: &'static str,
         deps: &'static [&'static Supply],
         gpio: &'static Gpio,
-        wait_ticks: u32 ) -> GpioSwitchedSupply
-    {
-        GpioSwitchedSupply {
-            virt: VirtualSupply::new(name, deps),
-            gpio: gpio,
-            disch: None,
-            wait_ticks: wait_ticks,
-        }
-    }
-
-    pub const fn new_disch(
-        name: &'static str,
-        deps: &'static [&'static Supply],
-        gpio: &'static Gpio,
         wait_ticks: u32,
-        disch: &'static Gpio,
-        dischwait: u32) -> GpioSwitchedSupply
+        disch: Option<(&'static Gpio, u32)>) -> GpioSwitchedSupply
     {
         GpioSwitchedSupply {
             virt: VirtualSupply::new(name, deps),
             gpio: gpio,
-            disch: Some((disch, dischwait)),
+            disch: disch,
             wait_ticks: wait_ticks,
         }
     }
