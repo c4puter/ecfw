@@ -26,12 +26,11 @@ use hardware::twi::TWI0;
 use main::{pins, supplies, reset};
 
 use main::parseint::ParseInt;
-use esh::{EshArgArray};
 use core::fmt;
 
 pub struct Command {
     pub name: &'static str,
-    pub f: fn(args: &EshArgArray) -> Result<(), &'static str>,
+    pub f: fn(args: &[&str]) -> Result<(), &'static str>,
     pub descr: &'static str,
 }
 
@@ -53,19 +52,10 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "pwr_dn",    f: cmd_pwr_dn,      descr: "lower reference count of SUPPLY" },
 ];
 
-macro_rules! try_utf8 {
-    ( $e:expr ) => (
-        match $e {
-            Ok(v) => v,
-            Err(_) => return Err("cannot parse UTF-8") } )
-}
-
-fn argv_parsed<T, U>(args: &EshArgArray, n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
+fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
     where U: fmt::Display
 {
-    let arg_s = try_utf8!(args.get_str(n));
-
-    let arg_parsed = match parser(arg_s) {
+    let arg_parsed = match parser(args[n]) {
         Ok(val) => val,
         Err(_) => { return Err("cannot parse argument"); }
     };
@@ -73,7 +63,7 @@ fn argv_parsed<T, U>(args: &EshArgArray, n: usize, _name: &str, parser: fn(&str)
     return Ok(arg_parsed);
 }
 
-fn cmd_help(_args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_help(_args: &[&str]) -> Result<(), &'static str>
 {
     for i in 0..COMMAND_TABLE.len() {
         let ref cmd = COMMAND_TABLE[i];
@@ -83,25 +73,25 @@ fn cmd_help(_args: &EshArgArray) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_free(_args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_free(_args: &[&str]) -> Result<(), &'static str>
 {
     println!("{} B", freertos::get_free_heap());
     Ok(())
 }
 
-fn cmd_srst(_args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_srst(_args: &[&str]) -> Result<(), &'static str>
 {
     reset::soft_reset();
     Err("did not reset")    // should never happen
 }
 
-fn cmd_hrst(_args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_hrst(_args: &[&str]) -> Result<(), &'static str>
 {
     reset::hard_reset();
     Err("did not reset")    // should never happen
 }
 
-fn cmd_i2c_probe(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_i2c_probe(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 2 {
         return Err("expected argument(s)");
@@ -117,7 +107,7 @@ fn cmd_i2c_probe(args: &EshArgArray) -> Result<(), &'static str>
     }
 }
 
-fn cmd_i2c_read(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_i2c_read(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 4 {
         return Err("expected argument(s)");
@@ -141,7 +131,7 @@ fn cmd_i2c_read(args: &EshArgArray) -> Result<(), &'static str>
     }
 }
 
-fn cmd_i2c_write(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_i2c_write(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 3 {
         return Err("expected argument(s)");
@@ -168,12 +158,12 @@ fn cmd_i2c_write(args: &EshArgArray) -> Result<(), &'static str>
     }
 }
 
-fn cmd_gpio_read(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_gpio_read(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 2 {
         return Err("expected argument(s)");
     }
-    let gpio_name = try_utf8!(args.get_str(1));
+    let gpio_name = args[1];
 
     match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
         Some(pin) => println!("{}", pin.get()),
@@ -183,12 +173,12 @@ fn cmd_gpio_read(args: &EshArgArray) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_gpio_write(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_gpio_write(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 3 {
         return Err("expected argument(s)");
     }
-    let gpio_name = try_utf8!(args.get_str(1));
+    let gpio_name = args[1];
     let gpio_val = try!(argv_parsed(args, 2, "VALUE", i8::parseint));
 
     match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
@@ -199,12 +189,12 @@ fn cmd_gpio_write(args: &EshArgArray) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_pwr_stat(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_pwr_stat(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 2 {
         return Err("expected argument(s)");
     }
-    let supply_name = try_utf8!(args.get_str(1));
+    let supply_name = args[1];
     let _lock = supplies::POWER_MUTEX.lock();
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} status: {:?}", supply_name, try!(supply.status())),
@@ -213,12 +203,12 @@ fn cmd_pwr_stat(args: &EshArgArray) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_pwr_up(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_pwr_up(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 2 {
         return Err("expected argument(s)");
     }
-    let supply_name = try_utf8!(args.get_str(1));
+    let supply_name = args[1];
     let _lock = supplies::POWER_MUTEX.lock();
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} state changed? {}",
@@ -228,12 +218,12 @@ fn cmd_pwr_up(args: &EshArgArray) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_pwr_dn(args: &EshArgArray) -> Result<(), &'static str>
+fn cmd_pwr_dn(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 2 {
         return Err("no supply specified");
     }
-    let supply_name = try_utf8!(args.get_str(1));
+    let supply_name = args[1];
     let _lock = supplies::POWER_MUTEX.lock();
     match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} state changed? {}",

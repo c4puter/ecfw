@@ -30,20 +30,15 @@ use rustsys::{ec_io,freertos};
 
 use core::str;
 
-fn command_dispatch(_esh: &esh::Esh, args: &esh::EshArgArray)
+fn command_dispatch(_esh: &esh::Esh, args: &[&str])
 {
     if args.len() >= 1 {
-        let argv0 = match args.get_str(0) {
-            Ok(s) => s,
-            _ => "__invalid_command",
-        };
-
-        match commands::COMMAND_TABLE.iter().find(|&cmd| {*(cmd.name) == *argv0}) {
+        match commands::COMMAND_TABLE.iter().find(|&cmd| {*(cmd.name) == *args[0]}) {
             Some(cmd) => match (cmd.f)(args) {
                 Ok(()) => (),
                 Err(s) => println!("error: {}", s),
             },
-            None => println!("unrecognized command: {}", argv0),
+            None => println!("unrecognized command: {}", args[0]),
         }
     }
 }
