@@ -1,5 +1,11 @@
 #![feature(plugin_registrar, rustc_private)]
 
+// Based on an original repeat! macro by Erik Vesteraas, from:
+// http://stackoverflow.com/a/33764418
+//
+// Updated for changed APIs, and repeat_expr! added, by Chris Pavlina.
+// Original and new macros licensed cc-by-sa 3.0
+
 extern crate syntax;
 extern crate rustc;
 extern crate rustc_plugin;
