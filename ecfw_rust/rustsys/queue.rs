@@ -9,8 +9,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -50,13 +50,12 @@ macro_rules! queue_static_init {
 
 #[macro_export]
 macro_rules! queue_static_new {
-    ( $name:ident, $ty:ty, $n:expr ) => (
-
+    ( $name:ident: [$ty:ty; $n:expr] ) => (
         static $name: queue::Queue<'static, $ty> = unsafe {
             queue::Queue::new_static(
-                {static mut BACKING: [::core::cell::Cell<Option<u8>>; $n]
-                                     = queue_static_init!($n); &BACKING}
-            )
+                {static mut BACKING: [::core::cell::Cell<Option<$ty>>; $n]
+                        = queue_static_init!($n);
+                 &BACKING})
         };
     )
 }
@@ -68,7 +67,9 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     /// it "takes" the array; nothing else should ever touch it.
     ///
     /// Don't use this function. See queue_static_new!.
-    pub const unsafe fn new_static(buffer: &'static [Cell<Option<T>>]) -> Queue<'a, T> {
+    pub const unsafe fn new_static(
+        buffer: &'static [Cell<Option<T>>]) -> Queue<'a, T>
+    {
         Queue {
             data: buffer,
             _owned_data: None,
@@ -80,8 +81,10 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     }
 
     pub fn new_dynamic(sz: usize) -> Queue<'a, T> {
-        let buffer = unsafe{heap::allocate(sz * mem::size_of::<Cell<Option<T>>>(), 4)};
-        let as_slice = unsafe{slice::from_raw_parts_mut(buffer as *mut Cell<Option<T>>, sz)};
+        let buffer = unsafe{
+            heap::allocate(sz * mem::size_of::<Cell<Option<T>>>(), 4)};
+        let as_slice = unsafe{
+            slice::from_raw_parts_mut(buffer as *mut Cell<Option<T>>, sz)};
         for i in 0..sz {
             as_slice[i] = Cell::new(None);
         }
@@ -115,15 +118,18 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
                 return false;
             }
 
-            if self.iwrite.compare_and_swap(iwrite, iwrite_new, Ordering::SeqCst) == iwrite {
+            if self.iwrite.compare_and_swap(
+                iwrite, iwrite_new, Ordering::SeqCst) == iwrite
+            {
                 break;
             }
         }
 
         self.data[iwrite].set(Some(val));
 
-        while self.imaxread.compare_and_swap(iwrite, (iwrite + 1) % self.data.len(),
-                Ordering::SeqCst) != iwrite {
+        while iwrite != self.imaxread.compare_and_swap(
+            iwrite, (iwrite + 1) % self.data.len(), Ordering::SeqCst)
+        {
             freertos::yield_task();
         }
 
