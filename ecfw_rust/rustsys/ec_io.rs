@@ -37,8 +37,11 @@ const USART_DBG: *mut asf_usart::Usart = USART1;
 struct UartWriter {}
 struct UartWriterAsync {}
 
-queue_static_new!(STDIN_QUEUE: [u8; 256]);
-queue_static_new!(STDOUT_QUEUE: [u8; 72]);
+queue_static_new! {
+    STDIN_QUEUE: [u8; 256];
+    STDOUT_QUEUE: [u8; 72];
+}
+
 static STDOUT_MUTEX: mutex::Mutex = mutex::Mutex::new();
 
 fn putc_task(q: &'static queue::Queue<'static, u8>)

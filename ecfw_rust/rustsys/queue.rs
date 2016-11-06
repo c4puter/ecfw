@@ -50,14 +50,17 @@ macro_rules! queue_static_init {
 
 #[macro_export]
 macro_rules! queue_static_new {
-    ( $name:ident: [$ty:ty; $n:expr] ) => (
+    ( $( $name:ident: [$ty:ty; $n:expr] );* ) => ( $(
         static $name: queue::Queue<'static, $ty> = unsafe {
             queue::Queue::new_static(
                 {static mut BACKING: [::core::cell::Cell<Option<$ty>>; $n]
                         = queue_static_init!($n);
                  &BACKING})
         };
-    )
+    )* );
+
+    ( $( $name:ident: [$ty:ty; $n:expr] );+; ) => (
+        queue_static_new!( $( $name: [$ty; $n] );+ ); )
 }
 
 unsafe impl<'a, T> Sync for Queue<'a, T> where T: 'a + Send + Copy + Sized {}
