@@ -41,7 +41,9 @@ fn expand_repeat(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacResult
             let mut stmts = SmallVector::many(block.stmts.clone());
             for _ in 1..times {
                 let rep_stmts = SmallVector::many(block.stmts.clone());
-                stmts.push_all(rep_stmts);
+                for i in rep_stmts {
+                    stmts.push(i);
+                }
             }
             MacEager::stmts(stmts)
         }

@@ -9,8 +9,8 @@
  * copies of the Software, and to permit persons to whom the Software is
  * furnished to do so, subject to the following conditions:
  *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
  *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
@@ -32,14 +32,16 @@ use core::str;
 
 fn command_dispatch(_esh: &esh::Esh, args: &[&str])
 {
-    if args.len() >= 1 {
-        match commands::COMMAND_TABLE.iter().find(|&cmd| {*(cmd.name) == *args[0]}) {
-            Some(cmd) => match (cmd.f)(args) {
-                Ok(()) => (),
-                Err(s) => println!("error: {}", s),
-            },
-            None => println!("unrecognized command: {}", args[0]),
-        }
+    if args.len() < 1 {
+        return;
+    }
+
+    match commands::COMMAND_TABLE.iter().find(|&c| {*(c.name) == *args[0]}) {
+        Some(cmd) => match (cmd.f)(args) {
+            Ok(()) => (),
+            Err(s) => println!("error: {}", s),
+        },
+        None => println!("unrecognized command: {}", args[0]),
     }
 }
 

@@ -21,8 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(const_fn)]
 extern crate bindgen_mcu;
 use hardware::twi;
 
@@ -78,20 +76,20 @@ impl Gpio for SamGpio {
             bindgen_mcu::mcu_init_pin(
                 self.port + self.pin,
                 self.mode as u32,
-                self.default as u8);
+                self.default);
         }
     }
 
     fn set(&self, v: bool) {
         unsafe {
             let inv_v = if self.invert {!v} else {v};
-            bindgen_mcu::mcu_set_pin_level(self.port + self.pin, inv_v as u8);
+            bindgen_mcu::mcu_set_pin_level(self.port + self.pin, inv_v);
         }
     }
 
     fn get(&self) -> bool {
         unsafe {
-            let v = bindgen_mcu::mcu_get_pin_level(self.port + self.pin) != 0;
+            let v = bindgen_mcu::mcu_get_pin_level(self.port + self.pin);
             if self.invert {!v} else {v}
         }
     }

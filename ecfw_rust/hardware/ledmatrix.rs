@@ -21,8 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-
 use rustsys::freertos;
 use hardware::{gpio, twi};
 use hardware::twi::TwiResult;

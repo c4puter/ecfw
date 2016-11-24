@@ -21,8 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-
 use rustsys::mutex;
 extern crate bindgen_mcu;
 type TwiHandle = u32;

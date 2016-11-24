@@ -108,6 +108,18 @@ RUSTFLAGS = \
 	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
 
+BINDGENFLAGS = \
+	--use-core --builtins \
+	--ctypes-prefix ::ctypes \
+	--raw-line '\#![feature(untagged_unions)]' \
+	--raw-line '\#![allow(improper_ctypes)]' \
+	--raw-line '\#![allow(non_camel_case_types)]' \
+	--raw-line '\#![allow(non_snake_case)]' \
+	--raw-line '\#![allow(non_upper_case_globals)]' \
+	--raw-line 'extern crate ctypes;' \
+	-- $(filter-out -mcpu=cortex-m4 -mthumb,${CFLAGS})
+
+
 LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
 	-mcpu=cortex-m4 -mthumb \
@@ -210,10 +222,7 @@ have-bindgen:
 define bindgen
 	@echo "[BINDGEN ] $(2)"
 	@( ( echo '#![no_std]'; \
-		$$(cat have-bindgen) --use-core --convert-macros --builtins \
-			--ctypes-prefix=ctypes --no-rust-enums $(1) -- \
-			$(filter-out -mcpu=cortex-m4 -mthumb,${CFLAGS}) ) | \
-		sed -e '0,/)]$$/ s//\0\n#![allow(improper_ctypes)]\nextern crate ctypes;/' \
+		$$(cat have-bindgen) $(1) ${BINDGENFLAGS} ) \
 		> $(2) ) 2>&1 | sed -e '/^WARN:bindgen/d' >&2
 
 endef
