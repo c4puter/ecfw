@@ -111,6 +111,7 @@ RUSTFLAGS = \
 BINDGENFLAGS = \
 	--use-core --builtins \
 	--ctypes-prefix ::ctypes \
+	--raw-line '\#![no_std]' \
 	--raw-line '\#![feature(untagged_unions)]' \
 	--raw-line '\#![allow(improper_ctypes)]' \
 	--raw-line '\#![allow(non_camel_case_types)]' \
@@ -221,8 +222,7 @@ have-bindgen:
 
 define bindgen
 	@echo "[BINDGEN ] $(2)"
-	@( ( echo '#![no_std]'; \
-		$$(cat have-bindgen) $(1) ${BINDGENFLAGS} ) \
+	@( $$(cat have-bindgen) $(1) ${BINDGENFLAGS} \
 		> $(2) ) 2>&1 | sed -e '/^WARN:bindgen/d' >&2
 
 endef
