@@ -91,9 +91,15 @@ ASF_UNF_DIR = resources/asf-unf
 # BUILD FLAGS {{{
 ###############################################################################
 
+STACK_SIZE=0x400
+HEAP_SIZE=0x1c000
+TOTAL_FLASH=0x100000
+TOTAL_SRAM=0x20000
+
 CFLAGS = \
 	-Os -g -pipe -std=c99 -Wall -Wextra \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
+	-D__HEAP_SIZE__=${HEAP_SIZE} \
 	-mcpu=cortex-m4 -mthumb \
 	-fdata-sections -ffunction-sections \
 	-iquote config \
@@ -125,6 +131,7 @@ LDFLAGS = \
 	-Wl,--entry=Reset_Handler \
 	-mcpu=cortex-m4 -mthumb \
 	-D__sam4s16c__ \
+	-Wl,--defsym,__stack_size__=${STACK_SIZE} \
 	-specs=nosys.specs \
 	-Wl,--gc-sections \
 	-Wl,-T,${ASF_UNF_DIR}/asf/utils/linker_scripts/sam4s/sam4s16/gcc/flash.ld \
@@ -182,7 +189,7 @@ all: do-bindgen ${RUST_PLUGINS} ${ASF_UNF_DIR}
 	${MAKE} all-with-asf
 
 all-with-asf: ecfw.hex ecfw.disasm
-	${SIZE} ecfw
+	${PYTHON} scripts/size.py ecfw ${STACK_SIZE} ${HEAP_SIZE} ${TOTAL_FLASH} ${TOTAL_SRAM}
 
 clean:
 	rm -f ${OBJECTS}
