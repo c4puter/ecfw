@@ -26,8 +26,6 @@ use main::{power,supplies};
 use main::power::Supply;
 extern crate asf_rstc;
 
-const RSTC: *mut asf_rstc::Rstc = 0x400E1400u32 as *mut asf_rstc::Rstc;
-
 /// Reset the system by shutting down all the power supplies including the
 /// standby rail. The VRM will automatically bring the standby rail back up
 /// after a timeout.
@@ -51,30 +49,6 @@ pub fn hard_reset()
     shutdown_supplies_cleanly();
     println_async!("    Shut down standby rail");
     shutdown_final();
-
-    loop {}
-}
-
-/// Reset just the EC. No power supplies will be directly shut down by this,
-/// but on boot the firmware will resync the supply states, and any supplies
-/// that should not be running will be shut down then.
-pub fn soft_reset()
-{
-    // Unsafe: shuts down the task scheduler
-    println!("\nSoft reset");
-    println!("    Suspend tasks");
-    ec_io::flush_output();
-    unsafe {freertos::suspend_all()};
-
-    // Unsafe: external C code
-    // Unsafe: performs software reset
-    println_async!("    Trigger software reset");
-    // Very short delay to make sure the last message was transmitted in full
-    freertos::susp_safe_delay(1);
-    unsafe {
-        asf_rstc::rstc_enable_user_reset(RSTC);
-        asf_rstc::rstc_start_software_reset(RSTC);
-    }
 
     loop {}
 }

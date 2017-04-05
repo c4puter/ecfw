@@ -45,6 +45,30 @@ void mcu_init(void)
     sysclk_enable_peripheral_clock(ID_USART1);
 }
 
+
+extern uint32_t _sstack;
+extern uint32_t _estack;
+register uint32_t *sp __asm__("sp");
+
+
+void write_stack_canaries(void)
+{
+    for (uint32_t *i = &_sstack; i < sp; ++i) {
+        *i = 0xdeadbeef;
+    }
+}
+
+uint32_t get_stack_unused(void)
+{
+    uint32_t *i;
+    for (i = &_sstack; i < &_estack; ++i) {
+        if (*i != 0xdeadbeef)
+            break;
+    }
+
+    return (uint32_t)i - (uint32_t)&_sstack;
+}
+
 unsigned int mcu_get_peripheral_hz(void)
 {
     return sysclk_get_peripheral_hz();

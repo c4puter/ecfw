@@ -23,7 +23,9 @@
 
 use rustsys::{ec_io,freertos};
 use hardware::twi::TWI0;
-use main::{pins, supplies, reset};
+use hardware::gpio::*;
+use main::{pins, supplies, reset, sysman};
+use main::pins::*;
 
 use main::parseint::ParseInt;
 use core::fmt;
@@ -37,8 +39,10 @@ pub struct Command {
 pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "help",      f: cmd_help,    descr: "display commands and their descriptions" },
     Command{ name: "free",      f: cmd_free,    descr: "display free heap" },
-    Command{ name: "srst",      f: cmd_srst,    descr: "soft reset" },
-    Command{ name: "hrst",      f: cmd_hrst,    descr: "hard reset" },
+    Command{ name: "reset",     f: cmd_reset,   descr: "reset entire system" },
+
+    Command{ name: "panel",     f: cmd_panel,   descr: "render the user IO panel to the console" },
+    Command{ name: "event",     f: cmd_event,   descr: "send an event (boot, shutdown, reboot)" },
 
     Command{ name: "i2c_probe", f: cmd_i2c_probe,   descr: "probe I2C for an ADDR" },
     Command{ name: "i2c_read",  f: cmd_i2c_read,    descr: "read I2C from ADDR at LOCATION, N bytes" },
@@ -55,12 +59,10 @@ pub static COMMAND_TABLE: &'static [Command] = &[
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
     where U: fmt::Display
 {
-    let arg_parsed = match parser(args[n]) {
-        Ok(val) => val,
-        Err(_) => { return Err("cannot parse argument"); }
-    };
-
-    return Ok(arg_parsed);
+    match parser(args[n]) {
+        Ok(val) => Ok(val),
+        Err(_) => Err("cannot parse argument")
+    }
 }
 
 fn cmd_help(_args: &[&str]) -> Result<(), &'static str>
@@ -79,16 +81,84 @@ fn cmd_free(_args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_srst(_args: &[&str]) -> Result<(), &'static str>
-{
-    reset::soft_reset();
-    Err("did not reset")    // should never happen
-}
-
-fn cmd_hrst(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_reset(_args: &[&str]) -> Result<(), &'static str>
 {
     reset::hard_reset();
     Err("did not reset")    // should never happen
+}
+
+fn cmd_panel(_args: &[&str]) -> Result<(), &'static str>
+{
+    fn r_(v: bool) -> &'static str {
+        match v { true => "R ", false => "  " }
+    }
+    fn g_(v: bool) -> &'static str {
+        match v { true => "G ", false => "  " }
+    }
+    fn yn(v: bool) -> &'static str {
+        match v { true => "Y ", false => " N" }
+    }
+
+    println!("P12V   {} {} | P3V3_STBY  {} {} | EC FMW {} {}       {} {} UNC0",
+             r_(P12V_PCI_R.get()), g_(P12V_PCI_G.get()),
+             r_(P3V3_STBY_R.get()), g_(P3V3_STBY_G.get()),
+             r_(ECFW_R.get()), g_(ECFW_G.get()),
+             r_(UNC0_R.get()), g_(UNC0_G.get()));
+    println!("P5V_A  {} {} | P3V3_AUX   {} {} | PWR SQ {} {}       {} {} UNC1",
+             r_(P5V_PCI_A_R.get()), g_(P5V_PCI_A_G.get()),
+             r_(P3V3_AUX_R.get()), g_(P3V3_AUX_G.get()),
+             r_(POWER_R.get()), g_(POWER_G.get()),
+             r_(UNC1_R.get()), g_(UNC1_G.get()));
+    println!("P5V_B  {} {} | P3V3_LOGIC {} {} | CARD   {} {}       {} {} UNC2",
+             r_(P5V_PCI_B_R.get()), g_(P5V_PCI_B_G.get()),
+             r_(P3V3_LOGIC_R.get()), g_(P3V3_LOGIC_G.get()),
+             r_(CARD_R.get()), g_(CARD_G.get()),
+             r_(UNC2_R.get()), g_(UNC2_G.get()));
+    println!("P3V3_A {} {} | P1V5_LOGIC {} {} | BITSTR {} {} {} {} {} {} UNC3",
+             r_(P3V3_PCI_A_R.get()), g_(P3V3_PCI_A_G.get()),
+             r_(P1V5_LOGIC_R.get()), g_(P1V5_LOGIC_G.get()),
+             r_(BIT_R.get()), g_(BIT_BRIDGE_G.get()), g_(BIT_CPU0_G.get()), g_(BIT_CPU1_G.get()),
+             r_(UNC3_R.get()), g_(UNC3_G.get()));
+    println!("P3V3_B {} {} | P1V2_LOGIC {} {} | MEM LD {} {}       {} {} UNC4",
+             r_(P3V3_PCI_B_R.get()), g_(P3V3_PCI_B_G.get()),
+             r_(P1V2_LOGIC_R.get()), g_(P1V2_LOGIC_G.get()),
+             r_(MEM_R.get()), g_(MEM_G.get()),
+             r_(UNC4_R.get()), g_(UNC4_G.get()));
+    println!("N12V   {} {} | PV75_TERM  {} {} | RUN    {} {}    {} {} {} UNC5",
+             r_(N12V_PCI_R.get()), g_(N12V_PCI_G.get()),
+             r_(PV75_TERM_R.get()), g_(PV75_TERM_G.get()),
+             r_(RUN_R.get()), g_(RUN_G.get()), g_(UPDOG_G.get()),
+             r_(UNC5_R.get()), g_(UNC5_G.get()));
+    println!("");
+    println!("{} UNC0", yn(UNC_SW_0.get()));
+    println!("{} UNC1", yn(UNC_SW_1.get()));
+    println!("{} UNC2", yn(UNC_SW_2.get()));
+    println!("{} low speed", yn(LOW_SPEED.get()));
+    println!("{} force pwr", yn(FORCE_POWER.get()));
+    println!("{} single CPU", yn(SINGLE_CPU.get()));
+    println!("{} debug boot", yn(DEBUG_BOOT.get()));
+    println!("{} merged ser", yn(MERGE_SERIAL.get()));
+    Ok(())
+}
+
+fn cmd_event(args: &[&str]) -> Result<(), &'static str>
+{
+    if args.len() < 2 {
+        return Err("no event specified");
+    }
+
+    if args[1] == "boot" {
+        sysman::post(sysman::Event::Boot);
+        Ok(())
+    } else if args[1] == "shutdown" {
+        sysman::post(sysman::Event::Shutdown);
+        Ok(())
+    } else if args[1] == "reboot" {
+        sysman::post(sysman::Event::Reboot);
+        Ok(())
+    } else {
+        Err("unrecognized event name")
+    }
 }
 
 fn cmd_i2c_probe(args: &[&str]) -> Result<(), &'static str>

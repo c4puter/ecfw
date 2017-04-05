@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use main::{commands, pins};
+use main::{commands, pins, sysman};
 use esh;
 use hardware::{ledmatrix, twi};
 use hardware::gpio::Gpio;
@@ -37,10 +37,10 @@ fn command_dispatch(_esh: &esh::Esh, args: &[&str])
     }
 
     match commands::COMMAND_TABLE.iter().find(|&c| {*(c.name) == *args[0]}) {
-        Some(cmd) => match (cmd.f)(args) {
-            Ok(()) => (),
-            Err(s) => println!("error: {}", s),
-        },
+        Some(cmd) =>
+            if let Err(s) = (cmd.f)(args) {
+                println!("error: {}", s);
+            },
         None => println!("unrecognized command: {}", args[0]),
     }
 }
@@ -72,18 +72,33 @@ pub fn esh_task() {
 pub fn init_task()
 {
     println!("success");
+
+    println!("Main stack unused: {} bytes",
+             unsafe{bindgen_mcu::get_stack_unused()});
+
+    println!("Initialize I2C");
+    twi::TWI0.init(400000).unwrap();
+
+    println!("Initialize GPIO");
+    for &pin in pins::PIN_TABLE {
+        pin.init();
+    }
+
+    // Power supply safety can be released once pins are initialized
+    pins::EN_SAFETY.set(false);
     println!("Initialize LED matrix");
     unsafe{ ledmatrix::matrix_init(&pins::U801).unwrap(); }
     freertos::delay(250);
-    pins::SPEAKER.set(true);
-    freertos::delay(250);
-    pins::SPEAKER.set(false);
     ledmatrix::matrix().set_all(false).unwrap();
 
-    freertos::Task::new(|| { esh_task() }, "esh", 1000, 0);
+    freertos::Task::new(|| { sysman::run_event() }, "event", 500, 0);
+    freertos::Task::new(|| { sysman::run_status() }, "status", 500, 0);
+    freertos::yield_task(); // Let above tasks emit status messages
 
-    loop {
-    }
+    // Don't run esh_task() as a task; we can't free heap, so if we just spin
+    // forever we've wasted the init_task heap. "exec" it instead.
+
+    esh_task();
 }
 
 #[no_mangle]
@@ -91,6 +106,7 @@ pub fn init_task()
 pub extern "C" fn main() -> i32 {
     unsafe {
         bindgen_mcu::mcu_init();
+        bindgen_mcu::write_stack_canaries();
     }
 
     ec_io::init();
@@ -105,15 +121,7 @@ pub extern "C" fn main() -> i32 {
     println_async!("");
     println_async!("Initialized EC core and USART");
 
-    println_async!("Initialize I2C");
-    twi::TWI0.init(400000).unwrap();
-
-    println_async!("Initialize GPIO");
-    for &pin in pins::PIN_TABLE {
-        pin.init();
-    }
-
-    freertos::Task::new(|| { init_task() }, "init", 500, 0);
+    freertos::Task::new(|| { init_task() }, "init", 1000, 0);
 
     print_async!("Start scheduler and hand off to init task...");
     freertos::run();

@@ -178,7 +178,7 @@ pin_table!{
     ECFW_G,             LedGpio, addr => 0x14;
 
     POWER_R,            LedGpio, addr => 0x03;
-    POWER_G,            LedGpio, addr => 0x31;
+    POWER_G,            LedGpio, addr => 0x13;
 
     CARD_R,             LedGpio, addr => 0x01;
     CARD_G,             LedGpio, addr => 0x11;
