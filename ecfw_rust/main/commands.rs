@@ -52,8 +52,6 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
     Command{ name: "pwr_stat",  f: cmd_pwr_stat,    descr: "display status of SUPPLY" },
-    Command{ name: "pwr_up",    f: cmd_pwr_up,      descr: "raise reference count of SUPPLY" },
-    Command{ name: "pwr_dn",    f: cmd_pwr_dn,      descr: "lower reference count of SUPPLY" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
@@ -271,32 +269,3 @@ fn cmd_pwr_stat(args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_pwr_up(args: &[&str]) -> Result<(), &'static str>
-{
-    if args.len() < 2 {
-        return Err("expected argument(s)");
-    }
-    let supply_name = args[1];
-    let _lock = supplies::POWER_MUTEX.lock();
-    match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
-        Some(supply) => println!("supply {} state changed? {}",
-                                 supply_name, try!(supply.refcount_up())),
-        None => println!("supply {} not found", supply_name),
-    }
-    Ok(())
-}
-
-fn cmd_pwr_dn(args: &[&str]) -> Result<(), &'static str>
-{
-    if args.len() < 2 {
-        return Err("no supply specified");
-    }
-    let supply_name = args[1];
-    let _lock = supplies::POWER_MUTEX.lock();
-    match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
-        Some(supply) => println!("supply {} state changed? {}",
-                                 supply_name, try!(supply.refcount_down())),
-        None => println!("supply {} not found", supply_name),
-    }
-    Ok(())
-}

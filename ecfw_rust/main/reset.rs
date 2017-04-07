@@ -72,7 +72,7 @@ fn shutdown_supplies_cleanly()
         &supplies::BUCK_3VA,
     ];
     for supply in SUPPLIES_IN_ORDER {
-        match supply.disable() {
+        match supply.down() {
             Ok(_) => (),
             Err(e) => {println_async!("WARNING: {:?}", e);}
         }
@@ -87,5 +87,5 @@ fn shutdown_supplies_cleanly()
 /// bring it back up after a timeout.
 fn shutdown_final()
 {
-    supplies::BUCK_3VB.disable().unwrap();
+    supplies::BUCK_3VB.down().unwrap();
 }

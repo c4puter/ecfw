@@ -25,6 +25,7 @@ use rustsys::{freertos,mutex};
 use hardware::twi;
 use hardware::gpio::Gpio;
 use hardware::twi::TwiDevice;
+use main::supplies;
 use core::sync::atomic::*;
 
 pub static VRM901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x47);
@@ -34,6 +35,7 @@ pub static VRM901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x47);
 /// is complete and settled.
 pub static POWER_MUTEX: mutex::Mutex = mutex::Mutex::new();
 
+#[allow(unused)]
 #[derive(Debug,Copy,Clone,PartialEq)]
 pub enum SupplyStatus {
     Down,
@@ -42,12 +44,10 @@ pub enum SupplyStatus {
     Error
 }
 
-pub trait Supply {
+pub trait Supply : Sync {
     /// Return the supply's name. Override the default if not wrapping a
     /// virtual supply.
-    fn name(&self) -> &'static str {
-        self.getvirt().unwrap().name()
-    }
+    fn name(&self) -> &'static str;
 
     /// Check and return the supply status, or Err if an error occurred
     /// getting the status
@@ -75,118 +75,76 @@ pub trait Supply {
         }
     }
 
-    /// Add to the dependency reference count. If the reference count exceeds
-    /// zero, enable the supply. If the reference count falls to zero, disable
-    /// it and discharge it if possible.
+    /// Bring this supply up. Will panic if any of its dependencies are not up.
+    /// Does nothing if already up.
     ///
-    /// Reference counting need not be threadsafe by itself; use the global
-    /// power control mutex instead. Internal power.rs functions should not
-    /// touch the mutex.
+    /// No timing guarantees: may return before the transition is complete or
+    /// may block.
+    fn up(&self) -> Result<(), &'static str>;
+
+    /// Bring this supply down. Will panic if any of its dependants are not
+    /// down.
+    /// Does nothing if already down.
     ///
-    /// Return Ok(true) if the supply state was changed
-    /// Return Ok(false) if no change occurred
-    /// Return Err(&'static str) if an error occurred changing the supply state
-    ///
-    /// Default implementation assumes a wrapped virtual.
-    fn refcount_up(&self) -> Result<bool, &'static str> {
-        let ref virt = self.getvirt().unwrap();
-        match virt.refcount_up() {
-            Ok(true) => {
-                match virt.wait_status(SupplyStatus::Up) {
-                    Ok(_) => (),
-                    Err(e) => { return Err(e); }
-                };
-                match self.enable() {
-                    Ok(_) => Ok(true),
-                    Err(e) => Err(e),
+    /// No timing guarantees: may return before the transition is complete or
+    /// may block.
+    fn down(&self) -> Result<(), &'static str>;
+
+    /// Return a list of dependencies of this supply
+    fn deps(&self) -> &[&Supply];
+
+    /// Return the number of dependencies of this supply that are not up
+    fn count_deps_not_up(&self) -> Result<usize,&'static str> {
+        let mut count = 0usize;
+
+        for &dep in self.deps() {
+            if try!(dep.status()) != SupplyStatus::Up {
+                count += 1;
+            }
+        }
+
+        Ok(count)
+    }
+
+    /// Return the number of dependants of this supply that are not down
+    fn count_rev_deps_not_down(&self) -> Result<usize,&'static str> where Self: Sized {
+        let mut count = 0usize;
+        let self_ptr = self as *const Supply;
+
+        for &supply in supplies::SUPPLY_TABLE {
+            for &dep in supply.deps() {
+                let dep_ptr = dep as *const Supply;
+
+                if dep_ptr == self_ptr {
+                    if try!(supply.status()) != SupplyStatus::Down {
+                        count += 1;
+                    }
                 }
-            },
-            Ok(false) => Ok(false),
-            Err(e) => Err(e)
-        }
-    }
-
-    /// Subtract from the dependency reference count. If the reference count
-    /// falls to zero, disable the supply and discharge it if possible.
-    ///
-    /// Reference counting need not be threadsafe by itself; use the global
-    /// power control mutex instead. Internal power.rs functions should not
-    /// touch the mutex.
-    ///
-    /// Return Ok(true) if the supply state was changed
-    /// Return Ok(false) if no change occurred
-    /// Return Err(&'static str) if an error occurred changing the supply state
-    ///
-    /// Default implementation assumes a wrapped virtual.
-    fn refcount_down(&self) -> Result<bool, &'static str> {
-        let ref virt = self.getvirt().unwrap();
-        let rc = virt.refcount();
-        if rc == 1 {
-            match self.disable() {
-                Ok(_) => {
-                    match self.wait_status(SupplyStatus::Down) {
-                        Ok(_) => (),
-                        Err(e) => { return Err(e); }
-                    }
-                    match virt.refcount_down() {
-                        Ok(_) => Ok(true),
-                        Err(e) => Err(e),
-                    }
-                },
-                Err(e) => Err(e),
             }
-        } else if rc > 1 {
-            match virt.refcount_down() {
-                Ok(_) => Ok(false),
-                Err(e) => Err(e),
-            }
-        } else {
-            Ok(false)
         }
+
+        Ok(count)
     }
-
-    /// Return the reference count. Override the default if not wrapping a
-    /// virtual supply.
-    fn refcount(&self) -> usize {
-        self.getvirt().unwrap().refcount()
-    }
-
-    fn getvirt(&self) -> Option<&VirtualSupply>;
-
-    /// Enable only this supply, assuming dependencies are up. Only used
-    /// by the default refcount_up() implementation.
-    fn enable(&self) -> Result<(), &'static str>;
-
-    /// Disable only this supply, assuming dependencies are being tracked.
-    /// Only used by the default refcount_down() implementation.
-    fn disable(&self) -> Result<(), &'static str>;
 }
 
 /// Power supply section on the voltage regulator module
 pub struct VrmSupply {
-    virt: VirtualSupply,
     vrm_id: u8,         // ID used by the VRM I2C interface
     disch: Option<(&'static Gpio, u32)>,
     set_state: AtomicBool,
     transitioning: AtomicBool,
+    deps: &'static [&'static(Supply)],
+    name: &'static str,
 }
 
 /// Power supply controlled by a single "enable" line on GPIO
 pub struct GpioSwitchedSupply {
-    virt: VirtualSupply,
     gpio: &'static Gpio,
     disch: Option<(&'static Gpio, u32)>,
     wait_ticks: u32,    // Number of 1ms ticks to wait after switching
                         // to consider the supply settled
-}
-
-/// Power state (virtual supply, only has dependencies). This is also used by
-/// the real supply objects for dependency handling, to keep that code in one
-/// place.
-pub struct VirtualSupply {
+    deps: &'static [&'static(Supply)],
     name: &'static str,
-    deps: &'static [&'static Supply],
-    refcount: AtomicUsize,
 }
 
 impl VrmSupply {
@@ -197,11 +155,12 @@ impl VrmSupply {
         disch: Option<(&'static Gpio, u32)>) -> VrmSupply
     {
         VrmSupply {
-            virt: VirtualSupply::new(name, deps),
             vrm_id: vrm_id,
             disch: disch,
             set_state: ATOMIC_BOOL_INIT,
             transitioning: ATOMIC_BOOL_INIT,
+            deps: deps,
+            name: name,
         }
     }
 
@@ -232,7 +191,9 @@ impl Supply for VrmSupply {
         }
     }
 
-    fn enable(&self) -> Result<(), &'static str> {
+    fn up(&self) -> Result<(), &'static str> {
+        assert!(try!(self.count_deps_not_up()) == 0);
+
         match self.disch {
             Some((gpio, _wait)) => {
                 gpio.set(false);
@@ -248,7 +209,9 @@ impl Supply for VrmSupply {
         }
     }
 
-    fn disable(&self) -> Result<(), &'static str> {
+    fn down(&self) -> Result<(), &'static str> {
+        assert!(try!(self.count_rev_deps_not_down()) == 0);
+
         match VRM901.write(&[self.vrm_id], &[0]) {
             Ok(_) => {
                 self.set_state.store(false, Ordering::Relaxed);
@@ -265,8 +228,12 @@ impl Supply for VrmSupply {
         }
     }
 
-    fn getvirt(&self) -> Option<&VirtualSupply> {
-        Some(&self.virt)
+    fn deps(&self) -> &[&Supply] {
+        &self.deps
+    }
+
+    fn name(&self) -> &'static str {
+        &self.name
     }
 }
 
@@ -279,10 +246,11 @@ impl GpioSwitchedSupply {
         disch: Option<(&'static Gpio, u32)>) -> GpioSwitchedSupply
     {
         GpioSwitchedSupply {
-            virt: VirtualSupply::new(name, deps),
             gpio: gpio,
             disch: disch,
             wait_ticks: wait_ticks,
+            deps: deps,
+            name: name,
         }
     }
 }
@@ -292,7 +260,9 @@ impl Supply for GpioSwitchedSupply {
         if self.gpio.get() { Ok(SupplyStatus::Up) } else { Ok(SupplyStatus::Down) }
     }
 
-    fn enable(&self) -> Result<(), &'static str> {
+    fn up(&self) -> Result<(), &'static str> {
+        assert!(try!(self.count_deps_not_up()) == 0);
+
         match self.disch {
             Some((disgpio, _wait)) => {
                 disgpio.set(false);
@@ -304,7 +274,9 @@ impl Supply for GpioSwitchedSupply {
         Ok(())
     }
 
-    fn disable(&self) -> Result<(), &'static str> {
+    fn down(&self) -> Result<(), &'static str> {
+        assert!(try!(self.count_rev_deps_not_down()) == 0);
+
         let mut max_wait = self.wait_ticks;
 
         self.gpio.set(false);
@@ -319,102 +291,15 @@ impl Supply for GpioSwitchedSupply {
         Ok(())
     }
 
-    fn getvirt(&self) -> Option<&VirtualSupply> {
-        Some(&self.virt)
+    fn deps(&self) -> &[&Supply] {
+        &self.deps
     }
-}
 
-impl VirtualSupply {
-    pub const fn new(name: &'static str, deps: &'static [&'static Supply]) -> VirtualSupply {
-        VirtualSupply {
-            name: name,
-            deps: deps,
-            refcount: ATOMIC_USIZE_INIT,
-        }
-    }
-}
-
-impl Supply for VirtualSupply {
     fn name(&self) -> &'static str {
-        self.name
-    }
-
-    fn status(&self) -> Result<SupplyStatus, &'static str> {
-        // Up: all deps are up
-        // Down: all deps are down
-        // Transition: any dep is transitioning
-        // Error: mix of up and down, but no transition
-        let mut all_up = true;
-        let mut all_down = true;
-        let mut any_transition = false;
-        let mut any_error = false;
-
-        for supply in self.deps.iter() {
-            match supply.status() {
-                Ok(SupplyStatus::Up) => { all_down = false; },
-                Ok(SupplyStatus::Down) => { all_up = false; },
-                Ok(SupplyStatus::Transition) => { any_transition = true; all_down = false; all_up = false; },
-                Ok(SupplyStatus::Error) => { any_error = true; },
-                Err(e) => { return Err(e) }
-            }
-        }
-
-        match (all_up, all_down, any_transition, any_error) {
-            (true, _, _, false) => Ok(SupplyStatus::Up),
-            (_, true, _, false) => Ok(SupplyStatus::Down),
-            (false, false, true, false) => Ok(SupplyStatus::Transition),
-            (_, _, _, true) => Ok(SupplyStatus::Error),
-            (false, false, false, false) => Ok(SupplyStatus::Error),
-        }
-    }
-
-    fn refcount_up(&self) -> Result<bool, &'static str> {
-        let lastcount = self.refcount.fetch_add(1, Ordering::Relaxed);
-        if lastcount == 0 {
-            for supply in self.deps.iter() {
-                match supply.refcount_up() {
-                    Ok(_) => (),
-                    Err(e) => { return Err(e); }
-                }
-            }
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
-    fn refcount_down(&self) -> Result<bool, &'static str> {
-        let lastcount = self.refcount.fetch_sub(1, Ordering::Relaxed);
-        if lastcount == 1 {
-            for supply in self.deps.iter() {
-                match supply.refcount_down() {
-                    Ok(_) => (),
-                    Err(e) => { return Err(e); }
-                }
-            }
-            Ok(true)
-        } else {
-            Ok(false)
-        }
-    }
-
-    fn refcount(&self) -> usize {
-        self.refcount.load(Ordering::Relaxed)
-    }
-
-    fn getvirt(&self) -> Option<&VirtualSupply> {
-        None
-    }
-
-    fn enable(&self) -> Result<(), &'static str> {
-        Err("enable/disable of virtual supply")
-    }
-
-    fn disable(&self) -> Result<(), &'static str> {
-        Err("enable/disable of virtual supply")
+        &self.name
     }
 }
+
 
 unsafe impl Sync for VrmSupply {}
 unsafe impl Sync for GpioSwitchedSupply {}
-unsafe impl Sync for VirtualSupply {}

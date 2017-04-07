@@ -28,7 +28,7 @@ macro_rules! supply_table {
     (
         $( $name:ident, $kind:tt, $( $arg:expr ),* );* ;
     ) => {
-        pub static SUPPLY_TABLE: &'static [&'static(Supply + Sync)] = &[
+        pub static SUPPLY_TABLE: &'static [&'static(Supply)] = &[
             $( &$name ),*
         ];
 
@@ -73,34 +73,75 @@ supply_table!{
     SW1,        GpioSwitchedSupply, &[],                &EN_P12V_PCI,   1,  None;
     SW2,        GpioSwitchedSupply, &[&BUCK_5VB],       &EN_P5V_PCI_B,  1,  None;
     SW3,        GpioSwitchedSupply, &[&BUCK_3VB],       &EN_P3V3_S0B,   6,  Some((&DISCH_3VB,   36));
+}
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // VirtualSupply (virtual named rails)
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    P12V_PCI,           VirtualSupply,  &[&SW1];
-    P5V_PCI_A,          VirtualSupply,  &[&BUCK_5VA];
-    P5V_PCI_B,          VirtualSupply,  &[&SW2];
-    P3V3_PCI_A,         VirtualSupply,  &[&BUCK_3VA, &P1V2_CORE];
-    P3V3_PCI_B,         VirtualSupply,  &[&SW3, &P1V2_CORE];
-    N12V_PCI,           VirtualSupply,  &[&INV_N12];
-    P1V2_CORE,          VirtualSupply,  &[&BUCK_1V2];
-    P1V5_BRIDGE,        VirtualSupply,  &[&BUCK_1V5, &P1V2_CORE];
-    P3V3_BRIDGE,        VirtualSupply,  &[&SW3, &P1V2_CORE];
-    PV75_SDRAM_VTT,     VirtualSupply,  &[&LDO_S0, &P1V5_BRIDGE];
-    PV75_SDRAM_VREF,    VirtualSupply,  &[&LDO_S3, &P1V5_BRIDGE];
-    P3V3_CPU,           VirtualSupply,  &[&SW3, &P1V2_CORE];
-    P3V3_AUX,           VirtualSupply,  &[&BUCK_3VA, &P1V2_CORE];
-    P3V3_STBY,          VirtualSupply,  &[&BUCK_3VB];
+pub fn transition_s3_from_s5() -> Result<(),&'static str> {
+    try!(BUCK_5VA.up());
+    try!(BUCK_5VB.up());
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    // VirtualSupply (power states)
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    S0,                 VirtualSupply,  &[&P12V_PCI, &P5V_PCI_A, &P5V_PCI_B,
-                                          &N12V_PCI, &P3V3_PCI_A, &P3V3_PCI_B,
-                                          &P1V2_CORE, &P1V5_BRIDGE, &P3V3_BRIDGE,
-                                          &PV75_SDRAM_VTT, &PV75_SDRAM_VREF,
-                                          &P3V3_CPU, &P3V3_AUX, &P3V3_STBY];
-    S3,                 VirtualSupply,  &[&P1V2_CORE, &P1V5_BRIDGE,
-                                          &PV75_SDRAM_VREF, &P3V3_STBY];
-    S5,                 VirtualSupply,  &[&P3V3_STBY];
+    try!(BUCK_5VB.wait_status(SupplyStatus::Up));
+    try!(BUCK_1V5.up());
+
+    try!(BUCK_5VA.wait_status(SupplyStatus::Up));
+    try!(BUCK_1V2.up());
+
+    try!(BUCK_1V5.wait_status(SupplyStatus::Up));
+    try!(LDO_S3.up());
+
+    try!(BUCK_1V2.wait_status(SupplyStatus::Up));
+    try!(LDO_S3.wait_status(SupplyStatus::Up));
+
+    Ok(())
+}
+
+pub fn transition_s0_from_s3() -> Result<(),&'static str> {
+    try!(BUCK_3VA.up());
+    try!(LDO_S0.up());
+    try!(INV_N12.up());
+    try!(SW1.up());
+    try!(SW2.up());
+    try!(SW3.up());
+
+    try!(BUCK_3VA.wait_status(SupplyStatus::Up));
+    try!(LDO_S0.wait_status(SupplyStatus::Up));
+    try!(INV_N12.wait_status(SupplyStatus::Up));
+    try!(SW1.wait_status(SupplyStatus::Up));
+    try!(SW2.wait_status(SupplyStatus::Up));
+    try!(SW3.wait_status(SupplyStatus::Up));
+    Ok(())
+}
+
+pub fn transition_s3_from_s0() -> Result<(),&'static str> {
+    try!(SW3.down());
+    try!(SW2.down());
+    try!(SW1.down());
+    try!(INV_N12.down());
+    try!(LDO_S0.down());
+    try!(BUCK_3VA.down());
+
+    try!(SW3.wait_status(SupplyStatus::Down));
+    try!(SW2.wait_status(SupplyStatus::Down));
+    try!(SW1.wait_status(SupplyStatus::Down));
+    try!(INV_N12.wait_status(SupplyStatus::Down));
+    try!(LDO_S0.wait_status(SupplyStatus::Down));
+    try!(BUCK_3VA.wait_status(SupplyStatus::Down));
+    Ok(())
+}
+
+pub fn transition_s5_from_s3() -> Result<(),&'static str> {
+    try!(LDO_S3.down());
+    try!(BUCK_1V2.down());
+
+    try!(LDO_S3.wait_status(SupplyStatus::Down));
+    try!(BUCK_1V5.down());
+
+    try!(BUCK_1V2.wait_status(SupplyStatus::Down));
+    try!(BUCK_5VA.down());
+
+    try!(BUCK_1V5.wait_status(SupplyStatus::Down));
+    try!(BUCK_5VB.down());
+
+    try!(BUCK_5VA.wait_status(SupplyStatus::Down));
+    try!(BUCK_5VB.wait_status(SupplyStatus::Down));
+    Ok(())
 }
