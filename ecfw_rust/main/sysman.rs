@@ -111,7 +111,7 @@ fn do_boot()
     S0.wait_status(SupplyStatus::Up).unwrap();
     println!("sysman: power up");
 
-    SPEAKER.set(true);
+    //SPEAKER.set(true);
     freertos::delay(250);
     SPEAKER.set(false);
 }
@@ -119,9 +119,16 @@ fn do_boot()
 fn do_shutdown()
 {
     println!("sysman: shutdown");
+    S3.refcount_up().unwrap();
+    S0.refcount_down().unwrap();
+
+    S0.wait_status(SupplyStatus::Down).unwrap();
 }
 
 fn do_reboot()
 {
     println!("sysman: reboot");
+    do_shutdown();
+    freertos::delay(750);
+    do_boot();
 }

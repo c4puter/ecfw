@@ -144,10 +144,8 @@ fn cmd_panel(_args: &[&str]) -> Result<(), &'static str>
 fn cmd_event(args: &[&str]) -> Result<(), &'static str>
 {
     if args.len() < 2 {
-        return Err("no event specified");
-    }
-
-    if args[1] == "boot" {
+        Err("no event specified")
+    } else if args[1] == "boot" {
         sysman::post(sysman::Event::Boot);
         Ok(())
     } else if args[1] == "shutdown" {
