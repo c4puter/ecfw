@@ -91,8 +91,8 @@ pub fn init_task()
     freertos::delay(250);
     ledmatrix::matrix().set_all(false).unwrap();
 
-    freertos::Task::new(|| { sysman::run_event() }, "event", 500, 0);
-    freertos::Task::new(|| { sysman::run_status() }, "status", 500, 0);
+    freertos::Task::new(sysman::run_event, "event", 500, 0);
+    freertos::Task::new(sysman::run_status, "status", 500, 0);
     freertos::yield_task(); // Let above tasks emit status messages
 
     // Don't run esh_task() as a task; we can't free heap, so if we just spin
@@ -121,7 +121,7 @@ pub extern "C" fn main() -> i32 {
     println_async!("");
     println_async!("Initialized EC core and USART");
 
-    freertos::Task::new(|| { init_task() }, "init", 1000, 0);
+    freertos::Task::new(init_task, "init", 1000, 0);
 
     print_async!("Start scheduler and hand off to init task...");
     freertos::run();
