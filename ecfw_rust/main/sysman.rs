@@ -126,13 +126,19 @@ pub fn run_status()
 
         // Handle power button
         if POWER_BTN.get() {
+            if powerbtn_cycles_held == 0 {
+                debug!(DEBUG_PWRBTN, "button pressed");
+            }
             powerbtn_cycles_held += 1;
             if powerbtn_cycles_held >= POWER_BUTTON_STOP_CYCLES_MIN && !powerbtn_handled {
+                debug!(DEBUG_PWRBTN, "press event (long)");
                 powerbtn_handled = true;
                 button_press(powerbtn_cycles_held);
             }
         } else if powerbtn_cycles_held > 0 {
+            debug!(DEBUG_PWRBTN, "button released");
             if !powerbtn_handled {
+                debug!(DEBUG_PWRBTN, "press event");
                 button_press(powerbtn_cycles_held);
             }
             powerbtn_handled = false;
@@ -147,24 +153,26 @@ fn button_press(cycles: u32)
 {
     let state = POWER_STATE.load(Ordering::SeqCst);
 
-    if state == 0 {
-        if cycles <= POWER_BUTTON_START_CYCLES_MAX {
+    if cycles <= POWER_BUTTON_START_CYCLES_MAX {
+        debug!(DEBUG_PWRBTN, "handle short press, state {}", state);
+
+        if state == 0 {
             debug!(DEBUG_SYSMAN, "TODO: power event to CPU");
-        } else if cycles >= POWER_BUTTON_STOP_CYCLES_MIN {
-            post(Event::Shutdown);
-        }
-    } else if state == 3 {
-        if cycles <= POWER_BUTTON_START_CYCLES_MAX {
+        } else if state == 3 {
             debug!(DEBUG_SYSMAN, "TODO: wake from S3");
-        } else if cycles >= POWER_BUTTON_STOP_CYCLES_MIN {
-            post(Event::Shutdown);
-        }
-    } else if state == 5 {
-        if cycles <= POWER_BUTTON_START_CYCLES_MAX {
+        } else if state == 5 {
             post(Event::Boot);
         }
-    } else {
-        panic!("unhandled power state {}", state);
+
+    } else if cycles >= POWER_BUTTON_STOP_CYCLES_MIN {
+        debug!(DEBUG_PWRBTN, "handle long press, state {}", state);
+
+        if state == 0 {
+            post(Event::Shutdown);
+        } else if state == 3 {
+            post(Event::Shutdown);
+        }
+
     }
 }
 

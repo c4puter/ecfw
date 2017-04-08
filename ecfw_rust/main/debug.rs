@@ -31,7 +31,7 @@ pub struct DebugClass {
 
 macro_rules! debug_table {
     (
-        $( $name:ident : $prefix:expr, $default:expr );*
+        $( $name:ident : $prefix:expr, $default:expr ; )*
     ) => {
         #[allow(unused)]
         pub static DEBUG_TABLE: &'static [&'static DebugClass] = &[
@@ -47,23 +47,19 @@ macro_rules! debug_table {
             };
         )*
     };
-    (
-        $name:ident : $prefix:expr, $default:expr ;
-    ) => {
-        debug_table!{ $name : $prefix, $default }
-    }
 }
 
 debug_table! {
     DEBUG_SYSMAN: "sysman", true;
+    DEBUG_PWRBTN: "pwrbtn", false;
 }
 
 macro_rules! debug {
     (
         $name:ident, $( $values:tt ),*
     ) => {
-        if ::main::debug::$name.enabled() {
-            print!("{}: ", ::main::debug::$name.prefix);
+        if $crate::main::debug::$name.enabled() {
+            print!("{}: ", $crate::main::debug::$name.prefix);
             println!( $($values),* );
         }
     }
