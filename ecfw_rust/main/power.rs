@@ -23,13 +23,10 @@
 
 use rustsys::freertos;
 use rustsys::mutex::Mutex;
-use hardware::twi;
 use hardware::gpio::Gpio;
-use hardware::twi::TwiDevice;
 use main::supplies;
+use main::twi_devices::VRM901;
 use core::sync::atomic::*;
-
-pub static VRM901: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&twi::TWI0, 0x47));
 
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change

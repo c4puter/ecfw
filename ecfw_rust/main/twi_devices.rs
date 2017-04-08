@@ -1,6 +1,6 @@
 /*
  * The MIT License (MIT)
- * Copyright (c) 2016 Chris Pavlina
+ * Copyright (c) 2017 Chris Pavlina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,13 +21,28 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#[macro_use] mod debug;
-pub mod main;
-mod commands;
-mod parseint;
-mod pins;
-pub mod twi_devices;
-mod power;
-mod supplies;
-mod reset;
-mod sysman;
+use hardware::twi::*;
+use rustsys::mutex::Mutex;
+
+macro_rules! twi_table {
+    (
+        $( $name:ident @ $twi:ident : $addr:expr ; )*
+    ) => {
+        $(
+            #[allow(dead_code)]
+            pub static $name: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&$twi, $addr));
+        )*
+    }
+}
+
+twi_table! {
+    U901            @ TWI0:0x20; // PCF8575
+    U101            @ TWI0:0x21; // PCF8575
+    U801            @ TWI0:0x37; // AS1130
+    VRM901          @ TWI0:0x47;
+    LM75B_LOGIC     @ TWI0:0x48;
+    LM75B_AMBIENT   @ TWI0:0x49;
+    SDRAM_SPD       @ TWI0:0x50;
+    CDCE913         @ TWI0:0x65; // Clock synthesizer
+    PCF8523         @ TWI0:0x68; // RTC
+}

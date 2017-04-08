@@ -23,10 +23,8 @@
 
 use hardware::gpio::*;
 use hardware::ledmatrix::LedGpio;
-use hardware::twi;
-use hardware::twi::TwiDevice;
+use main::twi_devices::{U101,U901};
 use hardware::gpio::Mode::*;
-use rustsys::mutex::Mutex;
 
 macro_rules! pin_table {
     (
@@ -50,15 +48,9 @@ macro_rules! pin_table {
 
 // PCF8575
 const OUTPUTS_U101: u16 = 0x0030;
-static U101: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&twi::TWI0, 0x21));
 
 // PCF8575
 const OUTPUTS_U901: u16 = 0xcfff;
-static U901: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&twi::TWI0, 0x20));
-
-// AS1130
-pub static U801: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&twi::TWI0, 0x37));
-
 
 pin_table!{
 

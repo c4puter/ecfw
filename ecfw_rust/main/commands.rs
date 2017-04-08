@@ -24,6 +24,7 @@
 use rustsys::{ec_io,freertos};
 use hardware::twi::TWI0;
 use hardware::gpio::*;
+use hardware::tempsensor;
 use main::{pins, supplies, reset, sysman, debug};
 use main::pins::*;
 
@@ -45,6 +46,7 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "dbgls",     f: cmd_dbgls,   descr: "list debug items" },
 
     Command{ name: "panel",     f: cmd_panel,   descr: "render the user IO panel to the console" },
+    Command{ name: "temps",     f: cmd_temps,   descr: "read the temperature sensors" },
     Command{ name: "event",     f: cmd_event,   descr: "send an event (boot, shutdown, reboot)" },
 
     Command{ name: "i2c_probe", f: cmd_i2c_probe,   descr: "probe I2C for an ADDR" },
@@ -175,6 +177,17 @@ fn cmd_panel(_args: &[&str]) -> Result<(), &'static str>
     println!("{} single CPU", yn(SINGLE_CPU.get()));
     println!("{} debug boot", yn(DEBUG_BOOT.get()));
     println!("{} merged ser", yn(MERGE_SERIAL.get()));
+    Ok(())
+}
+
+fn cmd_temps(_args: &[&str]) -> Result<(), &'static str>
+{
+    let temp_logic = try!(tempsensor::SENSOR_LOGIC.read());
+    let temp_ambient = try!(tempsensor::SENSOR_AMBIENT.read());
+
+    println!("Logic:   {}.{} degC", temp_logic/10, temp_logic%10);
+    println!("Ambient: {}.{} degC", temp_ambient/10, temp_ambient%10);
+
     Ok(())
 }
 

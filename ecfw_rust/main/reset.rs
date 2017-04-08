@@ -22,7 +22,7 @@
  */
 
 use rustsys::{ec_io,freertos};
-use main::{power,supplies};
+use main::{power,supplies,twi_devices};
 use main::power::Supply;
 extern crate asf_rstc;
 
@@ -38,7 +38,7 @@ pub fn hard_reset()
     println!("    Acquire power control lock");
     let _plock = power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
     println!("    Acquire VRM I2C lock");
-    let _lock = power::VRM901.lock_timeout(1000).expect("timeout");
+    let _lock = twi_devices::VRM901.lock_timeout(1000).expect("timeout");
 
     // Unsafe: shuts down the task scheduler
     println!("    Suspend tasks");
