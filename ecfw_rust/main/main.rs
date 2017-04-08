@@ -90,9 +90,8 @@ pub fn init_task()
     unsafe{ ledmatrix::matrix_init(&pins::U801).unwrap(); }
     freertos::delay(250);
     {
-        let mat = ledmatrix::matrix();
-        let _lock = mat.lock();
-        mat.set_all(false);
+        let mut mat = ledmatrix::MATRIX.write();
+        mat.buffer_all(false);
         mat.flush().unwrap();
     }
 

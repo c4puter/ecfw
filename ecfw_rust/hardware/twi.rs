@@ -104,14 +104,14 @@ extern "C" {
 
 pub struct Twi {
     p_twi: TwiHandle,
-    mutex: mutex::Mutex,
+    mutex: mutex::Mutex<()>,
     initialized: AtomicBool,
 }
 
 pub struct TwiDevice {
     pub twi: &'static Twi,
     pub addr: u8,
-    pub mutex: mutex::Mutex,
+    pub mutex: mutex::Mutex<()>,
 }
 
 /// Threadsafe wrapper around TWI peripheral. This must be initialized before
@@ -120,7 +120,7 @@ impl Twi {
     pub const fn new(p_twi: TwiHandle) -> Twi {
         Twi {
             p_twi: p_twi,
-            mutex: mutex::Mutex::new(),
+            mutex: mutex::Mutex::new(()),
             initialized: ATOMIC_BOOL_INIT,
         }
     }
@@ -219,18 +219,18 @@ impl TwiDevice {
         TwiDevice {
             twi: twi,
             addr: addr,
-            mutex: mutex::Mutex::new()}
+            mutex: mutex::Mutex::new(())}
     }
 
     /// Obtain and return a lock on this device. This is an RAII lock that will
     /// be released when it goes out of scope.
-    pub fn lock(&'static self) -> mutex::MutexLock {
+    pub fn lock(&'static self) -> mutex::MutexLock<()> {
         self.mutex.lock()
     }
 
     /// Obtain and return a lock on this device. This is an RAII lock that will
     /// be released when it goes out of scope.
-    pub fn lock_timeout(&'static self, nticks: u32) -> Option<mutex::MutexLock> {
+    pub fn lock_timeout(&'static self, nticks: u32) -> Option<mutex::MutexLock<()>> {
         self.mutex.lock_timeout(nticks)
     }
 

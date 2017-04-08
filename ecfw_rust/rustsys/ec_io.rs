@@ -42,7 +42,7 @@ queue_static_new! {
     STDOUT_QUEUE: [u8; 72];
 }
 
-static STDOUT_MUTEX: mutex::Mutex = mutex::Mutex::new();
+static STDOUT_MUTEX: mutex::Mutex<()> = mutex::Mutex::new(());
 
 fn putc_task(q: &'static queue::Queue<'static, u8>)
 {

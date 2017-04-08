@@ -33,7 +33,7 @@ pub static VRM901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x47);
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change
 /// is complete and settled.
-pub static POWER_MUTEX: mutex::Mutex = mutex::Mutex::new();
+pub static POWER_MUTEX: mutex::Mutex<()> = mutex::Mutex::new(());
 
 #[allow(unused)]
 #[derive(Debug,Copy,Clone,PartialEq)]

@@ -111,8 +111,7 @@ pub fn run_status()
 
     loop {
         if cycle_count == 0 {
-            let mat = ledmatrix::matrix();
-            let _lock = mat.lock();
+            let mut mat = ledmatrix::MATRIX.write();
 
             for &pair in SUPPLY_STATUS_TABLE {
                 let stat = pair.supply.status().unwrap();
