@@ -21,12 +21,12 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use main::{commands, pins, sysman, twi_devices};
+use main::{commands, pins, sysman, twi_devices, reset};
 use esh;
 use hardware::{ledmatrix, twi};
 use hardware::gpio::Gpio;
 use bindgen_mcu;
-use rustsys::{ec_io,freertos};
+use rustsys::{ec_io, freertos};
 
 use core::str;
 
@@ -83,6 +83,9 @@ pub fn init_task()
     for &pin in pins::PIN_TABLE {
         pin.init();
     }
+
+    // Put all power supplies in known state - all but standby rail down
+    reset::shutdown_supplies_cleanly();
 
     // Power supply safety can be released once pins are initialized
     pins::EN_SAFETY.set(false);
