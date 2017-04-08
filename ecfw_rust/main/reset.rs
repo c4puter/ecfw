@@ -34,21 +34,25 @@ pub fn hard_reset()
     // Grab locks before suspending tasks. This allows any pending
     // transactions to complete, avoiding putting the VRM's I2C slave
     // in an unknown state.
-    println!("\nHard reset");
-    println!("    Acquire power control lock");
-    let _plock = power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
-    println!("    Acquire VRM I2C lock");
-    let _lock = twi_devices::VRM901.lock_timeout(1000).expect("timeout");
+    {
+        println!("\nHard reset");
+        println!("    Acquire power control lock");
+        let _plock = power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
+        println!("    Acquire VRM I2C lock");
+        let _lock = twi_devices::VRM901.lock_timeout(1000).expect("timeout");
 
-    // Unsafe: shuts down the task scheduler
-    println!("    Suspend tasks");
-    ec_io::flush_output();
-    unsafe {freertos::suspend_all()};
+        // Unsafe: shuts down the task scheduler
+        println!("    Suspend tasks");
+        ec_io::flush_output();
+        unsafe {freertos::suspend_all()};
+    }
 
+    // Locks are released now; may be picked up again by the individual supply
+    // control methods
     println_async!("    Shut down supplies");
-    shutdown_supplies_cleanly();
+    unsafe{ shutdown_supplies_cleanly(); }
     println_async!("    Shut down standby rail");
-    shutdown_final();
+    unsafe{ shutdown_final(); }
 
     loop {}
 }
@@ -56,8 +60,10 @@ pub fn hard_reset()
 /// Cleanly shut down all the power supplies. This ignores reference counting
 /// and manually follows dependencies, in case the supply management code is
 /// fucked up.
-fn shutdown_supplies_cleanly()
+pub fn shutdown_supplies_cleanly()
 {
+    let _lock = power::POWER_MUTEX.lock();
+
     static SUPPLIES_IN_ORDER: &'static [&'static(Supply + Sync)] = &[
         &supplies::SW1,
         &supplies::SW2,
@@ -85,7 +91,7 @@ fn shutdown_supplies_cleanly()
 
 /// Shut down the standby rail, which powers the EC itself. The VRM will
 /// bring it back up after a timeout.
-fn shutdown_final()
+unsafe fn shutdown_final()
 {
     supplies::BUCK_3VB.down().unwrap();
 }
