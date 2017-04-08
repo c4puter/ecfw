@@ -26,6 +26,7 @@ use main::power;
 use main::supplies::*;
 use main::pins::*;
 use hardware::gpio::*;
+use core::sync::atomic::*;
 
 #[derive(Copy,Clone,Debug)]
 pub enum Event {
@@ -33,6 +34,8 @@ pub enum Event {
     Shutdown,
     Reboot,
 }
+
+static POWER_STATE: AtomicUsize = ATOMIC_USIZE_INIT;
 
 queue_static_new!(EVENTS: [Event; 2]);
 
@@ -45,9 +48,11 @@ pub fn post(event: Event)
 /// Event loop task
 pub fn run_event()
 {
+    EVENTS.register_receiver();
     println!("Start system manager");
+
     loop {
-        let event = EVENTS.receive_wait();
+        let event = EVENTS.receive_wait_blocking();
         if let Err(e) = handle_one_event(event) {
             panic!("Error on system event: {}", e);
         }
@@ -92,6 +97,11 @@ static SUPPLY_STATUS_TABLE: &'static [SupplyStatusPair] = &[
 /// Status manager task
 pub fn run_status()
 {
+    let mut powerbtn_cycles_held = 0;
+    let mut lastwake = freertos::ticks_running();
+
+    POWER_STATE.store(5, Ordering::SeqCst);
+
     loop {
         for &pair in SUPPLY_STATUS_TABLE {
             let stat = pair.supply.status().unwrap();
@@ -103,10 +113,50 @@ pub fn run_status()
                 SupplyStatus::Error       => { pair.good.set(false); pair.bad.set(true); },
             }
 
-            freertos::yield_task();
         }
 
-        freertos::delay(200);
+        // Handle power LED
+        let state = POWER_STATE.load(Ordering::SeqCst);
+        POWER_LED.set(state == 0);
+
+        // Handle power button
+        if POWER_BTN.get() {
+            powerbtn_cycles_held += 1;
+        } else if powerbtn_cycles_held > 0 {
+            button_press(powerbtn_cycles_held);
+            powerbtn_cycles_held = 0;
+        }
+
+        freertos::delay_period(&mut lastwake, 200);
+    }
+}
+
+fn button_press(cycles: u32)
+{
+    let state = POWER_STATE.load(Ordering::SeqCst);
+
+    if state == 0 {
+        if cycles <= 5 {
+            // Less than 1 second: send power event to CPU
+            println!("TODO: power event to CPU");
+        } else if cycles >= 20 {
+            // More than 4 seconds: force shutdown
+            post(Event::Shutdown);
+        }
+    } else if state == 3 {
+        if cycles <= 5 {
+            // Less than 1 second in S3: wake up
+            println!("TODO: wake from S3");
+        } else if cycles >= 20 {
+            // More than 4 seconds: force shutdown
+            post(Event::Shutdown);
+        }
+    } else if state == 5 {
+        if cycles <= 5 {
+            post(Event::Boot);
+        }
+    } else {
+        panic!("unhandled power state {}", state);
     }
 }
 
@@ -121,6 +171,7 @@ fn do_boot() -> Result<(),&'static str>
     //SPEAKER.set(true);
     freertos::delay(250);
     SPEAKER.set(false);
+    POWER_STATE.store(0, Ordering::SeqCst);
     Ok(())
 }
 
@@ -131,6 +182,7 @@ fn do_shutdown() -> Result<(),&'static str>
     println!("sysman: reached S3");
     try!(transition_s5_from_s3());
     println!("sysman: reached S5");
+    POWER_STATE.store(5, Ordering::SeqCst);
     Ok(())
 }
 

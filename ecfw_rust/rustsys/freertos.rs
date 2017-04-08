@@ -39,8 +39,20 @@ pub type TaskHandle = u32;
 
 #[allow(dead_code)] const pdTRUE: i32 = 1;
 #[allow(dead_code)] const pdFALSE: i32 = 0;
+#[allow(dead_code)] const pdPASS: i32 = 1;
+#[allow(dead_code)] const pdFAIL: i32 = 0;
 
 pub struct Task { }
+
+#[allow(unused)]
+#[repr(C)]
+enum NotifyAction {
+    NoAction = 0,
+    SetBits,
+    Increment,
+    SetValueWithOverwrite,
+    SetValueWithoutOverwrite
+}
 
 extern "C" {
     fn xTaskCreate(
@@ -57,8 +69,49 @@ extern "C" {
     // Utilities
     fn xPortGetFreeHeapSize() -> usize;
     fn vTaskDelay(xTicksToDelay: u32);
+    fn vTaskDelayUntil(
+        pxPreviousWakeTime: *mut u32,
+        xTimeIncrement: u32);
+    fn xTaskGetTickCount() -> u32;
     fn vTaskSuspendAll();
     fn vTaskResumeAll();
+    fn xTaskGetCurrentTaskHandle() -> TaskHandle;
+
+    // Notification functions
+    fn xTaskGenericNotify(
+        xTaskToNotify: TaskHandle,
+        ulValue: u32,
+        eAction: NotifyAction,
+        pulPreviousNotificationValue: *mut u32) -> i32;
+
+    #[allow(unused)]
+    fn xTaskGenericNotifyFromISR(
+        xTaskToNotify: TaskHandle,
+        ulValue: u32,
+        eAction: NotifyAction,
+        pulPreviousNotificationValue: *mut u32,
+        pxHigherPriorityTaskWoken: *mut i32) -> i32;
+
+    // xTaskNotifyGive(task) = xTaskGenericNotify(task, 0,
+    //  NotifyAction::Increment, ptr::null_mut())
+
+    // Return pdPASS if a notification was received, otherwise pdFAIL
+    #[allow(unused)]
+    fn xTaskNotifyWait(
+        ulBitsToClearOnEntry: u32,
+        ulBitsToClearOnExit: u32,
+        pulNotificationValue: *mut u32,
+        xTicksToWait: u32) -> i32;
+
+    // Wait for the notification count to be nonzero, then either clear or
+    // decrement it.
+    //
+    // @param xClearCountOnExit: pdTRUE to clear, pdFALSE to decrement
+    // @param xTicksToWait: timeout
+    // @return value of counter before decremented or cleared
+    fn ulTaskNotifyTake(
+        xClearCountOnExit: i32,
+        xTicksToWait: u32) -> u32;
 }
 
 extern "C" fn task_wrapper<F>(task: *mut Void) where F: Fn() {
@@ -111,6 +164,14 @@ pub fn delay(nticks: u32) {
     unsafe{ vTaskDelay(nticks); }
 }
 
+/// Delay just enough to make the task run with a fixed period.
+/// @param lastwake - the last tick count when the task woke. This is written,
+///     and must be initialized to ticks_running().
+/// @param period - delay period in ticks.
+pub fn delay_period(lastwake: &mut u32, period: u32) {
+    unsafe{ vTaskDelayUntil(lastwake as *mut u32, period); }
+}
+
 /// Delay, even if the scheduler is suspended
 pub fn susp_safe_delay(nticks: u32) {
     let end_tick = ticks().wrapping_add(nticks);
@@ -129,6 +190,12 @@ pub fn ticks() -> u32 {
     TICK_COUNT.load(Ordering::Relaxed) as u32
 }
 
+/// Get the total number of ticks elapsed since run(). This is the FreeRTOS
+/// counter and does not run while the scheduler is suspended.
+pub fn ticks_running() -> u32 {
+    unsafe{ xTaskGetTickCount() }
+}
+
 pub unsafe fn suspend_all() {
     SUSPEND_LEVEL.fetch_add(1, Ordering::Relaxed);
     vTaskSuspendAll();
@@ -139,6 +206,40 @@ pub unsafe fn resume_all() {
         SUSPEND_LEVEL.fetch_add(1, Ordering::Relaxed);
     } else {
         vTaskResumeAll();
+    }
+}
+
+/// Get the handle of the currently running task
+pub fn this_task() -> TaskHandle {
+    unsafe {
+        xTaskGetCurrentTaskHandle()
+    }
+}
+
+/// Increment the notification counter of a task.
+pub fn notify_give(task: TaskHandle) {
+    unsafe {
+        xTaskGenericNotify(task, 0, NotifyAction::Increment, ptr::null_mut());
+    }
+}
+
+/// Counter behavior for notify_take
+pub enum CounterAction {
+    Clear,
+    Decrement
+}
+
+/// Wait for the notification counter of the current task to become nonzero.
+/// @param counter_action - what to do with the counter when it becomes nonzero
+/// @param timeout_ticks - how many ticks before timeout
+/// @return value of the counter after notification. If zero, timed out
+pub fn notify_take(counter_action: CounterAction, timeout_ticks: u32) -> u32 {
+    unsafe {
+        ulTaskNotifyTake(
+            match counter_action {
+                CounterAction::Clear => pdTRUE,
+                CounterAction::Decrement => pdFALSE },
+            timeout_ticks)
     }
 }
 

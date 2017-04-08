@@ -40,6 +40,7 @@ pub struct Queue<'a, T> where T: 'a + Send + Copy + Sized {
     imaxread: AtomicUsize,
     iwrite: AtomicUsize,
     flushing: AtomicBool,
+    receiver: AtomicUsize,
 }
 
 macro_rules! queue_static_init {
@@ -80,6 +81,7 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
             imaxread: ATOMIC_USIZE_INIT,
             iwrite: ATOMIC_USIZE_INIT,
             flushing: ATOMIC_BOOL_INIT,
+            receiver: ATOMIC_USIZE_INIT,
         }
     }
 
@@ -100,6 +102,7 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
             imaxread: ATOMIC_USIZE_INIT,
             iwrite: ATOMIC_USIZE_INIT,
             flushing: ATOMIC_BOOL_INIT,
+            receiver: ATOMIC_USIZE_INIT,
         }
     }
 
@@ -134,6 +137,11 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
             iwrite, (iwrite + 1) % self.data.len(), Ordering::SeqCst)
         {
             freertos::yield_task();
+        }
+
+        let receiver = self.receiver.load(Ordering::SeqCst);
+        if receiver != 0 {
+            freertos::notify_give(receiver as freertos::TaskHandle);
         }
 
         return true;
@@ -177,6 +185,37 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
                 None => (),
             };
             freertos::yield_task();
+        }
+    }
+
+    /// Register the current task as the queue's singular notified receiver.
+    /// Panics if there is already a receiver.
+    ///
+    /// It is still possible to have multiple queue consumers, but only one can
+    /// receive notifications via FreeRTOS.
+    pub fn register_receiver(&self) {
+        let task = freertos::this_task();
+        let previous_task = self.receiver.swap(task as usize, Ordering::SeqCst);
+
+        assert!(previous_task == 0);
+    }
+
+    /// Unregister the current task as the queue's notified receiver.
+    /// Panics if the current task is not the one registered.
+    pub fn unregister_receiver(&self) {
+        let previous_task = self.receiver.swap(0usize, Ordering::SeqCst);
+        assert!(previous_task == freertos::this_task() as usize);
+    }
+
+    /// Receive a value. If the queue is empty, block until it isn't. BEWARE, if
+    /// the current task has not registered as receiver, this will deadlock.
+    pub fn receive_wait_blocking(&self) -> T {
+        loop {
+            match self.receive_no_wait() {
+                Some(val) => { return val; },
+                None => {},
+            };
+            freertos::notify_take(freertos::CounterAction::Decrement, 1000);
         }
     }
 

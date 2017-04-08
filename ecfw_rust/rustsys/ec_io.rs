@@ -46,8 +46,9 @@ static STDOUT_MUTEX: mutex::Mutex = mutex::Mutex::new();
 
 fn putc_task(q: &'static queue::Queue<'static, u8>)
 {
+    q.register_receiver();
     loop {
-        let c = q.receive_wait();
+        let c = q.receive_wait_blocking();
         unsafe {
             asf_usart::usart_putchar(USART_DBG, c as u32);
         }

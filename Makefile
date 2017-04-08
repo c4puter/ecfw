@@ -182,7 +182,7 @@ BINDGEN_CRATES = $(foreach i,${BINDGEN_SOURCES}, \
 # COMMAND TARGETS {{{
 ###############################################################################
 
-.PHONY: all all-with-asf clean genclean distclean debug program
+.PHONY: all all-with-asf clean genclean distclean debug program reset
 .SECONDARY: ${RUSTLIB_FILES}
 
 all: do-bindgen ${RUST_PLUGINS} ${ASF_UNF_DIR}
@@ -213,6 +213,9 @@ debug: ecfw
 
 program: ecfw
 	bash ./scripts/program
+
+reset:
+	bash ./scripts/reset
 
 # }}}
 
