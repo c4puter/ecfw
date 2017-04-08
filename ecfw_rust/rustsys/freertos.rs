@@ -152,7 +152,7 @@ pub fn yield_task() {
 /// Yield if tasks are not suspended, otherwise do nothing.
 pub fn yield_safe() {
     unsafe{ rust_support::disable_irq(); }
-    if SUSPEND_LEVEL.load(Ordering::Relaxed) == 0 {
+    if SUSPEND_LEVEL.load(Ordering::SeqCst) == 0 {
         unsafe{ rust_support::pendsv(); }
     }
     unsafe{ rust_support::enable_irq(); }
@@ -197,13 +197,13 @@ pub fn ticks_running() -> u32 {
 }
 
 pub unsafe fn suspend_all() {
-    SUSPEND_LEVEL.fetch_add(1, Ordering::Relaxed);
+    SUSPEND_LEVEL.fetch_add(1, Ordering::SeqCst);
     vTaskSuspendAll();
 }
 
 pub unsafe fn resume_all() {
-    if SUSPEND_LEVEL.fetch_sub(1, Ordering::Relaxed) == 0 {
-        SUSPEND_LEVEL.fetch_add(1, Ordering::Relaxed);
+    if SUSPEND_LEVEL.fetch_sub(1, Ordering::SeqCst) == 0 {
+        SUSPEND_LEVEL.fetch_add(1, Ordering::SeqCst);
     } else {
         vTaskResumeAll();
     }
