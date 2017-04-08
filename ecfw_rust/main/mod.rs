@@ -21,6 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#[macro_use] mod debug;
 pub mod main;
 mod commands;
 mod parseint;

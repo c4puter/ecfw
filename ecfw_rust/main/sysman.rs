@@ -28,6 +28,10 @@ use main::pins::*;
 use hardware::gpio::*;
 use core::sync::atomic::*;
 
+// Power button delays
+const POWER_BUTTON_START_CYCLES_MAX: u32 = 5; // <1s: start
+const POWER_BUTTON_STOP_CYCLES_MIN: u32 = 20; // >4s: stop
+
 #[derive(Copy,Clone,Debug)]
 pub enum Event {
     Boot,
@@ -49,7 +53,7 @@ pub fn post(event: Event)
 pub fn run_event()
 {
     EVENTS.register_receiver();
-    println!("Start system manager");
+    debug!(DEBUG_SYSMAN, "start");
 
     loop {
         let event = EVENTS.receive_wait_blocking();
@@ -97,7 +101,8 @@ static SUPPLY_STATUS_TABLE: &'static [SupplyStatusPair] = &[
 /// Status manager task
 pub fn run_status()
 {
-    let mut powerbtn_cycles_held = 0;
+    let mut powerbtn_cycles_held = 0u32;
+    let mut powerbtn_handled = false;
     let mut lastwake = freertos::ticks_running();
 
     POWER_STATE.store(5, Ordering::SeqCst);
@@ -122,8 +127,15 @@ pub fn run_status()
         // Handle power button
         if POWER_BTN.get() {
             powerbtn_cycles_held += 1;
+            if powerbtn_cycles_held >= POWER_BUTTON_STOP_CYCLES_MIN && !powerbtn_handled {
+                powerbtn_handled = true;
+                button_press(powerbtn_cycles_held);
+            }
         } else if powerbtn_cycles_held > 0 {
-            button_press(powerbtn_cycles_held);
+            if !powerbtn_handled {
+                button_press(powerbtn_cycles_held);
+            }
+            powerbtn_handled = false;
             powerbtn_cycles_held = 0;
         }
 
@@ -136,23 +148,19 @@ fn button_press(cycles: u32)
     let state = POWER_STATE.load(Ordering::SeqCst);
 
     if state == 0 {
-        if cycles <= 5 {
-            // Less than 1 second: send power event to CPU
-            println!("TODO: power event to CPU");
-        } else if cycles >= 20 {
-            // More than 4 seconds: force shutdown
+        if cycles <= POWER_BUTTON_START_CYCLES_MAX {
+            debug!(DEBUG_SYSMAN, "TODO: power event to CPU");
+        } else if cycles >= POWER_BUTTON_STOP_CYCLES_MIN {
             post(Event::Shutdown);
         }
     } else if state == 3 {
-        if cycles <= 5 {
-            // Less than 1 second in S3: wake up
-            println!("TODO: wake from S3");
-        } else if cycles >= 20 {
-            // More than 4 seconds: force shutdown
+        if cycles <= POWER_BUTTON_START_CYCLES_MAX {
+            debug!(DEBUG_SYSMAN, "TODO: wake from S3");
+        } else if cycles >= POWER_BUTTON_STOP_CYCLES_MIN {
             post(Event::Shutdown);
         }
     } else if state == 5 {
-        if cycles <= 5 {
+        if cycles <= POWER_BUTTON_START_CYCLES_MAX {
             post(Event::Boot);
         }
     } else {
@@ -162,11 +170,11 @@ fn button_press(cycles: u32)
 
 fn do_boot() -> Result<(),&'static str>
 {
-    println!("sysman: boot");
+    debug!(DEBUG_SYSMAN, "boot");
     try!(transition_s3_from_s5());
-    println!("sysman: reached S3");
+    debug!(DEBUG_SYSMAN, "reached S3");
     try!(transition_s0_from_s3());
-    println!("sysman: reached S0");
+    debug!(DEBUG_SYSMAN, "reached S0");
 
     //SPEAKER.set(true);
     freertos::delay(250);
@@ -177,18 +185,18 @@ fn do_boot() -> Result<(),&'static str>
 
 fn do_shutdown() -> Result<(),&'static str>
 {
-    println!("sysman: shutdown");
+    debug!(DEBUG_SYSMAN, "shutdown");
     try!(transition_s3_from_s0());
-    println!("sysman: reached S3");
+    debug!(DEBUG_SYSMAN, "reached S3");
     try!(transition_s5_from_s3());
-    println!("sysman: reached S5");
+    debug!(DEBUG_SYSMAN, "reached S5");
     POWER_STATE.store(5, Ordering::SeqCst);
     Ok(())
 }
 
 fn do_reboot() -> Result<(),&'static str>
 {
-    println!("sysman: reboot");
+    debug!(DEBUG_SYSMAN, "reboot");
     try!(do_shutdown());
     freertos::delay(750);
     try!(do_boot());

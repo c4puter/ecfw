@@ -24,7 +24,7 @@
 use rustsys::{ec_io,freertos};
 use hardware::twi::TWI0;
 use hardware::gpio::*;
-use main::{pins, supplies, reset, sysman};
+use main::{pins, supplies, reset, sysman, debug};
 use main::pins::*;
 
 use main::parseint::ParseInt;
@@ -40,6 +40,9 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "help",      f: cmd_help,    descr: "display commands and their descriptions" },
     Command{ name: "free",      f: cmd_free,    descr: "display free heap" },
     Command{ name: "reset",     f: cmd_reset,   descr: "reset entire system" },
+    Command{ name: "dbgen",     f: cmd_dbgen,   descr: "enabled debug item" },
+    Command{ name: "dbgdis",    f: cmd_dbgdis,  descr: "disable debug item" },
+    Command{ name: "dbgls",     f: cmd_dbgls,   descr: "list debug items" },
 
     Command{ name: "panel",     f: cmd_panel,   descr: "render the user IO panel to the console" },
     Command{ name: "event",     f: cmd_event,   descr: "send an event (boot, shutdown, reboot)" },
@@ -83,6 +86,42 @@ fn cmd_reset(_args: &[&str]) -> Result<(), &'static str>
 {
     reset::hard_reset();
     Err("did not reset")    // should never happen
+}
+
+fn cmd_dbgen(args: &[&str]) -> Result<(), &'static str>
+{
+    if args.len() < 2 {
+        Err("no debug item specified")
+    } else {
+        if debug::debug_set(args[1], true) {
+            Ok(())
+        } else {
+            Err("cannot find debug item")
+        }
+    }
+}
+
+fn cmd_dbgdis(args: &[&str]) -> Result<(), &'static str>
+{
+    if args.len() < 2 {
+        Err("no debug item specified")
+    } else {
+        if debug::debug_set(args[1], false) {
+            Ok(())
+        } else {
+            Err("cannot find debug item")
+        }
+    }
+}
+
+fn cmd_dbgls(_args: &[&str]) -> Result<(), &'static str>
+{
+    for &dbg in debug::DEBUG_TABLE {
+        println!("{}    {}",
+            if dbg.enabled() { "en " } else { "dis" },
+            dbg.name );
+    }
+    Ok(())
 }
 
 fn cmd_panel(_args: &[&str]) -> Result<(), &'static str>
