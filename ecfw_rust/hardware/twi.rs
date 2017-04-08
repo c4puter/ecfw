@@ -111,7 +111,6 @@ pub struct Twi {
 pub struct TwiDevice {
     pub twi: &'static Twi,
     pub addr: u8,
-    pub mutex: mutex::Mutex<()>,
 }
 
 /// Threadsafe wrapper around TWI peripheral. This must be initialized before
@@ -219,31 +218,19 @@ impl TwiDevice {
         TwiDevice {
             twi: twi,
             addr: addr,
-            mutex: mutex::Mutex::new(())}
-    }
-
-    /// Obtain and return a lock on this device. This is an RAII lock that will
-    /// be released when it goes out of scope.
-    pub fn lock(&'static self) -> mutex::MutexLock<()> {
-        self.mutex.lock()
-    }
-
-    /// Obtain and return a lock on this device. This is an RAII lock that will
-    /// be released when it goes out of scope.
-    pub fn lock_timeout(&'static self, nticks: u32) -> Option<mutex::MutexLock<()>> {
-        self.mutex.lock_timeout(nticks)
+        }
     }
 
     /// Test if the device answers its address
     #[allow(dead_code)]
-    pub fn probe(&'static self) -> Result<bool, TwiResult> {
+    pub fn probe(&mut self) -> Result<bool, TwiResult> {
         self.twi.probe(self.addr)
     }
 
     /// Read from 'location' into 'buffer'
     /// location:   register address in the chip, zero to three bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
-    pub fn read(&'static self, location: &[u8], buffer: &mut [u8])
+    pub fn read(&mut self, location: &[u8], buffer: &mut [u8])
             -> Result<(), TwiResult>
     {
         self.twi.read(self.addr, location, buffer)
@@ -252,7 +239,7 @@ impl TwiDevice {
     /// Write to 'location' from 'buffer'.
     /// location:   register address in the chip, zero to three bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
-    pub fn write(&'static self, location: &[u8], buffer: &[u8])
+    pub fn write(&mut self, location: &[u8], buffer: &[u8])
             -> Result<(), TwiResult>
     {
         self.twi.write(self.addr, location, buffer)

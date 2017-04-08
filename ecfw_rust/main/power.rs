@@ -21,19 +21,20 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::{freertos,mutex};
+use rustsys::freertos;
+use rustsys::mutex::Mutex;
 use hardware::twi;
 use hardware::gpio::Gpio;
 use hardware::twi::TwiDevice;
 use main::supplies;
 use core::sync::atomic::*;
 
-pub static VRM901: TwiDevice = TwiDevice::new(&twi::TWI0, 0x47);
+pub static VRM901: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&twi::TWI0, 0x47));
 
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change
 /// is complete and settled.
-pub static POWER_MUTEX: mutex::Mutex<()> = mutex::Mutex::new(());
+pub static POWER_MUTEX: Mutex<()> = Mutex::new(());
 
 #[allow(unused)]
 #[derive(Debug,Copy,Clone,PartialEq)]
@@ -172,7 +173,7 @@ impl Supply for VrmSupply {
     fn status(&self) -> Result<SupplyStatus, &'static str> {
         let up_bits = VrmSupply::CTRL_BIT_ENABLED | VrmSupply::CTRL_BIT_POWER_GOOD;
         let mut buf = [0u8; 1];
-        let up = match VRM901.read(&[self.vrm_id], &mut buf) {
+        let up = match VRM901.lock().read(&[self.vrm_id], &mut buf) {
             Ok(_) => {
                 buf[0] & up_bits == up_bits
             },
@@ -200,7 +201,7 @@ impl Supply for VrmSupply {
             },
             None => ()
         }
-        match VRM901.write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED]) {
+        match VRM901.lock().write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED]) {
             Ok(_) => {
                 self.set_state.store(true, Ordering::Relaxed);
                 self.transitioning.store(true, Ordering::Relaxed);
@@ -212,7 +213,7 @@ impl Supply for VrmSupply {
     fn down(&self) -> Result<(), &'static str> {
         assert!(try!(self.count_rev_deps_not_down()) == 0);
 
-        match VRM901.write(&[self.vrm_id], &[0]) {
+        match VRM901.lock().write(&[self.vrm_id], &[0]) {
             Ok(_) => {
                 self.set_state.store(false, Ordering::Relaxed);
                 self.transitioning.store(false, Ordering::Relaxed);

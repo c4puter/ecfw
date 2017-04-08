@@ -23,6 +23,7 @@
 
 extern crate bindgen_mcu;
 use hardware::twi;
+use rustsys::mutex::Mutex;
 
 pub trait Gpio {
     fn init(&self);
@@ -100,7 +101,7 @@ impl Gpio for SamGpio {
 unsafe impl Sync for SamGpio {}
 
 pub struct PcfGpio {
-    pub dev: &'static twi::TwiDevice,
+    pub dev: &'static Mutex<twi::TwiDevice>,
     pub pin: u8,
     pub default: bool,
     pub invert: bool,
@@ -134,8 +135,8 @@ impl Gpio for PcfGpio {
             else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
             else { panic!("invalid pin number {}", self.pin); };
 
-        let _lock = self.dev.lock();
-        self.dev.read(&[], &mut data).unwrap();
+        let mut dev = self.dev.lock();
+        dev.read(&[], &mut data).unwrap();
 
         let mut data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 
@@ -152,7 +153,7 @@ impl Gpio for PcfGpio {
         data[0] = ((data_u16 >> 8) & 0xff) as u8;
         data[1] = ((data_u16)      & 0xff) as u8;
 
-        self.dev.write(&[], &data).unwrap();
+        dev.write(&[], &data).unwrap();
     }
 
     fn get(&self) -> bool {
@@ -162,8 +163,7 @@ impl Gpio for PcfGpio {
             else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
             else { panic!("invalid pin number {}", self.pin); };
 
-        let _lock = self.dev.lock();
-        self.dev.read(&[], &mut data).unwrap();
+        self.dev.lock().read(&[], &mut data).unwrap();
 
         let data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 

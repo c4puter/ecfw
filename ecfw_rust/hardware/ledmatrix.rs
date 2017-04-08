@@ -22,6 +22,7 @@
  */
 
 use rustsys::freertos;
+use rustsys::mutex::{Mutex, MutexLock};
 use rustsys::rwlock::RwLock;
 use hardware::{gpio, twi};
 use hardware::twi::TwiResult;
@@ -31,7 +32,7 @@ pub static MATRIX: RwLock<LedMatrix> = RwLock::new( LedMatrix {
     buffer: [0u8; 24],
 } );
 
-pub unsafe fn matrix_init(twi: &'static twi::TwiDevice) -> Result<(),TwiResult> {
+pub unsafe fn matrix_init(twi: &'static Mutex<twi::TwiDevice>) -> Result<(),TwiResult> {
     MATRIX.write().init(twi)
 }
 
@@ -75,70 +76,75 @@ enum CtrlReg
 
 pub struct LedMatrix
 {
-    twi: Option<&'static twi::TwiDevice>,
+    twi: Option<&'static Mutex<twi::TwiDevice>>,
     buffer: [u8; 24],
 }
 
 impl LedMatrix
 {
-    pub fn init(&mut self, twi: &'static twi::TwiDevice) -> Result<(),TwiResult>
+    pub fn init(&mut self, twi: &'static Mutex<twi::TwiDevice>) -> Result<(),TwiResult>
     {
         self.twi = Some(twi);
         freertos::delay(6);
 
-        let _lock = twi.lock();
+        let mut dev = self.twi.unwrap().lock();
 
         // Define RAM configuration, bit mem_conf in config register
         //  - On/Off frames
         //  - Blink/PWM sets
         //  - Dot correction
         //  0x01: RAM configuration 1
-        try!(self.switch_bank(RegBank::ControlReg));
-        try!(twi.write(&[CtrlReg::Config as u8], &[0x01]));
+        try!(self.switch_bank(&mut dev, RegBank::ControlReg));
+        try!(dev.write(&[CtrlReg::Config as u8], &[0x01]));
 
         // Define control register
         //  - Current source
         //  - Display options
         //  - Display picture/play movie
-        try!(twi.write(&[CtrlReg::CurrentSource as u8], &[170])); // 20mA / 117.65uA
-        try!(twi.write(&[CtrlReg::DisplayOpt as u8], &[0xfb])); // Scan all segments
-        try!(twi.write(&[CtrlReg::Movie as u8], &[0x00])); // No movie
-        try!(twi.write(&[CtrlReg::Picture as u8], &[0x40])); // Display picture, frame 0
+        try!(dev.write(&[CtrlReg::CurrentSource as u8], &[170])); // 20mA / 117.65uA
+        try!(dev.write(&[CtrlReg::DisplayOpt as u8], &[0xfb])); // Scan all segments
+        try!(dev.write(&[CtrlReg::Movie as u8], &[0x00])); // No movie
+        try!(dev.write(&[CtrlReg::Picture as u8], &[0x40])); // Display picture, frame 0
         // Set #shdn bit to 1 for normal operation
-        try!(twi.write(&[CtrlReg::ShutdownOpenShort as u8], &[0x03])); // No init, no shutdown
+        try!(dev.write(&[CtrlReg::ShutdownOpenShort as u8], &[0x03])); // No init, no shutdown
         freertos::delay(1);
 
         // Initialize display data
-        try!(self.switch_bank(RegBank::BlinkPwm0));
+        try!(self.switch_bank(&mut dev, RegBank::BlinkPwm0));
         for seg in 0x00..0x0c {
             // Blink bits
-            try!(twi.write(&[seg*2], &[0, 0]));
+            try!(dev.write(&[seg*2], &[0, 0]));
         }
         for addr in 0x18..0x9c {
             // PWM value
-            try!(twi.write(&[addr], &[0x80]));
+            try!(dev.write(&[addr], &[0x80]));
         }
 
         self.buffer_all(true);
-        try!(self.flush());
+        try!(self.flush_with_lock(&mut dev));
         Ok(())
     }
 
-    fn switch_bank(&mut self, bank: RegBank) -> Result<(),TwiResult>
+    fn switch_bank(&mut self, dev: &mut MutexLock<twi::TwiDevice>, bank: RegBank) -> Result<(),TwiResult>
     {
-        self.twi.unwrap().write(&[REG_BANK_SELECT], &[bank as u8])
+        dev.write(&[REG_BANK_SELECT], &[bank as u8])
+    }
+
+    fn flush_with_lock(&mut self, mut dev: &mut MutexLock<twi::TwiDevice>) -> Result<(), TwiResult>
+    {
+        try!(self.switch_bank(&mut dev, RegBank::Frame0));
+
+        for seg in 0x00usize..0x0cusize {
+            try!(dev.write(&[(seg*2) as u8],
+                  &[self.buffer[seg*2], self.buffer[seg*2 + 1]]));
+        }
+        Ok(())
     }
 
     pub fn flush(&mut self) -> Result<(), TwiResult>
     {
-        let ref twi = self.twi.unwrap();
-        try!(self.switch_bank(RegBank::Frame0));
-
-        for seg in 0x00usize..0x0cusize {
-            try!(twi.write(&[(seg*2) as u8],
-                  &[self.buffer[seg*2], self.buffer[seg*2 + 1]]));
-        }
-        Ok(())
+        let mut twi = self.twi.unwrap().lock();
+        self.flush_with_lock(&mut twi)
     }
 
     pub fn buffer_all(&mut self, val: bool)
@@ -186,9 +192,10 @@ impl LedMatrix
 
         self.buffer_led(led, val);
 
-        try!(self.switch_bank(RegBank::Frame0));
+        let mut dev = self.twi.unwrap().lock();
+        try!(self.switch_bank(&mut dev, RegBank::Frame0));
         let buffer = &mut self.buffer[addr..addr+2];
-        try!(self.twi.unwrap().write(&[addr as u8], buffer));
+        try!(dev.write(&[addr as u8], buffer));
 
         Ok(())
     }
