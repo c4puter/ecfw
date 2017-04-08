@@ -26,6 +26,7 @@ use main::power;
 use main::supplies::*;
 use main::pins::*;
 use hardware::gpio::*;
+use hardware::ledmatrix;
 use core::sync::atomic::*;
 
 // Power button delays
@@ -79,8 +80,8 @@ fn handle_one_event(evt: Event) -> Result<(),&'static str>
 #[derive(Copy,Clone)]
 struct SupplyStatusPair {
     supply: &'static(power::Supply + Sync),
-    good: &'static(Gpio + Sync),
-    bad: &'static(Gpio + Sync),
+    good: &'static ledmatrix::LedGpio,
+    bad: &'static ledmatrix::LedGpio,
 }
 
 static SUPPLY_STATUS_TABLE: &'static [SupplyStatusPair] = &[
@@ -104,20 +105,30 @@ pub fn run_status()
     let mut powerbtn_cycles_held = 0u32;
     let mut powerbtn_handled = false;
     let mut lastwake = freertos::ticks_running();
+    let mut cycle_count = 0;
 
     POWER_STATE.store(5, Ordering::SeqCst);
 
     loop {
-        for &pair in SUPPLY_STATUS_TABLE {
-            let stat = pair.supply.status().unwrap();
+        if cycle_count == 0 {
+            let mat = ledmatrix::matrix();
+            let _lock = mat.lock();
 
-            match stat {
-                SupplyStatus::Down        => { pair.good.set(false); pair.bad.set(false); },
-                SupplyStatus::Up          => { pair.good.set(true);  pair.bad.set(false); },
-                SupplyStatus::Transition  => { pair.good.set(true);  pair.bad.set(true); },
-                SupplyStatus::Error       => { pair.good.set(false); pair.bad.set(true); },
+            for &pair in SUPPLY_STATUS_TABLE {
+                let stat = pair.supply.status().unwrap();
+
+                let (good, bad) = match stat {
+                    SupplyStatus::Down        => ( false, false ),
+                    SupplyStatus::Up          => ( true,  false ),
+                    SupplyStatus::Transition  => ( true,  true ),
+                    SupplyStatus::Error       => ( false, true ),
+                };
+
+                mat.buffer_led(pair.good.addr, good);
+                mat.buffer_led(pair.bad.addr, bad);
             }
 
+            mat.flush().unwrap();
         }
 
         // Handle power LED
@@ -145,7 +156,10 @@ pub fn run_status()
             powerbtn_cycles_held = 0;
         }
 
-        freertos::delay_period(&mut lastwake, 200);
+        UPDOG_G.set(cycle_count % 2 == 0);
+
+        freertos::delay_period(&mut lastwake, 100);
+        cycle_count = (cycle_count + 1) % 6;
     }
 }
 
@@ -179,13 +193,26 @@ fn button_press(cycles: u32)
 fn do_boot() -> Result<(),&'static str>
 {
     debug!(DEBUG_SYSMAN, "boot");
-    try!(transition_s3_from_s5());
-    debug!(DEBUG_SYSMAN, "reached S3");
-    try!(transition_s0_from_s3());
-    debug!(DEBUG_SYSMAN, "reached S0");
+    POWER_R.set(true);
+    POWER_G.set(true);
 
-    //SPEAKER.set(true);
-    freertos::delay(250);
+    if let Err(e) = transition_s3_from_s5() {
+        POWER_G.set(false);
+        return Err(e);
+    } else {
+        debug!(DEBUG_SYSMAN, "reached S3");
+    }
+
+    if let Err(e) = transition_s0_from_s3() {
+        POWER_G.set(false);
+        return Err(e);
+    } else {
+        debug!(DEBUG_SYSMAN, "reached S0");
+    }
+
+    POWER_R.set(false);
+    SPEAKER.set(true);
+    freertos::delay(125);
     SPEAKER.set(false);
     POWER_STATE.store(0, Ordering::SeqCst);
     Ok(())
@@ -194,10 +221,24 @@ fn do_boot() -> Result<(),&'static str>
 fn do_shutdown() -> Result<(),&'static str>
 {
     debug!(DEBUG_SYSMAN, "shutdown");
-    try!(transition_s3_from_s0());
-    debug!(DEBUG_SYSMAN, "reached S3");
-    try!(transition_s5_from_s3());
-    debug!(DEBUG_SYSMAN, "reached S5");
+    POWER_R.set(true);
+
+    if let Err(e) = transition_s3_from_s0() {
+        POWER_G.set(false);
+        return Err(e);
+    } else {
+        debug!(DEBUG_SYSMAN, "reached S3");
+    }
+
+    if let Err(e) = transition_s5_from_s3() {
+        POWER_G.set(false);
+        return Err(e);
+    } else {
+        debug!(DEBUG_SYSMAN, "reached S5");
+    }
+
+    POWER_R.set(false);
+    POWER_G.set(false);
     POWER_STATE.store(5, Ordering::SeqCst);
     Ok(())
 }

@@ -89,7 +89,12 @@ pub fn init_task()
     println!("Initialize LED matrix");
     unsafe{ ledmatrix::matrix_init(&pins::U801).unwrap(); }
     freertos::delay(250);
-    ledmatrix::matrix().set_all(false).unwrap();
+    {
+        let mat = ledmatrix::matrix();
+        let _lock = mat.lock();
+        mat.set_all(false);
+        mat.flush().unwrap();
+    }
 
     freertos::Task::new(sysman::run_event, "event", 500, 0);
     freertos::Task::new(sysman::run_status, "status", 500, 0);

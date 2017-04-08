@@ -21,11 +21,16 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::freertos;
+use rustsys::{freertos, mutex};
+use rustsys::mutex::Mutex;
 use hardware::{gpio, twi};
 use hardware::twi::TwiResult;
+use core::cell::RefCell;
 
-static mut MATRIX: LedMatrix = LedMatrix{twi: None};
+static mut MATRIX: LedMatrix = LedMatrix {
+    twi: None,
+    buffer: RefCell::new([0u8; 24]),
+    mutex: Mutex::new()};
 pub fn matrix() -> &'static LedMatrix { unsafe{&MATRIX} }
 pub unsafe fn matrix_init(twi: &'static twi::TwiDevice) -> Result<(),TwiResult> { MATRIX.init(twi) }
 
@@ -70,6 +75,8 @@ enum CtrlReg
 pub struct LedMatrix
 {
     twi: Option<&'static twi::TwiDevice>,
+    buffer: RefCell<[u8; 24]>,
+    mutex: Mutex,
 }
 
 impl LedMatrix
@@ -112,7 +119,11 @@ impl LedMatrix
             try!(twi.write(&[addr], &[0x80]));
         }
 
-        try!(self.set_all(true));
+        {
+            let _lock = self.lock();
+            self.set_all(true);
+            try!(self.flush());
+        }
         Ok(())
     }
 
@@ -121,33 +132,48 @@ impl LedMatrix
         self.twi.unwrap().write(&[REG_BANK_SELECT], &[bank as u8])
     }
 
-    pub fn set_all(&self, val: bool) -> Result<(), TwiResult>
+    pub fn lock(&self) -> mutex::MutexLock {
+        self.mutex.lock()
+    }
+
+    pub fn flush(&self) -> Result<(), TwiResult>
     {
         let ref twi = self.twi.unwrap();
-
-        // Ensure PWM selector bits are zero
-        let regval = match val {
-            true  => [0xff, 0x07],
-            false => [0x00, 0x00],
-        };
         try!(self.switch_bank(RegBank::Frame0));
-        for seg in 0x00..0x0c {
-            try!(twi.write(&[seg*2], &regval));
+
+        let buf = self.buffer.borrow();
+
+        for seg in 0x00usize..0x0cusize {
+            try!(twi.write(&[(seg*2) as u8], &[buf[seg*2], buf[seg*2 + 1]]));
         }
         Ok(())
     }
 
-    pub fn set_led(&self, led: u8, val: bool) -> Result<(), TwiResult>
+    pub fn set_all(&self, val: bool)
+    {
+        let regval = match val {
+            true  => [0xff, 0x07],
+            false => [0x00, 0x00],
+        };
+
+        {
+            let mut buf = self.buffer.borrow_mut();
+
+            for seg in 0x00..0x0c {
+                buf[seg*2] = regval[0];
+                buf[seg*2 + 1] = regval[1];
+            }
+        }
+    }
+
+    pub fn buffer_led(&self, led: u8, val: bool)
     {
         let segment = (led & 0xf0) >> 4;
-        let addr = 2 * segment;
+        let addr = (2 * segment) as usize;
         let bit = 1 << (led & 0x0f);
 
-        let _lock = self.twi.unwrap().lock();
-        try!(self.switch_bank(RegBank::Frame0));
-        let mut buffer = [0 as u8; 2];
-
-        try!(self.twi.unwrap().read(&[addr], &mut buffer));
+        let mut bufref = self.buffer.borrow_mut();
+        let buffer = &mut bufref[addr..addr+2];
 
         let mut register: u16 = (buffer[0] as u16) | ((buffer[1] as u16) << 8);
 
@@ -162,23 +188,33 @@ impl LedMatrix
 
         buffer[0] = (register & 0xff) as u8;
         buffer[1] = ((register & 0xff00) >> 8) as u8;
+    }
 
-        try!(self.twi.unwrap().write(&[addr], &buffer));
+    pub fn set_led(&self, led: u8, val: bool) -> Result<(), TwiResult>
+    {
+        let _lock = self.lock();
+        let segment = (led & 0xf0) >> 4;
+        let addr = (2 * segment) as usize;
+
+        self.buffer_led(led, val);
+
+        let mut bufref = self.buffer.borrow_mut();
+        let buffer = &mut bufref[addr..addr+2];
+        try!(self.switch_bank(RegBank::Frame0));
+        try!(self.twi.unwrap().write(&[addr as u8], buffer));
 
         Ok(())
     }
 
     pub fn get_led(&self, led: u8) -> Result<bool, TwiResult>
     {
+        let _lock = self.lock();
+
         let segment = (led & 0xf0) >> 4;
-        let addr = 2 * segment;
+        let addr = (2 * segment) as usize;
         let bit = 1 << (led & 0x0f);
-        let mut buffer = [0 as u8; 2];
-
-        let _lock = self.twi.unwrap().lock();
-
-        try!(self.switch_bank(RegBank::Frame0));
-        try!(self.twi.unwrap().read(&[addr], &mut buffer));
+        let bufref = self.buffer.borrow();
+        let buffer = &bufref[addr..addr+2];
 
         let register = (buffer[0] as u16) | ((buffer[1] as u16) << 8);
 
