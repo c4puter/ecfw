@@ -50,7 +50,7 @@ pub fn hard_reset()
     // Locks are released now; may be picked up again by the individual supply
     // control methods
     println_async!("    Shut down supplies");
-    unsafe{ shutdown_supplies_cleanly(); }
+    shutdown_supplies_cleanly();
     println_async!("    Shut down standby rail");
     unsafe{ shutdown_final(); }
 
