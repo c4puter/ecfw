@@ -25,6 +25,7 @@ use rustsys::{ec_io,freertos};
 use hardware::twi::TWI0;
 use hardware::gpio::*;
 use hardware::tempsensor;
+use hardware::sd::*;
 use main::{pins, supplies, reset, sysman, debug};
 use main::pins::*;
 
@@ -57,6 +58,10 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
     Command{ name: "pwr_stat",  f: cmd_pwr_stat,    descr: "display status of SUPPLY" },
+
+    Command{ name: "mount",     f: cmd_mount,       descr: "mount SD card" },
+    Command{ name: "umount",    f: cmd_umount,      descr: "unmount SD card" },
+    Command{ name: "sdinfo",    f: cmd_sdinfo,      descr: "print SD card info" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
@@ -321,3 +326,44 @@ fn cmd_pwr_stat(args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
+fn cmd_mount(_args: &[&str]) -> Result<(), &'static str>
+{
+    if !CARD.get() {
+        return Err("card not found");
+    }
+
+    CARDEN.set(true);
+    freertos::delay(1);
+    let mut sd = SD.lock();
+
+    match sd.check() {
+        SdError::Ok => { return Ok(()); },
+        e           => { println!("Error: {:?}", e); return Err("SD error"); }
+    };
+}
+
+fn cmd_umount(_args: &[&str]) -> Result<(), &'static str>
+{
+    if !CARD.get() {
+        return Err("card not found");
+    }
+    CARDEN.set(false);
+    Ok(())
+}
+
+fn cmd_sdinfo(_args: &[&str]) -> Result<(), &'static str>
+{
+    if !CARD.get() {
+        return Err("card not found");
+    }
+
+    let mut sd = SD.lock();
+
+    println!("Type:      {:?}", sd.cardtype());
+    println!("Version:   {:?}", sd.version());
+    println!("Capacity:  {:?} MiB", sd.capacity() / 1024);
+    println!("Protected: {}",
+             if sd.writeprotected() { "yes" } else { "no" });
+
+    Ok(())
+}

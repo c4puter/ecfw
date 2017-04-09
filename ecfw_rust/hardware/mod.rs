@@ -24,4 +24,5 @@
 pub mod gpio;
 pub mod ledmatrix;
 pub mod twi;
+pub mod sd;
 pub mod tempsensor;

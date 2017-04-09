@@ -57,7 +57,10 @@ OBJECTS = \
 	${ASF_UNF_DIR}/asf/drivers/rstc/rstc.o \
 	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
 	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
+	${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.o \
+	${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
+	${ASF_UNF_DIR}/asf/services/delay/sam/cycle_counter.o \
 	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
 
 RUSTLIBS = core alloc
@@ -83,6 +86,8 @@ BINDGEN_SOURCES = \
 	hardware/bindgen_mcu.rs:hardware/mcu.h \
 	asf_usart.rs:${ASF_UNF_DIR}/asf/drivers/usart/usart.h \
 	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
+	asf_hsmci.rs:${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.h \
+	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
 
 ASF_UNF_DIR = resources/asf-unf
 
@@ -117,6 +122,7 @@ RUSTFLAGS = \
 BINDGENFLAGS = \
 	--use-core --builtins \
 	--ctypes-prefix ::ctypes \
+	--no-doc-comments \
 	--raw-line '\#![no_std]' \
 	--raw-line '\#![feature(untagged_unions)]' \
 	--raw-line '\#![allow(improper_ctypes)]' \

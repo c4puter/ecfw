@@ -23,7 +23,7 @@
 
 use main::{commands, pins, sysman, twi_devices, reset};
 use esh;
-use hardware::{ledmatrix, twi};
+use hardware::{ledmatrix, twi, sd};
 use hardware::gpio::Gpio;
 use bindgen_mcu;
 use rustsys::{ec_io, freertos};
@@ -97,6 +97,9 @@ pub fn init_task()
         mat.buffer_all(false);
         mat.flush().unwrap();
     }
+
+    println!("Initialize HSMCI (SD)");
+    sd::init();
 
     freertos::Task::new(sysman::run_event, "event", 500, 0);
     freertos::Task::new(sysman::run_status, "status", 500, 0);

@@ -95,6 +95,14 @@ pin_table!{
     USB_VBSENSE,        SamGpio, port => PIOA, pin =>  0, mode => Input,  default => false, invert => false;
     VREFEN,             SamGpio, port => PIOB, pin =>  0, mode => Output, default => false, invert => false;
 
+    // SD card interface
+    MCDA0,              SamGpio, port => PIOA, pin => 30, mode => PerC,   default => false, invert => false;
+    MCDA1,              SamGpio, port => PIOA, pin => 31, mode => PerC,   default => false, invert => false;
+    MCDA2,              SamGpio, port => PIOA, pin => 26, mode => PerC,   default => false, invert => false;
+    MCDA3,              SamGpio, port => PIOA, pin => 27, mode => PerC,   default => false, invert => false;
+    MCCK,               SamGpio, port => PIOA, pin => 29, mode => PerC,   default => false, invert => false;
+    MCCDA,              SamGpio, port => PIOA, pin => 28, mode => PerC,   default => false, invert => false;
+
     ///////////////////////////////////
     // Interface IO expander: switches, speaker, some LEDs
 
