@@ -48,7 +48,7 @@ OBJECTS = \
 	FreeRTOS/Source/tasks.o \
 	FreeRTOS/Source/croutine.o \
 	FreeRTOS/Source/event_groups.o \
-	FreeRTOS/Source/portable/MemMang/heap_1.o \
+	FreeRTOS/Source/portable/MemMang/heap_4.o \
 	FreeRTOS/Source/portable/GCC/ARM_CM3/port.o \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/system_sam4s.o \
 	${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/source/templates/gcc/startup_sam4s.o \

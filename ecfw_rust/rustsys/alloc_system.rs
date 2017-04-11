@@ -23,6 +23,7 @@
 
 extern "C" {
     fn pvPortMalloc(sz: usize) -> *mut u8;
+    fn vPortFree(pv: *mut u8);
 }
 
 #[no_mangle]
@@ -32,7 +33,7 @@ pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
 
 #[no_mangle]
 pub extern fn __rust_deallocate(_ptr: *mut u8, _old_size: usize, _align: usize) {
-    panic!("cannot deallocate");
+    unsafe { vPortFree(_ptr) };
 }
 
 #[no_mangle]

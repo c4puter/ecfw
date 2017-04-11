@@ -90,7 +90,8 @@ fn cmd_help(_args: &[&str]) -> StdResult
 
 fn cmd_free(_args: &[&str]) -> StdResult
 {
-    println!("{} B", freertos::get_free_heap());
+    println!("{} B, worst case {} B",
+             freertos::get_free_heap(), freertos::get_worst_free_heap());
     Ok(())
 }
 

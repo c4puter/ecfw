@@ -67,6 +67,7 @@ extern "C" {
 
     // Utilities
     fn xPortGetFreeHeapSize() -> usize;
+    fn xPortGetMinimumEverFreeHeapSize() -> usize;
     fn vTaskDelay(xTicksToDelay: u32);
     fn vTaskDelayUntil(
         pxPreviousWakeTime: *mut u32,
@@ -140,6 +141,10 @@ pub fn run() {
 
 pub fn get_free_heap() -> usize {
     unsafe { xPortGetFreeHeapSize() }
+}
+
+pub fn get_worst_free_heap() -> usize {
+    unsafe { xPortGetMinimumEverFreeHeapSize() }
 }
 
 pub fn yield_task() {
