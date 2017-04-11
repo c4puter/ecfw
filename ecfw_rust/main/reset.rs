@@ -35,23 +35,22 @@ pub fn hard_reset()
     // transactions to complete, avoiding putting the VRM's I2C slave
     // in an unknown state.
     {
-        println!("\nHard reset");
-        println!("    Acquire power control lock");
+        debug!(DEBUG_RESET, "acquire power control lock");
         let _plock = power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
-        println!("    Acquire VRM I2C lock");
+        debug!(DEBUG_RESET, "acquire VRM TWI lock");
         let _lock = twi_devices::VRM901.lock_timeout(1000).expect("timeout");
 
         // Unsafe: shuts down the task scheduler
-        println!("    Suspend tasks");
+        debug!(DEBUG_RESET, "suspend tasks");
         ec_io::flush_output();
         unsafe {freertos::suspend_all()};
     }
 
     // Locks are released now; may be picked up again by the individual supply
     // control methods
-    println_async!("    Shut down supplies");
+    debug_async!(DEBUG_RESET, "shut down supplies");
     shutdown_supplies_cleanly();
-    println_async!("    Shut down standby rail");
+    debug_async!(DEBUG_RESET, "shut down standby rail");
     unsafe{ shutdown_final(); }
 
     loop {}

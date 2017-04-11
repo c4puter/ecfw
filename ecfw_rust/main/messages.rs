@@ -31,6 +31,8 @@ debug_table! {
     // |                |           Enabled by default
     DEBUG_SYSMAN:       "sysman",   true;
     DEBUG_PWRBTN:       "pwrbtn",   false;
+    DEBUG_ECBOOT:       "ecboot",   true;
+    DEBUG_RESET:        "reset",    true;
 }
 
 /// Table of all error messages.

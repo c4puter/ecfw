@@ -54,7 +54,7 @@ fn esh_print_cb(_esh: &esh::Esh, c: char)
 }
 
 pub fn esh_task() {
-    println!("Start debug console");
+    debug!(DEBUG_ECBOOT, "start debug console");
     let mut esh = esh::Esh::init().unwrap();
     esh.register_command(command_dispatch);
     esh.register_print(esh_print_cb);
@@ -71,15 +71,13 @@ pub fn esh_task() {
 
 pub fn init_task()
 {
-    println!("success");
+    let unused = unsafe{bindgen_mcu::get_stack_unused()};
+    debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
-    println!("Main stack unused: {} bytes",
-             unsafe{bindgen_mcu::get_stack_unused()});
-
-    println!("Initialize I2C");
+    debug!(DEBUG_ECBOOT, "initialize TWI");
     twi::TWI0.init(400000).unwrap();
 
-    println!("Initialize GPIO");
+    debug!(DEBUG_ECBOOT, "initialize GPIO");
     for &pin in pins::PIN_TABLE {
         pin.init();
     }
@@ -89,7 +87,7 @@ pub fn init_task()
 
     // Power supply safety can be released once pins are initialized
     pins::EN_SAFETY.set(false);
-    println!("Initialize LED matrix");
+    debug!(DEBUG_ECBOOT, "initialize LED matrix");
     unsafe{ ledmatrix::matrix_init(&twi_devices::U801).unwrap(); }
     freertos::delay(250);
     {
@@ -98,7 +96,7 @@ pub fn init_task()
         mat.flush().unwrap();
     }
 
-    println!("Initialize HSMCI (SD)");
+    debug!(DEBUG_ECBOOT, "initialize HSMCI (SD)");
     sd::init();
 
     freertos::Task::new(sysman::run_event, "event", 500, 0);
@@ -121,19 +119,19 @@ pub extern "C" fn main() -> i32 {
 
     ec_io::init();
     println_async!("");
-    println_async!("==================================================");
-    println_async!("# Booting EC firmware");
+    debug_async!(DEBUG_ECBOOT, "==================================================");
+    debug_async!(DEBUG_ECBOOT, "# Booting EC firmware");
     match option_env!("BUILD_ID") {
-        Some(s) => println_async!("# Build ID: {}", s),
-        None    => println_async!("# No build ID"),
+        Some(s) => debug_async!(DEBUG_ECBOOT, "# Build ID: {}", s),
+        None    => debug_async!(DEBUG_ECBOOT, "# No build ID"),
     };
-    println_async!("==================================================");
-    println_async!("");
-    println_async!("Initialized EC core and USART");
+    debug_async!(DEBUG_ECBOOT, "==================================================");
+    debug_async!(DEBUG_ECBOOT, "");
+    debug_async!(DEBUG_ECBOOT, "initialized EC core and USART");
 
     freertos::Task::new(init_task, "init", 1000, 0);
 
-    print_async!("Start scheduler and hand off to init task...");
+    debug_async!(DEBUG_ECBOOT, "start scheduler and hand off to init task...");
     freertos::run();
 
     loop {}

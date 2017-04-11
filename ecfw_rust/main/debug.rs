@@ -57,8 +57,19 @@ macro_rules! debug {
         $name:ident, $( $values:tt ),*
     ) => {
         if $crate::main::messages::$name.enabled() {
-            print!("{}: ", $crate::main::messages::$name.prefix);
+            print!("{:8}: ", $crate::main::messages::$name.prefix);
             println!( $($values),* );
+        }
+    }
+}
+
+macro_rules! debug_async {
+    (
+        $name:ident, $( $values:tt ),*
+    ) => {
+        if $crate::main::messages::$name.enabled() {
+            print_async!("{:8}: ", $crate::main::messages::$name.prefix);
+            println_async!( $($values),* );
         }
     }
 }
