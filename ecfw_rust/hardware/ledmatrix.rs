@@ -25,14 +25,15 @@ use rustsys::freertos;
 use rustsys::mutex::{Mutex, MutexLock};
 use rustsys::rwlock::RwLock;
 use hardware::{gpio, twi};
-use hardware::twi::TwiResult;
+use main::messages::*;
 
 pub static MATRIX: RwLock<LedMatrix> = RwLock::new( LedMatrix {
     twi: None,
     buffer: [0u8; 24],
 } );
 
-pub unsafe fn matrix_init(twi: &'static Mutex<twi::TwiDevice>) -> Result<(),TwiResult> {
+pub unsafe fn matrix_init(twi: &'static Mutex<twi::TwiDevice>) -> StdResult
+{
     MATRIX.write().init(twi)
 }
 
@@ -82,7 +83,7 @@ pub struct LedMatrix
 
 impl LedMatrix
 {
-    pub fn init(&mut self, twi: &'static Mutex<twi::TwiDevice>) -> Result<(),TwiResult>
+    pub fn init(&mut self, twi: &'static Mutex<twi::TwiDevice>) -> StdResult
     {
         self.twi = Some(twi);
         freertos::delay(6);
@@ -125,12 +126,12 @@ impl LedMatrix
         Ok(())
     }
 
-    fn switch_bank(&mut self, dev: &mut MutexLock<twi::TwiDevice>, bank: RegBank) -> Result<(),TwiResult>
+    fn switch_bank(&mut self, dev: &mut MutexLock<twi::TwiDevice>, bank: RegBank) -> StdResult
     {
         dev.write(&[REG_BANK_SELECT], &[bank as u8])
     }
 
-    fn flush_with_lock(&mut self, mut dev: &mut MutexLock<twi::TwiDevice>) -> Result<(), TwiResult>
+    fn flush_with_lock(&mut self, mut dev: &mut MutexLock<twi::TwiDevice>) -> StdResult
     {
         try!(self.switch_bank(&mut dev, RegBank::Frame0));
 
@@ -141,7 +142,7 @@ impl LedMatrix
         Ok(())
     }
 
-    pub fn flush(&mut self) -> Result<(), TwiResult>
+    pub fn flush(&mut self) -> StdResult
     {
         let mut twi = self.twi.unwrap().lock();
         self.flush_with_lock(&mut twi)
@@ -185,7 +186,7 @@ impl LedMatrix
         buffer[1] = ((register & 0xff00) >> 8) as u8;
     }
 
-    pub fn set_led(&mut self, led: u8, val: bool) -> Result<(), TwiResult>
+    pub fn set_led(&mut self, led: u8, val: bool) -> StdResult
     {
         let segment = (led & 0xf0) >> 4;
         let addr = (2 * segment) as usize;

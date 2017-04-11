@@ -39,7 +39,7 @@ fn command_dispatch(_esh: &esh::Esh, args: &[&str])
     match commands::COMMAND_TABLE.iter().find(|&c| {*(c.name) == *args[0]}) {
         Some(cmd) =>
             if let Err(s) = (cmd.f)(args) {
-                println!("error: {}", s);
+                println!("error: {}", s.message);
             },
         None => println!("unrecognized command: {}", args[0]),
     }

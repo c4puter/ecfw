@@ -25,6 +25,7 @@ use rustsys::freertos;
 use rustsys::mutex::Mutex;
 use hardware::gpio::Gpio;
 use main::supplies;
+use main::messages::*;
 use main::twi_devices::VRM901;
 use core::sync::atomic::*;
 
@@ -49,10 +50,10 @@ pub trait Supply : Sync {
 
     /// Check and return the supply status, or Err if an error occurred
     /// getting the status
-    fn status(&self) -> Result<SupplyStatus, &'static str>;
+    fn status(&self) -> Result<SupplyStatus, Error>;
 
     /// Wait until the status is 'status'. Times out and panics after one second.
-    fn wait_status(&self, status: SupplyStatus) -> Result<(), &'static str> {
+    fn wait_status(&self, status: SupplyStatus) -> StdResult {
         let mut to_timeout = 1000;
         loop {
             match self.status() {
@@ -78,7 +79,7 @@ pub trait Supply : Sync {
     ///
     /// No timing guarantees: may return before the transition is complete or
     /// may block.
-    fn up(&self) -> Result<(), &'static str>;
+    fn up(&self) -> StdResult;
 
     /// Bring this supply down. Will panic if any of its dependants are not
     /// down.
@@ -86,13 +87,13 @@ pub trait Supply : Sync {
     ///
     /// No timing guarantees: may return before the transition is complete or
     /// may block.
-    fn down(&self) -> Result<(), &'static str>;
+    fn down(&self) -> StdResult;
 
     /// Return a list of dependencies of this supply
     fn deps(&self) -> &[&Supply];
 
     /// Return the number of dependencies of this supply that are not up
-    fn count_deps_not_up(&self) -> Result<usize,&'static str> {
+    fn count_deps_not_up(&self) -> Result<usize,Error> {
         let mut count = 0usize;
 
         for &dep in self.deps() {
@@ -105,7 +106,7 @@ pub trait Supply : Sync {
     }
 
     /// Return the number of dependants of this supply that are not down
-    fn count_rev_deps_not_down(&self) -> Result<usize,&'static str> where Self: Sized {
+    fn count_rev_deps_not_down(&self) -> Result<usize,Error> where Self: Sized {
         let mut count = 0usize;
         let self_ptr = self as *const Supply;
 
@@ -167,15 +168,11 @@ impl VrmSupply {
 }
 
 impl Supply for VrmSupply {
-    fn status(&self) -> Result<SupplyStatus, &'static str> {
+    fn status(&self) -> Result<SupplyStatus, Error> {
         let up_bits = VrmSupply::CTRL_BIT_ENABLED | VrmSupply::CTRL_BIT_POWER_GOOD;
         let mut buf = [0u8; 1];
-        let up = match VRM901.lock().read(&[self.vrm_id], &mut buf) {
-            Ok(_) => {
-                buf[0] & up_bits == up_bits
-            },
-            Err(e) => { return Err(e.description());}
-        };
+        try!(VRM901.lock().read(&[self.vrm_id], &mut buf));
+        let up = buf[0] & up_bits == up_bits;
 
         if self.transitioning.load(Ordering::Relaxed) {
             if up == self.set_state.load(Ordering::Relaxed) {
@@ -189,7 +186,7 @@ impl Supply for VrmSupply {
         }
     }
 
-    fn up(&self) -> Result<(), &'static str> {
+    fn up(&self) -> StdResult {
         assert!(try!(self.count_deps_not_up()) == 0);
 
         match self.disch {
@@ -198,32 +195,26 @@ impl Supply for VrmSupply {
             },
             None => ()
         }
-        match VRM901.lock().write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED]) {
-            Ok(_) => {
-                self.set_state.store(true, Ordering::Relaxed);
-                self.transitioning.store(true, Ordering::Relaxed);
-                Ok(()) },
-            Err(e) => Err(e.description())
-        }
+        try!(VRM901.lock().write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED]));
+        self.set_state.store(true, Ordering::SeqCst);
+        self.transitioning.store(true, Ordering::SeqCst);
+        Ok(())
     }
 
-    fn down(&self) -> Result<(), &'static str> {
+    fn down(&self) -> StdResult {
         assert!(try!(self.count_rev_deps_not_down()) == 0);
 
-        match VRM901.lock().write(&[self.vrm_id], &[0]) {
-            Ok(_) => {
-                self.set_state.store(false, Ordering::Relaxed);
-                self.transitioning.store(false, Ordering::Relaxed);
-                match self.disch {
-                    Some((gpio, wait)) => {
-                        gpio.set(true);
-                        freertos::susp_safe_delay(wait);
-                    },
-                    None => ()
-                };
-                Ok(()) },
-            Err(e) => Err(e.description())
+        try!(VRM901.lock().write(&[self.vrm_id], &[0]));
+
+        self.set_state.store(false, Ordering::Relaxed);
+        self.transitioning.store(false, Ordering::Relaxed);
+
+        if let Some((gpio, wait)) = self.disch {
+            gpio.set(true);
+            freertos::susp_safe_delay(wait);
         }
+
+        Ok(())
     }
 
     fn deps(&self) -> &[&Supply] {
@@ -254,37 +245,31 @@ impl GpioSwitchedSupply {
 }
 
 impl Supply for GpioSwitchedSupply {
-    fn status(&self) -> Result<SupplyStatus, &'static str> {
+    fn status(&self) -> Result<SupplyStatus, Error> {
         if self.gpio.get() { Ok(SupplyStatus::Up) } else { Ok(SupplyStatus::Down) }
     }
 
-    fn up(&self) -> Result<(), &'static str> {
+    fn up(&self) -> StdResult {
         assert!(try!(self.count_deps_not_up()) == 0);
 
-        match self.disch {
-            Some((disgpio, _wait)) => {
-                disgpio.set(false);
-            },
-            None => ()
+        if let Some((disgpio, _wait)) = self.disch {
+            disgpio.set(false);
         }
         self.gpio.set(true);
         freertos::susp_safe_delay(self.wait_ticks);
         Ok(())
     }
 
-    fn down(&self) -> Result<(), &'static str> {
+    fn down(&self) -> StdResult {
         assert!(try!(self.count_rev_deps_not_down()) == 0);
 
         let mut max_wait = self.wait_ticks;
 
         self.gpio.set(false);
-        match self.disch {
-            Some((disgpio, wait)) => {
-                disgpio.set(true);
-                if wait > max_wait { max_wait = wait; }
-            },
-            None => ()
-        };
+        if let Some((disgpio, wait)) = self.disch {
+            disgpio.set(true);
+            if wait > max_wait { max_wait = wait; }
+        }
         freertos::susp_safe_delay(max_wait);
         Ok(())
     }

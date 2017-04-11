@@ -24,8 +24,8 @@
 use rustsys::mutex;
 extern crate bindgen_mcu;
 type TwiHandle = u32;
-use core::fmt;
 use core::sync::atomic::*;
+use main::messages::*;
 
 #[allow(dead_code)] pub const TWI0_HANDLE: TwiHandle = 0x40018000;
 #[allow(dead_code)] pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
@@ -49,32 +49,19 @@ pub enum TwiResultCode {
     ErrorTimeout    = 9,
 }
 
-#[repr(C)]
-#[derive(Debug)]
-pub struct TwiResult {
-    code: TwiResultCode
-}
-
-impl TwiResult {
-    pub fn description(&self) -> &'static str {
-        return match self.code {
-            TwiResultCode::Success          => "success",
-            TwiResultCode::InvalidArgument  => "invalid argument",
-            TwiResultCode::ArbitrationLost  => "arbitration lost",
-            TwiResultCode::NoChipFound      => "no chip found",
-            TwiResultCode::ReceiveOverrun   => "receive overrun",
-            TwiResultCode::ReceiveNack      => "receive NACK",
-            TwiResultCode::SendOverrun      => "send overrun",
-            TwiResultCode::SendNack         => "send NACK",
-            TwiResultCode::Busy             => "busy",
-            TwiResultCode::ErrorTimeout     => "timeout",
-        }
-    }
-}
-
-impl fmt::Display for TwiResult {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "TwiResult({})", self.description())
+fn to_stdresult(code: TwiResultCode) -> StdResult
+{
+    match code {
+        TwiResultCode::Success          => Ok(()),
+        TwiResultCode::InvalidArgument  => Err(ERR_TWI_INVALID),
+        TwiResultCode::ArbitrationLost  => Err(ERR_TWI_ARBITRATION),
+        TwiResultCode::NoChipFound      => Err(ERR_TWI_NOTFOUND),
+        TwiResultCode::ReceiveOverrun   => Err(ERR_TWI_RXOVF),
+        TwiResultCode::ReceiveNack      => Err(ERR_TWI_RXNACK),
+        TwiResultCode::SendOverrun      => Err(ERR_TWI_TXOVF),
+        TwiResultCode::SendNack         => Err(ERR_TWI_TXNACK),
+        TwiResultCode::Busy             => Err(ERR_BUSY),
+        TwiResultCode::ErrorTimeout     => Err(ERR_TIMEOUT),
     }
 }
 
@@ -96,10 +83,10 @@ struct TwiPacket {
 }
 
 extern "C" {
-    fn twi_master_init(p_twi: TwiHandle, p_opt: *const TwiOptions) -> TwiResult;
-    fn twi_probe(p_twi: TwiHandle, uc_slave_addr: u8) -> TwiResult;
-    fn twi_master_read(p_twi: TwiHandle, p_packet: *mut TwiPacket) -> TwiResult;
-    fn twi_master_write(p_twi: TwiHandle, p_packet: *mut TwiPacket) -> TwiResult;
+    fn twi_master_init(p_twi: TwiHandle, p_opt: *const TwiOptions) -> TwiResultCode;
+    fn twi_probe(p_twi: TwiHandle, uc_slave_addr: u8) -> TwiResultCode;
+    fn twi_master_read(p_twi: TwiHandle, p_packet: *mut TwiPacket) -> TwiResultCode;
+    fn twi_master_write(p_twi: TwiHandle, p_packet: *mut TwiPacket) -> TwiResultCode;
 }
 
 pub struct Twi {
@@ -125,7 +112,7 @@ impl Twi {
     }
 
     /// Initialize the TWI; panic if double-initialized.
-    pub fn init(&self, speed: u32) -> Result<(),TwiResult> {
+    pub fn init(&self, speed: u32) -> StdResult {
         let was_initialized = self.initialized.swap(true, Ordering::Relaxed);
         if was_initialized {
             panic!("TWI: double init()");
@@ -137,38 +124,35 @@ impl Twi {
             chip: 0,
             smbus: false };
         let rc = unsafe{twi_master_init(self.p_twi, &opts)};
-        return match rc.code {
-            TwiResultCode::Success  => Ok(()),
-            _                       => Err(rc)
-        };
+        to_stdresult(rc)
     }
 
     /// Test if a device answers a given address
-    pub fn probe(&self, addr: u8) -> Result<bool,TwiResult> {
+    pub fn probe(&self, addr: u8) -> Result<bool,Error> {
         if !self.initialized.load(Ordering::Relaxed) {
             panic!("TWI: use before init()");
         }
 
         let _lock = self.mutex.lock();
         let rc = unsafe{twi_probe(self.p_twi, addr)};
-        return match rc.code {
+        match rc {
             TwiResultCode::Success      => Ok(true),
             TwiResultCode::ReceiveNack  => Ok(false),
-            _                           => Err(rc)
-        };
+            _                           => Err(to_stdresult(rc).unwrap_err())
+        }
     }
 
     /// Read from 'addr' at 'location' into 'buffer'.
     /// addr:       I2C address
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
-    pub fn read(&self, addr: u8, location: &[u8], buffer: &mut [u8]) -> Result<(), TwiResult> {
+    pub fn read(&self, addr: u8, location: &[u8], buffer: &mut [u8]) -> StdResult {
         if !self.initialized.load(Ordering::Relaxed) {
             panic!("TWI: use before init()");
         }
         let _lock = self.mutex.lock();
         if location.len() > 3 {
-            return Err(TwiResult{code: TwiResultCode::InvalidArgument});
+            return Err(ERR_TWI_INVALID);
         }
         let mut packet = TwiPacket {
             addr: [0; 3],
@@ -179,23 +163,20 @@ impl Twi {
         };
         (&mut packet.addr[0..location.len()]).clone_from_slice(&location);
         let rc = unsafe{twi_master_read(self.p_twi, &mut packet)};
-        return match rc.code {
-            TwiResultCode::Success      => Ok(()),
-            _                           => Err(rc),
-        };
+        to_stdresult(rc)
     }
 
     /// Write to 'addr' at 'location' from 'buffer'.
     /// addr:       I2C address
     /// location:   register address in the chip, up to 3 bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
-    pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> Result<(), TwiResult> {
+    pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> StdResult {
         if !self.initialized.load(Ordering::Relaxed) {
             panic!("TWI: use before init()");
         }
         let _lock = self.mutex.lock();
         if location.len() > 3 {
-            return Err(TwiResult{code: TwiResultCode::InvalidArgument});
+            return Err(ERR_TWI_INVALID)
         }
         let mut packet = TwiPacket {
             addr: [0; 3],
@@ -206,10 +187,7 @@ impl Twi {
         };
         (&mut packet.addr[0..location.len()]).clone_from_slice(&location);
         let rc = unsafe{twi_master_write(self.p_twi, &mut packet)};
-        return match rc.code {
-            TwiResultCode::Success      => Ok(()),
-            _                           => Err(rc),
-        };
+        to_stdresult(rc)
     }
 }
 
@@ -223,15 +201,14 @@ impl TwiDevice {
 
     /// Test if the device answers its address
     #[allow(dead_code)]
-    pub fn probe(&mut self) -> Result<bool, TwiResult> {
+    pub fn probe(&mut self) -> Result<bool, Error> {
         self.twi.probe(self.addr)
     }
 
     /// Read from 'location' into 'buffer'
     /// location:   register address in the chip, zero to three bytes
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
-    pub fn read(&mut self, location: &[u8], buffer: &mut [u8])
-            -> Result<(), TwiResult>
+    pub fn read(&mut self, location: &[u8], buffer: &mut [u8]) -> StdResult
     {
         self.twi.read(self.addr, location, buffer)
     }
@@ -239,8 +216,7 @@ impl TwiDevice {
     /// Write to 'location' from 'buffer'.
     /// location:   register address in the chip, zero to three bytes
     /// buffer:     buffer to write. Will write buffer.len() bytes
-    pub fn write(&mut self, location: &[u8], buffer: &[u8])
-            -> Result<(), TwiResult>
+    pub fn write(&mut self, location: &[u8], buffer: &[u8]) -> StdResult
     {
         self.twi.write(self.addr, location, buffer)
     }

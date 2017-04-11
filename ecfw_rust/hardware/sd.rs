@@ -25,6 +25,7 @@ extern crate asf_sd_mmc;
 extern crate ctypes;
 
 use rustsys::mutex::Mutex;
+use main::messages::*;
 
 #[allow(unused)]
 pub static SD: Mutex<Sd> = Mutex::new(Sd::new(0));
@@ -33,17 +34,19 @@ pub struct Sd {
     slot: u8,
 }
 
-#[derive(Copy,Clone,Debug,PartialEq)]
-#[repr(u8)]
-pub enum SdError {
-    Ok = 0,
-    InitOngoing = 1,
-    ErrNoCard = 2,
-    ErrUnusable = 3,
-    ErrSlot = 4,
-    ErrComm = 5,
-    ErrParam = 6,
-    WriteProtected = 7
+fn to_stdresult(code: u8) -> StdResult
+{
+    match code as u32 {
+        asf_sd_mmc::SD_MMC_OK           => Ok(()),
+        asf_sd_mmc::SD_MMC_INIT_ONGOING => Err(ERR_SD_INIT_ONGOING),
+        asf_sd_mmc::SD_MMC_ERR_NO_CARD  => Err(ERR_NO_CARD),
+        asf_sd_mmc::SD_MMC_ERR_UNUSABLE => Err(ERR_SD_UNUSABLE),
+        asf_sd_mmc::SD_MMC_ERR_SLOT     => Err(ERR_SD_SLOT),
+        asf_sd_mmc::SD_MMC_ERR_COMM     => Err(ERR_SD_COMM),
+        asf_sd_mmc::SD_MMC_ERR_PARAM    => Err(ERR_SD_PARAM),
+        asf_sd_mmc::SD_MMC_ERR_WP       => Err(ERR_SD_WRITE_PROT),
+        _                               => Err(ERR_UNKNOWN)
+    }
 }
 
 #[derive(Copy,Clone,Debug,PartialEq)]
@@ -89,10 +92,10 @@ impl Sd {
     }
 
     /// Check whether the card is ready, initializing
-    pub fn check(&mut self) -> SdError {
+    pub fn check(&mut self) -> StdResult {
         assert!(self.slot == 0);
         let ec = unsafe { asf_sd_mmc::sd_mmc_check(self.slot) };
-        SdError::from_code(ec)
+        to_stdresult(ec)
     }
 
     /// Get card type. Must be initialized.
@@ -118,45 +121,37 @@ impl Sd {
     }
 
     /// Read a block from the card. Blocks are 512B long. Must be initialized.
-    pub fn read_block(&mut self, iblock: usize, dest: &mut [u8; 512]) -> SdError {
+    pub fn read_block(&mut self, iblock: usize, dest: &mut [u8; 512]) -> StdResult {
         unsafe {
-            let ec = asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, 1);
-            let e = SdError::from_code(ec);
-            if e != SdError::Ok {
-                return e;
-            }
+            try!(to_stdresult(
+                asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, 1)));
 
-            let ec = asf_sd_mmc::sd_mmc_start_read_blocks(
-                dest.as_mut_ptr() as *mut ctypes::c_void, 1);
-            let e = SdError::from_code(ec);
-            if e != SdError::Ok {
-                return e;
-            }
+            try!(to_stdresult(
+                asf_sd_mmc::sd_mmc_start_read_blocks(
+                    dest.as_mut_ptr() as *mut ctypes::c_void, 1)));
 
-            let ec = asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false);
-            let e = SdError::from_code(ec);
-            if e != SdError::Ok {
-                return e;
-            }
+            try!(to_stdresult(
+                asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false)));
         }
 
-        SdError::Ok
+        Ok(())
     }
-}
 
-impl SdError {
-    pub fn from_code(code: u8) -> SdError {
-        match code as u32 {
-            asf_sd_mmc::SD_MMC_OK           => SdError::Ok,
-            asf_sd_mmc::SD_MMC_INIT_ONGOING => SdError::InitOngoing,
-            asf_sd_mmc::SD_MMC_ERR_NO_CARD  => SdError::ErrNoCard,
-            asf_sd_mmc::SD_MMC_ERR_UNUSABLE => SdError::ErrUnusable,
-            asf_sd_mmc::SD_MMC_ERR_SLOT     => SdError::ErrSlot,
-            asf_sd_mmc::SD_MMC_ERR_COMM     => SdError::ErrComm,
-            asf_sd_mmc::SD_MMC_ERR_PARAM    => SdError::ErrParam,
-            asf_sd_mmc::SD_MMC_ERR_WP       => SdError::WriteProtected,
-            _ => SdError::ErrParam,
+    /// Write a block to the card. Blocks are 512B long. Must be initialized.
+    pub fn write_block(&mut self, iblock: usize, src: &[u8; 512]) -> StdResult {
+        unsafe {
+            try!(to_stdresult(
+                asf_sd_mmc::sd_mmc_init_write_blocks(self.slot, iblock as u32, 1)));
+
+            try!(to_stdresult(
+                asf_sd_mmc::sd_mmc_start_write_blocks(
+                    src.as_ptr() as *const ctypes::c_void, 1)));
+
+            try!(to_stdresult(
+                asf_sd_mmc::sd_mmc_wait_end_of_write_blocks(false)));
         }
+
+        Ok(())
     }
 }
 

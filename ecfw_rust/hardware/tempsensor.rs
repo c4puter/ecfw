@@ -23,6 +23,7 @@
 
 use hardware::twi::TwiDevice;
 use main::twi_devices;
+use main::debug::Error;
 use rustsys::mutex::Mutex;
 
 const TEMP_ADDR: u8 = 0u8;
@@ -41,11 +42,9 @@ impl TempSensor {
         TempSensor { twi: twi }
     }
 
-    pub fn read(&self) -> Result<TenthsDegC,&'static str> {
+    pub fn read(&self) -> Result<TenthsDegC,Error> {
         let mut buf = [0u8; 2];
-        if let Err(e) = self.twi.lock().read(&[TEMP_ADDR], &mut buf) {
-            return Err(e.description());
-        }
+        try!(self.twi.lock().read(&[TEMP_ADDR], &mut buf));
 
         let raw = ((buf[0] as u32) << 8) | (buf[1] as u32);
         let right_aligned = raw >> 5;

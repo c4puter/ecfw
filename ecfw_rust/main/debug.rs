@@ -22,11 +22,14 @@
  */
 
 use core::sync::atomic::*;
+use core::cmp::{PartialEq, Eq};
+use core::fmt;
+use main::messages;
 
 pub struct DebugClass {
     pub name: &'static str,
     pub prefix: &'static str,
-    enabled: AtomicBool,
+    pub enabled: AtomicBool,
 }
 
 macro_rules! debug_table {
@@ -43,23 +46,18 @@ macro_rules! debug_table {
             pub static $name: DebugClass = DebugClass {
                 name: stringify!($name),
                 prefix: $prefix,
-                enabled: AtomicBool::new($default),
+                enabled: ::core::sync::atomic::AtomicBool::new($default),
             };
         )*
     };
-}
-
-debug_table! {
-    DEBUG_SYSMAN: "sysman", true;
-    DEBUG_PWRBTN: "pwrbtn", false;
 }
 
 macro_rules! debug {
     (
         $name:ident, $( $values:tt ),*
     ) => {
-        if $crate::main::debug::$name.enabled() {
-            print!("{}: ", $crate::main::debug::$name.prefix);
+        if $crate::main::messages::$name.enabled() {
+            print!("{}: ", $crate::main::messages::$name.prefix);
             println!( $($values),* );
         }
     }
@@ -67,7 +65,7 @@ macro_rules! debug {
 
 pub fn debug_set(name: &str, enabled: bool) -> bool
 {
-    for &dbg in DEBUG_TABLE {
+    for &dbg in messages::DEBUG_TABLE {
         if *(dbg.name) == *name {
             dbg.enable(enabled);
             return true;
@@ -85,3 +83,48 @@ impl DebugClass {
         self.enabled.store(v, Ordering::SeqCst);
     }
 }
+
+#[derive(Copy,Clone)]
+pub struct Error {
+    pub message: &'static str,
+}
+
+impl PartialEq for Error {
+    fn eq(&self, other: &Error) -> bool
+    {
+        let self_msg = self.message as *const str;
+        let other_msg = other.message as *const str;
+        self_msg == other_msg
+    }
+}
+
+impl Eq for Error {}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+    {
+        write!(f, "Error: {}", self.message)
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+    {
+        write!(f, "{}", self.message)
+    }
+}
+
+macro_rules! error_table {
+    ( $( $name:ident : $message:expr ; )* ) =>
+    {
+        #[allow(unused)]
+        pub static ERROR_TABLE: &'static [&'static Error] = &[ $( &$name ),* ];
+
+        $(
+            #[allow(dead_code)]
+            pub static $name: Error = Error { message: $message };
+        )*
+    }
+}
+
+pub type StdResult = Result<(), Error>;

@@ -23,6 +23,7 @@
 
 pub use main::power::*;
 use main::pins::*;
+use main::messages::*;
 
 macro_rules! supply_table {
     (
@@ -75,7 +76,7 @@ supply_table!{
     SW3,        GpioSwitchedSupply, &[&BUCK_3VB],       &EN_P3V3_S0B,   6,  Some((&DISCH_3VB,   36));
 }
 
-pub fn transition_s3_from_s5() -> Result<(),&'static str> {
+pub fn transition_s3_from_s5() -> StdResult {
     try!(BUCK_5VA.up());
     try!(BUCK_5VB.up());
 
@@ -94,7 +95,7 @@ pub fn transition_s3_from_s5() -> Result<(),&'static str> {
     Ok(())
 }
 
-pub fn transition_s0_from_s3() -> Result<(),&'static str> {
+pub fn transition_s0_from_s3() -> StdResult {
     try!(BUCK_3VA.up());
     try!(LDO_S0.up());
     try!(INV_N12.up());
@@ -111,7 +112,7 @@ pub fn transition_s0_from_s3() -> Result<(),&'static str> {
     Ok(())
 }
 
-pub fn transition_s3_from_s0() -> Result<(),&'static str> {
+pub fn transition_s3_from_s0() -> StdResult {
     try!(SW3.down());
     try!(SW2.down());
     try!(SW1.down());
@@ -128,7 +129,7 @@ pub fn transition_s3_from_s0() -> Result<(),&'static str> {
     Ok(())
 }
 
-pub fn transition_s5_from_s3() -> Result<(),&'static str> {
+pub fn transition_s5_from_s3() -> StdResult {
     try!(LDO_S3.down());
     try!(BUCK_1V2.down());
 

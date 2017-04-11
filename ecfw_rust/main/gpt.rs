@@ -24,6 +24,7 @@
 //! GPT reader module
 
 use hardware::sd::*;
+use main::messages::*;
 #[allow(unused)] use rustsys::ec_io;
 use core::fmt;
 use core::str;
@@ -91,21 +92,21 @@ impl Gpt {
     }
 
     /// Read the initial GPT header from the card
-    pub fn read_header(&mut self) -> Result<(),&'static str>
+    pub fn read_header(&mut self) -> StdResult
     {
         try!(self.buffer_block(GPT_HEADER_LBA));
 
         let sig = read_be(&self.buffer[0..8]);
         if sig != SIGNATURE {
-            return Err("invalid GPT signature");
+            return Err(ERR_GPT_SIGNATURE);
         }
 
         self.entry_len = read_le(&self.buffer[0x54..0x58]) as usize;
         if self.entry_len == 0 {
-            return Err("zero entry length");
+            return Err(ERR_GPT_ZEROLEN);
         }
         if BLOCK_SIZE % self.entry_len != 0 {
-            return Err("block size must be multiple of GPT entry length");
+            return Err(ERR_GPT_SIZEMULT);
         }
 
         self.lba_entries = read_le(&self.buffer[0x48..0x50]) as usize;
@@ -125,7 +126,7 @@ impl Gpt {
 
     /// Populate a GptEntry structure with a given entry.
     pub fn read_entry(&mut self, ientry: usize, gptentry: &mut GptEntry)
-        -> Result<(), &'static str>
+        -> StdResult
     {
         let entries_per_block = BLOCK_SIZE / self.entry_len;
         let block_index = ientry / entries_per_block + self.lba_entries;
@@ -138,19 +139,18 @@ impl Gpt {
     }
 
     /// Read a block into the buffer, unless it's currently in the buffer.
-    fn buffer_block(&mut self, iblock: usize) -> Result<(), &'static str>
+    fn buffer_block(&mut self, iblock: usize) -> StdResult
     {
         if self.iblock == iblock {
             Ok(())
         } else {
-            let mut sd = SD.lock();
-            match sd.read_block(iblock, &mut self.buffer) {
-                SdError::Ok => {
+            match SD.lock().read_block(iblock, &mut self.buffer) {
+                Ok(()) => {
                     self.iblock = iblock;
                     Ok(()) },
-                _ => {
+                Err(e) => {
                     self.iblock = 0;    // buffer is invalid
-                    Err("SD error") }
+                    Err(e) },
             }
         }
     }
@@ -225,7 +225,7 @@ impl GptEntry {
     }
 
     /// Load a GPT entry given a block of raw data
-    pub fn load(&mut self, data: &[u8]) -> Result<(), &'static str>
+    pub fn load(&mut self, data: &[u8]) -> StdResult
     {
         self.type_guid = Guid::from_bytes(&data[0x00..0x10]);
         self.part_guid = Guid::from_bytes(&data[0x10..0x20]);
@@ -278,7 +278,7 @@ fn read_le(data: &[u8]) -> u64
 /// errors on invalid conditions, only when it can't figure out what to do.
 /// In particular, a single isolated high surrogate will be silently dropped
 /// (whereas a single isolated low surrogate will cause complaint).
-fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, &'static str>
+fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, Error>
 {
     assert!(dest.len() >= src.len() * 2);
 
@@ -303,7 +303,7 @@ fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, &'static
         if codepoint >= 0xDC00 && codepoint <= 0xDFFF {
             // low surrogate
             if prev_surrogate == 0 {
-                return Err("orphaned UTF-16 surrogate");
+                return Err(ERR_UTF16_ORPHAN);
             } else {
                 codepoint = 0x10000 +
                     ((prev_surrogate & 0x03ff) << 10) +
@@ -311,7 +311,7 @@ fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, &'static
             }
         }
         if codepoint > 0x10FFFF {
-            return Err("invalid codepoint");
+            return Err(ERR_CODEPOINT);
         }
 
         if codepoint == 0 && first_zero.is_none() {

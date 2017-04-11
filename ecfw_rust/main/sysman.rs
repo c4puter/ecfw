@@ -25,6 +25,7 @@ use rustsys::{queue, ec_io, freertos};
 use main::power;
 use main::supplies::*;
 use main::pins::*;
+use main::messages::*;
 use hardware::gpio::*;
 use hardware::ledmatrix;
 use core::sync::atomic::*;
@@ -64,7 +65,7 @@ pub fn run_event()
     }
 }
 
-fn handle_one_event(evt: Event) -> Result<(),&'static str>
+fn handle_one_event(evt: Event) -> StdResult
 {
     try!(match evt {
         Event::Boot => do_boot(),
@@ -189,7 +190,7 @@ fn button_press(cycles: u32)
     }
 }
 
-fn do_boot() -> Result<(),&'static str>
+fn do_boot() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "boot");
     POWER_R.set(true);
@@ -217,7 +218,7 @@ fn do_boot() -> Result<(),&'static str>
     Ok(())
 }
 
-fn do_shutdown() -> Result<(),&'static str>
+fn do_shutdown() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "shutdown");
     POWER_R.set(true);
@@ -242,7 +243,7 @@ fn do_shutdown() -> Result<(),&'static str>
     Ok(())
 }
 
-fn do_reboot() -> Result<(),&'static str>
+fn do_reboot() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "reboot");
     try!(do_shutdown());

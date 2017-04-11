@@ -26,7 +26,8 @@ use hardware::twi::TWI0;
 use hardware::gpio::*;
 use hardware::tempsensor;
 use hardware::sd::*;
-use main::{pins, supplies, reset, sysman, debug, gpt};
+use main::{pins, supplies, reset, sysman, debug, messages, gpt};
+use main::messages::*;
 use main::pins::*;
 
 use main::parseint::ParseInt;
@@ -35,7 +36,7 @@ use core::fmt;
 
 pub struct Command {
     pub name: &'static str,
-    pub f: fn(args: &[&str]) -> Result<(), &'static str>,
+    pub f: fn(args: &[&str]) -> StdResult,
     pub descr: &'static str,
 }
 
@@ -64,19 +65,20 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "umount",    f: cmd_umount,      descr: "unmount SD card" },
     Command{ name: "sdinfo",    f: cmd_sdinfo,      descr: "print SD card info" },
     Command{ name: "readblock", f: cmd_readblock,   descr: "read block N from card" },
+    Command{ name: "writeblock",f: cmd_writeblock,  descr: "write to block N, DATA..." },
     Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
 ];
 
-fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
+fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
     where U: fmt::Display
 {
     match parser(args[n]) {
         Ok(val) => Ok(val),
-        Err(_) => Err("cannot parse argument")
+        Err(_) => Err(ERR_PARSE_ARGUMENT)
     }
 }
 
-fn cmd_help(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_help(_args: &[&str]) -> StdResult
 {
     for i in 0..COMMAND_TABLE.len() {
         let ref cmd = COMMAND_TABLE[i];
@@ -86,47 +88,47 @@ fn cmd_help(_args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_free(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_free(_args: &[&str]) -> StdResult
 {
     println!("{} B", freertos::get_free_heap());
     Ok(())
 }
 
-fn cmd_reset(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_reset(_args: &[&str]) -> StdResult
 {
     reset::hard_reset();
-    Err("did not reset")    // should never happen
+    Err(ERR_RESET_FAILED)
 }
 
-fn cmd_dbgen(args: &[&str]) -> Result<(), &'static str>
+fn cmd_dbgen(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        Err("no debug item specified")
+        Err(ERR_EXPECTED_ARGS)
     } else {
         if debug::debug_set(args[1], true) {
             Ok(())
         } else {
-            Err("cannot find debug item")
+            Err(ERR_CANNOT_FIND)
         }
     }
 }
 
-fn cmd_dbgdis(args: &[&str]) -> Result<(), &'static str>
+fn cmd_dbgdis(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        Err("no debug item specified")
+        Err(ERR_EXPECTED_ARGS)
     } else {
         if debug::debug_set(args[1], false) {
             Ok(())
         } else {
-            Err("cannot find debug item")
+            Err(ERR_CANNOT_FIND)
         }
     }
 }
 
-fn cmd_dbgls(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_dbgls(_args: &[&str]) -> StdResult
 {
-    for &dbg in debug::DEBUG_TABLE {
+    for &dbg in messages::DEBUG_TABLE {
         println!("{}    {}",
             if dbg.enabled() { "en " } else { "dis" },
             dbg.name );
@@ -134,7 +136,7 @@ fn cmd_dbgls(_args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_panel(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_panel(_args: &[&str]) -> StdResult
 {
     fn r_(v: bool) -> &'static str {
         match v { true => "R ", false => "  " }
@@ -188,7 +190,7 @@ fn cmd_panel(_args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_temps(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_temps(_args: &[&str]) -> StdResult
 {
     let temp_logic = try!(tempsensor::SENSOR_LOGIC.read());
     let temp_ambient = try!(tempsensor::SENSOR_AMBIENT.read());
@@ -199,10 +201,10 @@ fn cmd_temps(_args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_event(args: &[&str]) -> Result<(), &'static str>
+fn cmd_event(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        Err("no event specified")
+        Err(ERR_EXPECTED_ARGS)
     } else if args[1] == "boot" {
         sysman::post(sysman::Event::Boot);
         Ok(())
@@ -213,60 +215,57 @@ fn cmd_event(args: &[&str]) -> Result<(), &'static str>
         sysman::post(sysman::Event::Reboot);
         Ok(())
     } else {
-        Err("unrecognized event name")
+        Err(ERR_CANNOT_FIND)
     }
 }
 
-fn cmd_i2c_probe(args: &[&str]) -> Result<(), &'static str>
+fn cmd_i2c_probe(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
-    match TWI0.probe(addr) {
-        Ok(is_present) => {
-            if is_present { println!("address {} present", addr); }
-            else          { println!("address {} does not respond", addr); }
-            Ok(())
-        },
-        Err(e) => { Err(e.description()) }
+
+    let is_present = try!(TWI0.probe(addr));
+
+    if is_present {
+        println!("address {} present", addr);
+    } else {
+        println!("address {} does not respond", addr);
     }
+    Ok(())
 }
 
-fn cmd_i2c_read(args: &[&str]) -> Result<(), &'static str>
+fn cmd_i2c_read(args: &[&str]) -> StdResult
 {
     if args.len() < 4 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
     let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
     let n = try!(argv_parsed(args, 3, "N", u8::parseint));
     if n > 16 {
-        return Err("can only read up to 16 bytes");
+        return Err(ERR_ARG_RANGE);
     }
 
     let location_arr = [loc];
     let mut buffer = [0 as u8; 16];
 
-    match TWI0.read(addr, &location_arr, &mut buffer[0..n as usize]) {
-        Ok(_) => {
-            println!("{:?}", &buffer[0..n as usize]);
-            Ok(())
-        }
-        Err(e) => Err(e.description())
-    }
+    try!(TWI0.read(addr, &location_arr, &mut buffer[0..n as usize]));
+    println!("{:?}", &buffer[0..n as usize]);
+    Ok(())
 }
 
-fn cmd_i2c_write(args: &[&str]) -> Result<(), &'static str>
+fn cmd_i2c_write(args: &[&str]) -> StdResult
 {
     if args.len() < 3 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
     let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
 
     if args.len() > 19 {
-        return Err("can only write up to 16 bytes");
+        return Err(ERR_TOO_MANY_ARGS);
     }
 
     let mut buffer = [0 as u8; 16];
@@ -278,16 +277,14 @@ fn cmd_i2c_write(args: &[&str]) -> Result<(), &'static str>
 
     let location_arr = [loc];
 
-    match TWI0.write(addr, &location_arr, &buffer[0..n as usize]) {
-        Ok(_) => Ok(()),
-        Err(e) => Err(e.description())
-    }
+    try!(TWI0.write(addr, &location_arr, &buffer[0..n as usize]));
+    Ok(())
 }
 
-fn cmd_gpio_read(args: &[&str]) -> Result<(), &'static str>
+fn cmd_gpio_read(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
     let gpio_name = args[1];
 
@@ -299,10 +296,10 @@ fn cmd_gpio_read(args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_gpio_write(args: &[&str]) -> Result<(), &'static str>
+fn cmd_gpio_write(args: &[&str]) -> StdResult
 {
     if args.len() < 3 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
     let gpio_name = args[1];
     let gpio_val = try!(argv_parsed(args, 2, "VALUE", i8::parseint));
@@ -315,10 +312,10 @@ fn cmd_gpio_write(args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_pwr_stat(args: &[&str]) -> Result<(), &'static str>
+fn cmd_pwr_stat(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
     let supply_name = args[1];
     let _lock = supplies::POWER_MUTEX.lock();
@@ -329,35 +326,32 @@ fn cmd_pwr_stat(args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_mount(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_mount(_args: &[&str]) -> StdResult
 {
     if !CARD.get() {
-        return Err("card not found");
+        return Err(ERR_NO_CARD);
     }
 
     CARDEN.set(true);
     freertos::delay(1);
     let mut sd = SD.lock();
 
-    match sd.check() {
-        SdError::Ok => { return Ok(()); },
-        e           => { println!("Error: {:?}", e); return Err("SD error"); }
-    };
+    sd.check()
 }
 
-fn cmd_umount(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_umount(_args: &[&str]) -> StdResult
 {
     if !CARD.get() {
-        return Err("card not found");
+        return Err(ERR_NO_CARD)
     }
     CARDEN.set(false);
     Ok(())
 }
 
-fn cmd_sdinfo(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_sdinfo(_args: &[&str]) -> StdResult
 {
     if !CARD.get() {
-        return Err("card not found");
+        return Err(ERR_NO_CARD);
     }
 
     let mut sd = SD.lock();
@@ -371,26 +365,40 @@ fn cmd_sdinfo(_args: &[&str]) -> Result<(), &'static str>
     Ok(())
 }
 
-fn cmd_readblock(args: &[&str]) -> Result<(), &'static str>
+fn cmd_readblock(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
-        return Err("expected argument(s)");
+        return Err(ERR_EXPECTED_ARGS);
     }
 
     let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
 
-    let mut sd = SD.lock();
     let mut buf = [0u8; 512];
-    match sd.read_block(iblock, &mut buf) {
-        SdError::Ok => {},
-        e           => { println!("Error: {:?}", e); return Err("SD error"); }
-    }
+    try!(SD.lock().read_block(iblock, &mut buf));
 
     hexprint(&buf);
     Ok(())
 }
 
-fn cmd_partinfo(_args: &[&str]) -> Result<(), &'static str>
+fn cmd_writeblock(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
+
+    let mut buf = [0u8; 512];
+    for i in 2..args.len() {
+        let data = try!(argv_parsed(args, i, "DATA", u8::parseint));
+        buf[i - 2] = data;
+    }
+
+    try!(SD.lock().write_block(iblock, &buf));
+    Ok(())
+}
+
+fn cmd_partinfo(_args: &[&str]) -> StdResult
 {
     let mut gpt = gpt::Gpt::new();
     let mut entry = gpt::GptEntry::new();
