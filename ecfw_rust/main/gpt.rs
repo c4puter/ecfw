@@ -285,6 +285,7 @@ fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, &'static
     let mut prev_surrogate = 0u32;
     let mut codepoint = 0u32;
     let mut idest = 0usize;
+    let mut first_zero: Option<usize> = None;
 
     for isrc in 0..src.len() {
         if isrc % 2 == 0 {
@@ -313,10 +314,17 @@ fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, &'static
             return Err("invalid codepoint");
         }
 
+        if codepoint == 0 && first_zero.is_none() {
+            first_zero = Some(idest);
+        }
+
         idest += write_one_utf8(dest, idest, codepoint);
     }
 
-    Ok(idest)
+    match first_zero {
+        Some(x) => { Ok(x) },
+        None    => { Ok(idest) },
+    }
 }
 
 /// Write a single codepoint into a buffer, returning the number of bytes written
