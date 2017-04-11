@@ -22,6 +22,7 @@
  */
 
 extern crate asf_sd_mmc;
+extern crate ctypes;
 
 use rustsys::mutex::Mutex;
 
@@ -32,7 +33,7 @@ pub struct Sd {
     slot: u8,
 }
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy,Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum SdError {
     Ok = 0,
@@ -45,7 +46,7 @@ pub enum SdError {
     WriteProtected = 7
 }
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy,Clone,Debug,PartialEq)]
 #[repr(u8)]
 pub enum CardType {
     Unknown = 0,
@@ -56,7 +57,7 @@ pub enum CardType {
     SdCombo = 5,
 }
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy,Clone,Debug,PartialEq)]
 #[allow(non_camel_case_types)]
 #[repr(u8)]
 pub enum CardVersion {
@@ -114,6 +115,32 @@ impl Sd {
     /// Get whether the card is write-protected. Must be initialized.
     pub fn writeprotected(&mut self) -> bool {
         unsafe{ asf_sd_mmc::sd_mmc_is_write_protected(self.slot) }
+    }
+
+    /// Read a block from the card. Blocks are 512B long. Must be initialized.
+    pub fn read_block(&mut self, iblock: usize, dest: &mut [u8; 512]) -> SdError {
+        unsafe {
+            let ec = asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, 1);
+            let e = SdError::from_code(ec);
+            if e != SdError::Ok {
+                return e;
+            }
+
+            let ec = asf_sd_mmc::sd_mmc_start_read_blocks(
+                dest.as_mut_ptr() as *mut ctypes::c_void, 1);
+            let e = SdError::from_code(ec);
+            if e != SdError::Ok {
+                return e;
+            }
+
+            let ec = asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false);
+            let e = SdError::from_code(ec);
+            if e != SdError::Ok {
+                return e;
+            }
+        }
+
+        SdError::Ok
     }
 }
 

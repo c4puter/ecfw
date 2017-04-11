@@ -25,9 +25,11 @@
 pub mod main;
 mod commands;
 mod parseint;
+mod hexprint;
 mod pins;
 pub mod twi_devices;
 mod power;
 mod supplies;
 mod reset;
 mod sysman;
+mod gpt;

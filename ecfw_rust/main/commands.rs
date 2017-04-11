@@ -26,10 +26,11 @@ use hardware::twi::TWI0;
 use hardware::gpio::*;
 use hardware::tempsensor;
 use hardware::sd::*;
-use main::{pins, supplies, reset, sysman, debug};
+use main::{pins, supplies, reset, sysman, debug, gpt};
 use main::pins::*;
 
 use main::parseint::ParseInt;
+use main::hexprint::hexprint;
 use core::fmt;
 
 pub struct Command {
@@ -62,6 +63,8 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "mount",     f: cmd_mount,       descr: "mount SD card" },
     Command{ name: "umount",    f: cmd_umount,      descr: "unmount SD card" },
     Command{ name: "sdinfo",    f: cmd_sdinfo,      descr: "print SD card info" },
+    Command{ name: "readblock", f: cmd_readblock,   descr: "read block N from card" },
+    Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, &'static str>
@@ -364,6 +367,51 @@ fn cmd_sdinfo(_args: &[&str]) -> Result<(), &'static str>
     println!("Capacity:  {:?} MiB", sd.capacity() / 1024);
     println!("Protected: {}",
              if sd.writeprotected() { "yes" } else { "no" });
+
+    Ok(())
+}
+
+fn cmd_readblock(args: &[&str]) -> Result<(), &'static str>
+{
+    if args.len() < 2 {
+        return Err("expected argument(s)");
+    }
+
+    let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
+
+    let mut sd = SD.lock();
+    let mut buf = [0u8; 512];
+    match sd.read_block(iblock, &mut buf) {
+        SdError::Ok => {},
+        e           => { println!("Error: {:?}", e); return Err("SD error"); }
+    }
+
+    hexprint(&buf);
+    Ok(())
+}
+
+fn cmd_partinfo(_args: &[&str]) -> Result<(), &'static str>
+{
+    let mut gpt = gpt::Gpt::new();
+    let mut entry = gpt::GptEntry::new();
+
+    try!(gpt.read_header());
+
+    println!("Disk GUID: {}", gpt.guid());
+
+    for i in 0..gpt.number_entries() {
+        try!(gpt.read_entry(i, &mut entry));
+        if !entry.valid() {
+            continue;
+        }
+
+        println!("Entry {}:", i);
+        println!("  Type GUID:   {}", entry.type_guid);
+        println!("  Unique GUID: {}", entry.part_guid);
+        println!("  Range:       {:08x}...{:08x}", entry.start_lba, entry.end_lba);
+        println!("  Attributes:  {:08x}", entry.attributes);
+        println!("  Name:        {}", entry.name());
+    }
 
     Ok(())
 }

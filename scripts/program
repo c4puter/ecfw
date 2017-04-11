@@ -5,4 +5,4 @@ if pgrep openocd >/dev/null; then
     exit 1
 fi
 
-openocd -f scripts/atmelice.cfg -c init -c halt -c "program ecfw.hex verify" -c reset -c exit
+openocd -f scripts/atmelice.cfg -c "adapter_khz 1000" -c init -c halt -c "program ecfw.hex verify" -c reset -c exit
