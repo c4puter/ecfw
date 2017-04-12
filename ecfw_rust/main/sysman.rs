@@ -110,6 +110,10 @@ pub fn run_status()
 
     POWER_STATE.store(5, Ordering::SeqCst);
 
+    if FORCE_POWER.get() {
+        post(Event::Boot);
+    }
+
     loop {
         if cycle_count == 0 {
             let mut mat = ledmatrix::MATRIX.write();
