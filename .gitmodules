@@ -1,3 +1,6 @@
 [submodule "esh"]
 	path = esh
 	url = git@github.com:cpavlina/esh
+[submodule "lwext4"]
+	path = lwext4
+	url = https://github.com/gkostka/lwext4
