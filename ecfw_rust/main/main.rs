@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use main::{commands, pins, sysman, twi_devices, reset};
+use main::{commands, pins, sysman, reset};
 use esh;
 use hardware::{ledmatrix, twi, sd};
 use hardware::gpio::Gpio;
@@ -88,7 +88,7 @@ pub fn init_task()
     // Power supply safety can be released once pins are initialized
     pins::EN_SAFETY.set(false);
     debug!(DEBUG_ECBOOT, "initialize LED matrix");
-    unsafe{ ledmatrix::matrix_init(&twi_devices::U801).unwrap(); }
+    ledmatrix::MATRIX.write().init().unwrap();
     freertos::delay(250);
     {
         let mut mat = ledmatrix::MATRIX.write();

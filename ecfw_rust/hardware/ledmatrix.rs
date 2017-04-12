@@ -26,6 +26,7 @@ use rustsys::mutex::{Mutex, MutexLock};
 use rustsys::rwlock::RwLock;
 use hardware::{gpio, twi};
 use main::messages::*;
+use main::twi_devices;
 
 /// LED current in mA. Maximum is 30mA.
 pub const LED_CURRENT: f32 = 15.0;
@@ -39,15 +40,8 @@ pub const FULL_BRIGHTNESS: u8 = 255;
 /// LED current in AS1130 units
 pub const LED_CURRENT_AS1130: u8 = (LED_CURRENT / 0.11765) as u8;
 
-pub static MATRIX: RwLock<LedMatrix> = RwLock::new( LedMatrix {
-    twi: None,
-    buffer: [0u8; 24],
-} );
-
-pub unsafe fn matrix_init(twi: &'static Mutex<twi::TwiDevice>) -> StdResult
-{
-    MATRIX.write().init(twi)
-}
+pub static MATRIX: RwLock<LedMatrix> =
+    RwLock::new(LedMatrix::new(&twi_devices::U801 ));
 
 // AS1130 register banks
 #[allow(dead_code)]
@@ -89,18 +83,25 @@ enum CtrlReg
 
 pub struct LedMatrix
 {
-    twi: Option<&'static Mutex<twi::TwiDevice>>,
+    twi: &'static Mutex<twi::TwiDevice>,
     buffer: [u8; 24],
 }
 
 impl LedMatrix
 {
-    pub fn init(&mut self, twi: &'static Mutex<twi::TwiDevice>) -> StdResult
+    pub const fn new(twi: &'static Mutex<twi::TwiDevice>) -> LedMatrix
     {
-        self.twi = Some(twi);
+        LedMatrix {
+            twi: twi,
+            buffer: [0u8; 24],
+        }
+    }
+
+    pub fn init(&mut self) -> StdResult
+    {
         freertos::delay(6);
 
-        let mut dev = self.twi.unwrap().lock();
+        let mut dev = self.twi.lock();
 
         // Define RAM configuration, bit mem_conf in config register
         //  - On/Off frames
@@ -157,7 +158,7 @@ impl LedMatrix
 
     pub fn flush(&mut self) -> StdResult
     {
-        let mut twi = self.twi.unwrap().lock();
+        let mut twi = self.twi.lock();
         self.flush_with_lock(&mut twi)
     }
 
@@ -206,7 +207,7 @@ impl LedMatrix
 
         self.buffer_led(led, val);
 
-        let mut dev = self.twi.unwrap().lock();
+        let mut dev = self.twi.lock();
         try!(self.switch_bank(&mut dev, RegBank::Frame0));
         let buffer = &mut self.buffer[addr..addr+2];
         try!(dev.write(&[addr as u8], buffer));
@@ -229,7 +230,7 @@ impl LedMatrix
     /// Set the LED brightness in 1/256 of LED_CURRENT.
     pub fn set_brightness(&mut self, brightness: u8) -> StdResult
     {
-        let mut dev = self.twi.unwrap().lock();
+        let mut dev = self.twi.lock();
         try!(self.switch_bank(&mut dev, RegBank::ControlReg));
         try!(dev.write(&[CtrlReg::CurrentSource as u8],
                        &[LedMatrix::current_val(brightness)]));
