@@ -27,6 +27,18 @@ use rustsys::rwlock::RwLock;
 use hardware::{gpio, twi};
 use main::messages::*;
 
+/// LED current in mA. Maximum is 30mA.
+pub const LED_CURRENT: f32 = 15.0;
+
+/// Brightness (of 255) when in standby
+pub const STANDBY_BRIGHTNESS: u8 = 40;
+
+/// Brightness (of 255) when runnint
+pub const FULL_BRIGHTNESS: u8 = 255;
+
+/// LED current in AS1130 units
+pub const LED_CURRENT_AS1130: u8 = (LED_CURRENT / 0.11765) as u8;
+
 pub static MATRIX: RwLock<LedMatrix> = RwLock::new( LedMatrix {
     twi: None,
     buffer: [0u8; 24],
@@ -102,7 +114,8 @@ impl LedMatrix
         //  - Current source
         //  - Display options
         //  - Display picture/play movie
-        try!(dev.write(&[CtrlReg::CurrentSource as u8], &[170])); // 20mA / 117.65uA
+        try!(dev.write(&[CtrlReg::CurrentSource as u8],
+                       &[LedMatrix::current_val(STANDBY_BRIGHTNESS)]));
         try!(dev.write(&[CtrlReg::DisplayOpt as u8], &[0xfb])); // Scan all segments
         try!(dev.write(&[CtrlReg::Movie as u8], &[0x00])); // No movie
         try!(dev.write(&[CtrlReg::Picture as u8], &[0x40])); // Display picture, frame 0
@@ -211,6 +224,22 @@ impl LedMatrix
         let register = (buffer[0] as u16) | ((buffer[1] as u16) << 8);
 
         register & bit != 0
+    }
+
+    /// Set the LED brightness in 1/256 of LED_CURRENT.
+    pub fn set_brightness(&mut self, brightness: u8) -> StdResult
+    {
+        let mut dev = self.twi.unwrap().lock();
+        try!(self.switch_bank(&mut dev, RegBank::ControlReg));
+        try!(dev.write(&[CtrlReg::CurrentSource as u8],
+                       &[LedMatrix::current_val(brightness)]));
+        Ok(())
+    }
+
+    /// Get the raw current value for a brightness
+    fn current_val(brightness: u8) -> u8
+    {
+        ((brightness as u32 * LED_CURRENT_AS1130 as u32) / 256) as u8
     }
 }
 

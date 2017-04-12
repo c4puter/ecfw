@@ -156,8 +156,6 @@ pub fn run_status()
             powerbtn_cycles_held = 0;
         }
 
-        UPDOG_G.set(cycle_count % 2 == 0);
-
         freertos::delay_period(&mut lastwake, 100);
         cycle_count = (cycle_count + 1) % 6;
     }
@@ -211,10 +209,11 @@ fn do_boot() -> StdResult
     }
 
     POWER_R.set(false);
+    try!(ledmatrix::MATRIX.write().set_brightness(ledmatrix::FULL_BRIGHTNESS));
+    POWER_STATE.store(0, Ordering::SeqCst);
     SPEAKER.set(true);
     freertos::delay(125);
     SPEAKER.set(false);
-    POWER_STATE.store(0, Ordering::SeqCst);
     Ok(())
 }
 
@@ -240,6 +239,7 @@ fn do_shutdown() -> StdResult
     POWER_R.set(false);
     POWER_G.set(false);
     POWER_STATE.store(5, Ordering::SeqCst);
+    try!(ledmatrix::MATRIX.write().set_brightness(ledmatrix::STANDBY_BRIGHTNESS));
     Ok(())
 }
 
