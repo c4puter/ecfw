@@ -43,4 +43,4 @@ extern crate bindgen_mcu;
 #[macro_use]
 pub mod rustsys;
 pub mod main;
-mod hardware;
+pub mod hardware;

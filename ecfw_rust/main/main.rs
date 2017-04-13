@@ -129,7 +129,7 @@ pub extern "C" fn main() -> i32 {
     debug_async!(DEBUG_ECBOOT, "");
     debug_async!(DEBUG_ECBOOT, "initialized EC core and USART");
 
-    freertos::Task::new(init_task, "init", 1000, 0);
+    freertos::Task::new(init_task, "init", 10000, 0);
 
     debug_async!(DEBUG_ECBOOT, "start scheduler and hand off to init task...");
     freertos::run();

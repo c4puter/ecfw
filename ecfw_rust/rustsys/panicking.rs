@@ -60,3 +60,12 @@ pub extern "C" fn hard_fault_printer(regs: [u32; 8]) {
     }
     loop{}
 }
+
+#[no_mangle]
+pub extern "C" fn freertos_assert() {
+    unsafe{disable_irq();}
+    println_async!("\n\n===================================");
+    println_async!("PANIC");
+    println_async!("FreeRTOS assertion failure");
+    loop { }
+}

@@ -62,6 +62,27 @@ OBJECTS = \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
 	${ASF_UNF_DIR}/asf/services/delay/sam/cycle_counter.o \
 	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
+	lwext4/src/ext4_balloc.o \
+	lwext4/src/ext4_bcache.o \
+	lwext4/src/ext4_bitmap.o \
+	lwext4/src/ext4_blockdev.o \
+	lwext4/src/ext4_block_group.o \
+	lwext4/src/ext4.o \
+	lwext4/src/ext4_crc32.o \
+	lwext4/src/ext4_debug.o \
+	lwext4/src/ext4_dir.o \
+	lwext4/src/ext4_dir_idx.o \
+	lwext4/src/ext4_extent.o \
+	lwext4/src/ext4_fs.o \
+	lwext4/src/ext4_hash.o \
+	lwext4/src/ext4_ialloc.o \
+	lwext4/src/ext4_inode.o \
+	lwext4/src/ext4_journal.o \
+	lwext4/src/ext4_mbr.o \
+	lwext4/src/ext4_mkfs.o \
+	lwext4/src/ext4_super.o \
+	lwext4/src/ext4_trans.o \
+	lwext4/src/ext4_xattr.o \
 
 RUSTLIBS = core alloc
 
@@ -88,6 +109,8 @@ BINDGEN_SOURCES = \
 	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
 	asf_hsmci.rs:${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.h \
 	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
+	lwext4_blockdev.rs:lwext4/include/ext4_blockdev.h \
+	lwext4.rs:lwext4/include/ext4.h \
 
 ASF_UNF_DIR = resources/asf-unf
 
@@ -102,12 +125,18 @@ TOTAL_FLASH=0x100000
 TOTAL_SRAM=0x20000
 
 CFLAGS = \
-	-Os -g -pipe -std=c99 -Wall -Wextra \
+	-Os -g -pipe -std=c99 -Wall -Wextra -Wno-int-conversion \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
 	-D__HEAP_SIZE__=${HEAP_SIZE} \
+	-DCONFIG_UNALIGNED_ACCESS=1 \
+	-DCONFIG_DEBUG_PRINTF=0 \
+	-DCONFIG_DEBUG_ASSERT=0 \
+	-DCONFIG_USE_USER_MALLOC=1 \
+	-DCONFIG_USE_DEFAULT_CFG=1 \
 	-mcpu=cortex-m4 -mthumb \
 	-fdata-sections -ffunction-sections \
 	-iquote config \
+	-isystem lwext4/include \
 	-isystem ${ASF_UNF_DIR}/asf/utils/cmsis/sam4s/include \
 	-isystem ${ASF_UNF_DIR}/asf/thirdparty/CMSIS/Include \
 	-isystem FreeRTOS/Source/include \
@@ -130,6 +159,7 @@ BINDGENFLAGS = \
 	--raw-line '\#![allow(non_snake_case)]' \
 	--raw-line '\#![allow(non_upper_case_globals)]' \
 	--raw-line 'extern crate ctypes;' \
+	--opaque-type 'ext4_bcache' \
 	-- $(filter-out -mcpu=cortex-m4 -mthumb,${CFLAGS})
 
 
@@ -199,6 +229,7 @@ all-with-asf: ecfw.hex ecfw.disasm
 
 clean:
 	rm -f ${OBJECTS}
+	rm -f ${STATLIBS}
 	rm -f ${ALL_CRATES}
 	rm -f $(foreach i,${BINDGEN_SOURCES},$(word 1,$(subst :, ,${i})))
 	rm -f ecfw ecfw.hex ecfw.disasm

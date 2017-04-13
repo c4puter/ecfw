@@ -26,6 +26,7 @@ use hardware::twi::TWI0;
 use hardware::gpio::*;
 use hardware::tempsensor;
 use hardware::sd::*;
+use hardware::blockdev;
 use main::{pins, supplies, reset, sysman, debug, messages, gpt};
 use main::messages::*;
 use main::pins::*;
@@ -67,6 +68,7 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "readblock", f: cmd_readblock,   descr: "read block N from card" },
     Command{ name: "writeblock",f: cmd_writeblock,  descr: "write to block N, DATA..." },
     Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
+    Command{ name: "ls",        f: cmd_ls,          descr: "list root of partition N" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
@@ -421,6 +423,32 @@ fn cmd_partinfo(_args: &[&str]) -> StdResult
         println!("  Attributes:  {:08x}", entry.attributes);
         println!("  Name:        {}", entry.name());
     }
+
+    Ok(())
+}
+
+fn cmd_ls(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let ipart = try!(argv_parsed(args, 1, "PART", u32::parseint)) as usize;
+
+    let mut gpt = gpt::Gpt::new();
+    let mut entry = gpt::GptEntry::new();
+
+    try!(gpt.read_header());
+    try!(gpt.read_entry(ipart, &mut entry));
+
+    if !entry.valid() {
+        return Err(ERR_ARG_RANGE);
+    }
+
+    let mut dev = blockdev::makedev(&entry);
+    let rc = blockdev::ls(&mut dev);
+
+    println!("Return code: {}", rc);
 
     Ok(())
 }

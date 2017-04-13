@@ -1,6 +1,6 @@
 /*
  * The MIT License (MIT)
- * Copyright (c) 2016 Chris Pavlina
+ * Copyright (c) 2017 Chris Pavlina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -123,33 +123,45 @@ impl Sd {
     /// Read a block from the card. Blocks are 512B long. Must be initialized.
     pub fn read_block(&mut self, iblock: usize, dest: &mut [u8; 512]) -> StdResult {
         unsafe {
-            try!(to_stdresult(
-                asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, 1)));
-
-            try!(to_stdresult(
-                asf_sd_mmc::sd_mmc_start_read_blocks(
-                    dest.as_mut_ptr() as *mut ctypes::c_void, 1)));
-
-            try!(to_stdresult(
-                asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false)));
+            self.read_blocks(iblock, 1, dest.as_mut_ptr())
         }
-
-        Ok(())
     }
 
     /// Write a block to the card. Blocks are 512B long. Must be initialized.
     pub fn write_block(&mut self, iblock: usize, src: &[u8; 512]) -> StdResult {
         unsafe {
-            try!(to_stdresult(
-                asf_sd_mmc::sd_mmc_init_write_blocks(self.slot, iblock as u32, 1)));
-
-            try!(to_stdresult(
-                asf_sd_mmc::sd_mmc_start_write_blocks(
-                    src.as_ptr() as *const ctypes::c_void, 1)));
-
-            try!(to_stdresult(
-                asf_sd_mmc::sd_mmc_wait_end_of_write_blocks(false)));
+            self.write_blocks(iblock, 1, src.as_ptr())
         }
+    }
+
+    /// Read an arbitrary number of blocks into a pointer. Unsafe, intended for
+    /// C interaction.
+    pub unsafe fn read_blocks(&mut self, iblock: usize, nblocks: u16, dest: *mut u8) -> StdResult {
+        try!(to_stdresult(
+            asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, nblocks)));
+
+        try!(to_stdresult(
+            asf_sd_mmc::sd_mmc_start_read_blocks(
+                dest as *mut ctypes::c_void, nblocks)));
+
+        try!(to_stdresult(
+            asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false)));
+
+        Ok(())
+    }
+
+    /// Write an arbitrary number of blocks from a pointer. Unsafe, intended
+    /// for C interaction.
+    pub unsafe fn write_blocks(&mut self, iblock: usize, nblocks: u16, src: *const u8) -> StdResult {
+        try!(to_stdresult(
+            asf_sd_mmc::sd_mmc_init_write_blocks(self.slot, iblock as u32, nblocks)));
+
+        try!(to_stdresult(
+            asf_sd_mmc::sd_mmc_start_write_blocks(
+                src as *const ctypes::c_void, nblocks)));
+
+        try!(to_stdresult(
+            asf_sd_mmc::sd_mmc_wait_end_of_write_blocks(false)));
 
         Ok(())
     }

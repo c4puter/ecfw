@@ -33,4 +33,4 @@ mod power;
 mod supplies;
 mod reset;
 mod sysman;
-mod gpt;
+pub mod gpt;
