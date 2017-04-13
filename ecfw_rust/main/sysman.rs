@@ -21,13 +21,12 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::{queue, freertos};
-use main::power;
-use main::supplies::*;
-use main::pins::*;
-use main::messages::*;
-use hardware::gpio::*;
-use hardware::ledmatrix;
+use os;
+use drivers;
+use drivers::gpio::Gpio;
+use devices::pins::*;
+use devices::supplies::*;
+use messages::*;
 use core::sync::atomic::*;
 
 // Power button delays
@@ -80,9 +79,9 @@ fn handle_one_event(evt: Event) -> StdResult
 /// that indicate its status.
 #[derive(Copy,Clone)]
 struct SupplyStatusPair {
-    supply: &'static(power::Supply + Sync),
-    good: &'static ledmatrix::LedGpio,
-    bad: &'static ledmatrix::LedGpio,
+    supply: &'static(drivers::power::Supply + Sync),
+    good: &'static drivers::ledmatrix::LedGpio,
+    bad: &'static drivers::ledmatrix::LedGpio,
 }
 
 static SUPPLY_STATUS_TABLE: &'static [SupplyStatusPair] = &[
@@ -105,7 +104,7 @@ pub fn run_status()
 {
     let mut powerbtn_cycles_held = 0u32;
     let mut powerbtn_handled = false;
-    let mut lastwake = freertos::ticks_running();
+    let mut lastwake = os::ticks_running();
     let mut cycle_count = 0;
 
     POWER_STATE.store(5, Ordering::SeqCst);
@@ -116,7 +115,7 @@ pub fn run_status()
 
     loop {
         if cycle_count == 0 {
-            let mut mat = ledmatrix::MATRIX.write();
+            let mut mat = drivers::ledmatrix::MATRIX.write();
 
             for &pair in SUPPLY_STATUS_TABLE {
                 let stat = pair.supply.status().unwrap();
@@ -160,7 +159,7 @@ pub fn run_status()
             powerbtn_cycles_held = 0;
         }
 
-        freertos::delay_period(&mut lastwake, 100);
+        os::delay_period(&mut lastwake, 100);
         cycle_count = (cycle_count + 1) % 6;
     }
 }
@@ -213,10 +212,10 @@ fn do_boot() -> StdResult
     }
 
     POWER_R.set(false);
-    try!(ledmatrix::MATRIX.write().set_brightness(ledmatrix::FULL_BRIGHTNESS));
+    try!(drivers::ledmatrix::MATRIX.write().set_brightness(drivers::ledmatrix::FULL_BRIGHTNESS));
     POWER_STATE.store(0, Ordering::SeqCst);
     SPEAKER.set(true);
-    freertos::delay(125);
+    os::delay(125);
     SPEAKER.set(false);
     Ok(())
 }
@@ -243,7 +242,7 @@ fn do_shutdown() -> StdResult
     POWER_R.set(false);
     POWER_G.set(false);
     POWER_STATE.store(5, Ordering::SeqCst);
-    try!(ledmatrix::MATRIX.write().set_brightness(ledmatrix::STANDBY_BRIGHTNESS));
+    try!(drivers::ledmatrix::MATRIX.write().set_brightness(drivers::ledmatrix::STANDBY_BRIGHTNESS));
     Ok(())
 }
 
@@ -251,7 +250,7 @@ fn do_reboot() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "reboot");
     try!(do_shutdown());
-    freertos::delay(750);
+    os::delay(750);
     try!(do_boot());
     Ok(())
 }

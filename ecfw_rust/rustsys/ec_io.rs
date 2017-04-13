@@ -24,9 +24,7 @@
 use core::fmt;
 extern crate bindgen_mcu;
 extern crate asf_usart;
-use rustsys::freertos;
-use rustsys::mutex;
-use rustsys::queue;
+use os;
 
 #[allow(dead_code)]
 const USART0: *mut asf_usart::Usart = 0x40024000u32 as *mut asf_usart::Usart;
@@ -42,9 +40,9 @@ queue_static_new! {
     STDOUT_QUEUE: [u8; 72];
 }
 
-static STDOUT_MUTEX: mutex::Mutex<()> = mutex::Mutex::new(());
+static STDOUT_MUTEX: os::Mutex<()> = os::Mutex::new(());
 
-fn putc_task(q: &'static queue::Queue<'static, u8>)
+fn putc_task(q: &'static os::Queue<'static, u8>)
 {
     q.register_receiver();
     loop {
@@ -132,7 +130,7 @@ pub fn init()
         bindgen_mcu::mcu_set_irq_prio(asf_usart::IRQn::USART1_IRQn as i32, 4, 1);
         bindgen_mcu::mcu_enable_irq(asf_usart::IRQn::USART1_IRQn as i32);
     }
-    freertos::Task::new(move || { putc_task(&STDOUT_QUEUE); }, "ec_io", 200, 0);
+    os::Task::new(move || { putc_task(&STDOUT_QUEUE); }, "ec_io", 200, 0);
 }
 
 fn _print(args: fmt::Arguments) {

@@ -1,3 +1,4 @@
+
 /*
  * The MIT License (MIT)
  * Copyright (c) 2016 Chris Pavlina
@@ -21,34 +22,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*!
-Static mutex. Lighter than FreeRTOS's static mutex and requires no
-initialization.
-*/
-
-use rustsys::rwlock::*;
-
-pub struct Mutex<T: Sized + Sync> {
-    rwlock: RwLock<T>,
-}
-
-pub type MutexLock<'a, T> = RwLockWriter<'a, T>;
-
-impl<T> Mutex<T> where T: Sized + Sync {
-    pub const fn new(data: T) -> Mutex<T> {
-        Mutex {rwlock: RwLock::new(data)}
-    }
-
-    pub fn lock(&self) -> MutexLock<T> {
-        self.rwlock.write()
-    }
-
-    pub fn try_lock(&self) -> Option<MutexLock<T>> {
-        self.rwlock.try_write()
-    }
-
-    pub fn lock_timeout(&self, nticks: u32) -> Option<MutexLock<T>> {
-        self.rwlock.write_timeout(nticks)
-    }
-
-}
+pub mod twi;
+pub mod pins;
+pub mod supplies;

@@ -21,12 +21,10 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::freertos;
-use rustsys::mutex::{Mutex, MutexLock};
-use rustsys::rwlock::RwLock;
-use hardware::{gpio, twi};
-use main::messages::*;
-use main::twi_devices;
+use os;
+use drivers::{gpio, twi};
+use devices;
+use messages::*;
 
 /// LED current in mA. Maximum is 30mA.
 pub const LED_CURRENT: f32 = 15.0;
@@ -40,8 +38,8 @@ pub const FULL_BRIGHTNESS: u8 = 255;
 /// LED current in AS1130 units
 pub const LED_CURRENT_AS1130: u8 = (LED_CURRENT / 0.11765) as u8;
 
-pub static MATRIX: RwLock<LedMatrix> =
-    RwLock::new(LedMatrix::new(&twi_devices::U801 ));
+pub static MATRIX: os::RwLock<LedMatrix> =
+    os::RwLock::new(LedMatrix::new(&devices::twi::U801 ));
 
 // AS1130 register banks
 #[allow(dead_code)]
@@ -83,13 +81,13 @@ enum CtrlReg
 
 pub struct LedMatrix
 {
-    twi: &'static Mutex<twi::TwiDevice>,
+    twi: &'static os::Mutex<twi::TwiDevice>,
     buffer: [u8; 24],
 }
 
 impl LedMatrix
 {
-    pub const fn new(twi: &'static Mutex<twi::TwiDevice>) -> LedMatrix
+    pub const fn new(twi: &'static os::Mutex<twi::TwiDevice>) -> LedMatrix
     {
         LedMatrix {
             twi: twi,
@@ -99,7 +97,7 @@ impl LedMatrix
 
     pub fn init(&mut self) -> StdResult
     {
-        freertos::delay(6);
+        os::delay(6);
 
         let mut dev = self.twi.lock();
 
@@ -122,7 +120,7 @@ impl LedMatrix
         try!(dev.write(&[CtrlReg::Picture as u8], &[0x40])); // Display picture, frame 0
         // Set #shdn bit to 1 for normal operation
         try!(dev.write(&[CtrlReg::ShutdownOpenShort as u8], &[0x03])); // No init, no shutdown
-        freertos::delay(1);
+        os::delay(1);
 
         // Initialize display data
         try!(self.switch_bank(&mut dev, RegBank::BlinkPwm0));
@@ -140,12 +138,12 @@ impl LedMatrix
         Ok(())
     }
 
-    fn switch_bank(&mut self, dev: &mut MutexLock<twi::TwiDevice>, bank: RegBank) -> StdResult
+    fn switch_bank(&mut self, dev: &mut os::MutexLock<twi::TwiDevice>, bank: RegBank) -> StdResult
     {
         dev.write(&[REG_BANK_SELECT], &[bank as u8])
     }
 
-    fn flush_with_lock(&mut self, mut dev: &mut MutexLock<twi::TwiDevice>) -> StdResult
+    fn flush_with_lock(&mut self, mut dev: &mut os::MutexLock<twi::TwiDevice>) -> StdResult
     {
         try!(self.switch_bank(&mut dev, RegBank::Frame0));
 

@@ -21,10 +21,10 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use hardware::gpio::*;
-use hardware::ledmatrix::LedGpio;
-use main::twi_devices::{U101,U901};
-use hardware::gpio::Mode::*;
+use drivers::gpio::*;
+use drivers::ledmatrix::LedGpio;
+use devices::twi::{U101,U901};
+use drivers::gpio::Mode::*;
 
 macro_rules! pin_table {
     (

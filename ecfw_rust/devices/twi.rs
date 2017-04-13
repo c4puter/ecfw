@@ -1,6 +1,6 @@
 /*
  * The MIT License (MIT)
- * Copyright (c) 2016 Chris Pavlina
+ * Copyright (c) 2017 Chris Pavlina
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -21,29 +21,31 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(associated_consts)]
-#![feature(const_fn)]
-#![feature(lang_items)]
-#![feature(asm)]
-#![feature(alloc)]
-#![feature(allocator)]
-#![feature(heap_api)]
+use drivers::twi::*;
+use os::Mutex;
 
-#![feature(plugin)]
-#![plugin(repeat)]
+pub static TWI0: Twi = Twi::new(0x40018000 as TwiHandle);
+pub static TWI1: Twi = Twi::new(0x4001C000 as TwiHandle);
 
-#![crate_type = "rlib"]
-#![allocator]
+macro_rules! twi_table {
+    (
+        $( $name:ident @ $twi:ident : $addr:expr ; )*
+    ) => {
+        $(
+            #[allow(dead_code)]
+            pub static $name: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&$twi, $addr));
+        )*
+    }
+}
 
-extern crate esh;
-extern crate alloc;
-extern crate bindgen_mcu;
-
-#[macro_use] pub mod os;
-#[macro_use] pub mod rustsys;
-#[macro_use] pub mod messages;
-#[macro_use] pub mod drivers;
-#[macro_use] pub mod devices;
-#[macro_use] pub mod data;
-#[macro_use] pub mod main;
+twi_table! {
+    U901            @ TWI0:0x20; // PCF8575
+    U101            @ TWI0:0x21; // PCF8575
+    U801            @ TWI0:0x37; // AS1130
+    VRM901          @ TWI0:0x47;
+    LM75B_LOGIC     @ TWI0:0x48;
+    LM75B_AMBIENT   @ TWI0:0x49;
+    SDRAM_SPD       @ TWI0:0x50;
+    CDCE913         @ TWI0:0x65; // Clock synthesizer
+    PCF8523         @ TWI0:0x68; // RTC
+}

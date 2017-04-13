@@ -21,12 +21,14 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use main::{commands, pins, sysman, reset};
+use main::{commands, sysman, reset};
 use esh;
-use hardware::{ledmatrix, twi, sd};
-use hardware::gpio::Gpio;
+use drivers;
+use drivers::gpio::Gpio;
+use devices;
 use bindgen_mcu;
-use rustsys::{ec_io, freertos};
+use rustsys::ec_io;
+use os;
 
 use core::str;
 
@@ -75,10 +77,10 @@ pub fn init_task()
     debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
     debug!(DEBUG_ECBOOT, "initialize TWI");
-    twi::TWI0.init(400000).unwrap();
+    devices::twi::TWI0.init(400000).unwrap();
 
     debug!(DEBUG_ECBOOT, "initialize GPIO");
-    for &pin in pins::PIN_TABLE {
+    for &pin in devices::pins::PIN_TABLE {
         pin.init();
     }
 
@@ -86,22 +88,22 @@ pub fn init_task()
     reset::shutdown_supplies_cleanly();
 
     // Power supply safety can be released once pins are initialized
-    pins::EN_SAFETY.set(false);
+    devices::pins::EN_SAFETY.set(false);
     debug!(DEBUG_ECBOOT, "initialize LED matrix");
-    ledmatrix::MATRIX.write().init().unwrap();
-    freertos::delay(250);
+    drivers::ledmatrix::MATRIX.write().init().unwrap();
+    os::delay(250);
     {
-        let mut mat = ledmatrix::MATRIX.write();
+        let mut mat = drivers::ledmatrix::MATRIX.write();
         mat.buffer_all(false);
         mat.flush().unwrap();
     }
 
     debug!(DEBUG_ECBOOT, "initialize HSMCI (SD)");
-    sd::init();
+    drivers::sd::init();
 
-    freertos::Task::new(sysman::run_event, "event", 500, 0);
-    freertos::Task::new(sysman::run_status, "status", 500, 0);
-    freertos::yield_task(); // Let above tasks emit status messages
+    os::Task::new(sysman::run_event, "event", 500, 0);
+    os::Task::new(sysman::run_status, "status", 500, 0);
+    os::yield_task(); // Let above tasks emit status messages
 
     // Don't run esh_task() as a task; we can't free heap, so if we just spin
     // forever we've wasted the init_task heap. "exec" it instead.
@@ -129,10 +131,10 @@ pub extern "C" fn main() -> i32 {
     debug_async!(DEBUG_ECBOOT, "");
     debug_async!(DEBUG_ECBOOT, "initialized EC core and USART");
 
-    freertos::Task::new(init_task, "init", 10000, 0);
+    os::Task::new(init_task, "init", 10000, 0);
 
     debug_async!(DEBUG_ECBOOT, "start scheduler and hand off to init task...");
-    freertos::run();
+    os::freertos::run();
 
     loop {}
 

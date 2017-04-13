@@ -22,8 +22,8 @@
  */
 
 extern crate bindgen_mcu;
-use hardware::twi;
-use rustsys::mutex::Mutex;
+use drivers::twi;
+use os::Mutex;
 
 pub trait Gpio {
     fn init(&self);

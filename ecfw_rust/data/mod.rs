@@ -21,9 +21,8 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-pub mod gpio;
-pub mod ledmatrix;
-pub mod twi;
-pub mod sd;
-pub mod blockdev;
-pub mod tempsensor;
+mod parseint;
+mod hexprint;
+
+pub use self::parseint::ParseInt;
+pub use self::hexprint::hexprint;

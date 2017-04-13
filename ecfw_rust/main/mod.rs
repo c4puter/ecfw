@@ -21,16 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-pub mod messages;
-pub mod main;
 mod commands;
-mod parseint;
-mod hexprint;
-mod pins;
-pub mod twi_devices;
-mod power;
-mod supplies;
-mod reset;
 mod sysman;
-pub mod gpt;
-pub mod stralloc;
+mod reset;
+pub mod main;

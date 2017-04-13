@@ -24,8 +24,8 @@
 extern crate asf_sd_mmc;
 extern crate ctypes;
 
-use rustsys::mutex::Mutex;
-use main::messages::*;
+use os::Mutex;
+use messages::*;
 
 #[allow(unused)]
 pub static SD: Mutex<Sd> = Mutex::new(Sd::new(0));

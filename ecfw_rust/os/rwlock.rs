@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::freertos;
+use os;
 use core::sync::atomic::*;
 use core::cell::UnsafeCell;
 use core::ops::*;
@@ -80,7 +80,7 @@ impl<T> RwLock<T> where T: Sized + Sync {
             if let Some(wr) = self.try_write() {
                 return wr;
             } else {
-                freertos::yield_task();
+                os::yield_task();
             }
         }
     }
@@ -90,41 +90,41 @@ impl<T> RwLock<T> where T: Sized + Sync {
             if let Some(rd) = self.try_read() {
                 return rd;
             } else {
-                freertos::yield_task();
+                os::yield_task();
             }
         }
     }
 
     pub fn write_timeout(&self, nticks: u32) -> Option<RwLockWriter<T>> {
-        let end_tick = freertos::ticks().wrapping_add(nticks);
-        while end_tick < freertos::ticks() {
+        let end_tick = os::ticks().wrapping_add(nticks);
+        while end_tick < os::ticks() {
             if let Some(wr) = self.try_write() {
                 return Some(wr);
             }
-            freertos::yield_task();
+            os::yield_task();
         }
-        while freertos::ticks() < end_tick {
+        while os::ticks() < end_tick {
             if let Some(wr) = self.try_write() {
                 return Some(wr);
             }
-            freertos::yield_task();
+            os::yield_task();
         }
         None
     }
 
     pub fn read_timeout(&self, nticks: u32) -> Option<RwLockReader<T>> {
-        let end_tick = freertos::ticks().wrapping_add(nticks);
-        while end_tick < freertos::ticks() {
+        let end_tick = os::ticks().wrapping_add(nticks);
+        while end_tick < os::ticks() {
             if let Some(rd) = self.try_read() {
                 return Some(rd);
             }
-            freertos::yield_task();
+            os::yield_task();
         }
-        while freertos::ticks() < end_tick {
+        while os::ticks() < end_tick {
             if let Some(rd) = self.try_read() {
                 return Some(rd);
             }
-            freertos::yield_task();
+            os::yield_task();
         }
         None
     }

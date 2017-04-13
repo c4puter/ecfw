@@ -23,8 +23,8 @@
 
 //! GPT reader module
 
-use hardware::sd::*;
-use main::messages::*;
+use drivers::sd::*;
+use messages::*;
 use core::fmt;
 use core::str;
 use core::char;

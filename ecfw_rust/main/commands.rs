@@ -21,18 +21,14 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::freertos;
-use hardware::twi::TWI0;
-use hardware::gpio::*;
-use hardware::tempsensor;
-use hardware::sd::*;
-use hardware::blockdev;
-use main::{pins, supplies, reset, sysman, messages, gpt};
-use main::messages::*;
-use main::pins::*;
-
-use main::parseint::ParseInt;
-use main::hexprint::hexprint;
+use os;
+use drivers;
+use drivers::gpio::Gpio;
+use devices;
+use data::{ParseInt, hexprint};
+use devices::pins::*;
+use main::{reset, sysman};
+use messages::*;
 use core::fmt;
 
 pub struct Command {
@@ -93,7 +89,7 @@ fn cmd_help(_args: &[&str]) -> StdResult
 fn cmd_free(_args: &[&str]) -> StdResult
 {
     println!("{} B, worst case {} B",
-             freertos::get_free_heap(), freertos::get_worst_free_heap());
+             os::freertos::get_free_heap(), os::freertos::get_worst_free_heap());
     Ok(())
 }
 
@@ -131,7 +127,7 @@ fn cmd_dbgdis(args: &[&str]) -> StdResult
 
 fn cmd_dbgls(_args: &[&str]) -> StdResult
 {
-    for &dbg in messages::DEBUG_TABLE {
+    for &dbg in DEBUG_TABLE {
         println!("{}    {}",
             if dbg.enabled() { "en " } else { "dis" },
             dbg.name );
@@ -195,8 +191,8 @@ fn cmd_panel(_args: &[&str]) -> StdResult
 
 fn cmd_temps(_args: &[&str]) -> StdResult
 {
-    let temp_logic = try!(tempsensor::SENSOR_LOGIC.read());
-    let temp_ambient = try!(tempsensor::SENSOR_AMBIENT.read());
+    let temp_logic = try!(drivers::tempsensor::SENSOR_LOGIC.read());
+    let temp_ambient = try!(drivers::tempsensor::SENSOR_AMBIENT.read());
 
     println!("Logic:   {}.{} degC", temp_logic/10, temp_logic%10);
     println!("Ambient: {}.{} degC", temp_ambient/10, temp_ambient%10);
@@ -229,7 +225,7 @@ fn cmd_i2c_probe(args: &[&str]) -> StdResult
     }
     let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
 
-    let is_present = try!(TWI0.probe(addr));
+    let is_present = try!(devices::twi::TWI0.probe(addr));
 
     if is_present {
         println!("address {} present", addr);
@@ -254,7 +250,8 @@ fn cmd_i2c_read(args: &[&str]) -> StdResult
     let location_arr = [loc];
     let mut buffer = [0 as u8; 16];
 
-    try!(TWI0.read(addr, &location_arr, &mut buffer[0..n as usize]));
+    try!(devices::twi::TWI0
+         .read(addr, &location_arr, &mut buffer[0..n as usize]));
     println!("{:?}", &buffer[0..n as usize]);
     Ok(())
 }
@@ -280,7 +277,8 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
 
     let location_arr = [loc];
 
-    try!(TWI0.write(addr, &location_arr, &buffer[0..n as usize]));
+    try!(devices::twi::TWI0
+         .write(addr, &location_arr, &buffer[0..n as usize]));
     Ok(())
 }
 
@@ -291,7 +289,7 @@ fn cmd_gpio_read(args: &[&str]) -> StdResult
     }
     let gpio_name = args[1];
 
-    match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
+    match devices::pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
         Some(pin) => println!("{}", pin.get()),
         None => println!("pin {} not found", gpio_name),
     }
@@ -307,7 +305,7 @@ fn cmd_gpio_write(args: &[&str]) -> StdResult
     let gpio_name = args[1];
     let gpio_val = try!(argv_parsed(args, 2, "VALUE", i8::parseint));
 
-    match pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
+    match devices::pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
         Some(pin) => pin.set(gpio_val != 0),
         None => println!("pin {} not found", gpio_name),
     }
@@ -321,8 +319,8 @@ fn cmd_pwr_stat(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
     let supply_name = args[1];
-    let _lock = supplies::POWER_MUTEX.lock();
-    match supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
+    let _lock = devices::supplies::POWER_MUTEX.lock();
+    match devices::supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
         Some(supply) => println!("supply {} status: {:?}", supply_name, try!(supply.status())),
         None => println!("supply {} not found", supply_name),
     }
@@ -336,8 +334,8 @@ fn cmd_mount(_args: &[&str]) -> StdResult
     }
 
     CARDEN.set(true);
-    freertos::delay(1);
-    let mut sd = SD.lock();
+    os::delay(1);
+    let mut sd = drivers::sd::SD.lock();
 
     sd.check()
 }
@@ -357,7 +355,7 @@ fn cmd_sdinfo(_args: &[&str]) -> StdResult
         return Err(ERR_NO_CARD);
     }
 
-    let mut sd = SD.lock();
+    let mut sd = drivers::sd::SD.lock();
 
     println!("Type:      {:?}", sd.cardtype());
     println!("Version:   {:?}", sd.version());
@@ -377,7 +375,7 @@ fn cmd_readblock(args: &[&str]) -> StdResult
     let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
 
     let mut buf = [0u8; 512];
-    try!(SD.lock().read_block(iblock, &mut buf));
+    try!(drivers::sd::SD.lock().read_block(iblock, &mut buf));
 
     hexprint(&buf);
     Ok(())
@@ -397,14 +395,14 @@ fn cmd_writeblock(args: &[&str]) -> StdResult
         buf[i - 2] = data;
     }
 
-    try!(SD.lock().write_block(iblock, &buf));
+    try!(drivers::sd::SD.lock().write_block(iblock, &buf));
     Ok(())
 }
 
 fn cmd_partinfo(_args: &[&str]) -> StdResult
 {
-    let mut gpt = gpt::Gpt::new();
-    let mut entry = gpt::GptEntry::new();
+    let mut gpt = drivers::gpt::Gpt::new();
+    let mut entry = drivers::gpt::GptEntry::new();
 
     try!(gpt.read_header());
 
@@ -435,8 +433,8 @@ fn cmd_ls(args: &[&str]) -> StdResult
 
     let ipart = try!(argv_parsed(args, 1, "PART", u32::parseint)) as usize;
 
-    let mut gpt = gpt::Gpt::new();
-    let mut entry = gpt::GptEntry::new();
+    let mut gpt = drivers::gpt::Gpt::new();
+    let mut entry = drivers::gpt::GptEntry::new();
 
     try!(gpt.read_header());
     try!(gpt.read_entry(ipart, &mut entry));
@@ -445,9 +443,9 @@ fn cmd_ls(args: &[&str]) -> StdResult
         return Err(ERR_ARG_RANGE);
     }
 
-    let mut dev = blockdev::makedev(&entry);
-    blockdev::ls(&mut dev, "root", "/");
-    blockdev::umount("root", "/");
+    let mut dev = drivers::blockdev::makedev(&entry);
+    drivers::blockdev::ls(&mut dev, "root", "/");
+    drivers::blockdev::umount("root", "/");
 
     Ok(())
 }

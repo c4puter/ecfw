@@ -21,9 +21,9 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-pub use main::power::*;
-use main::pins::*;
-use main::messages::*;
+pub use drivers::power::*;
+use devices::pins::*;
+use messages::*;
 
 macro_rules! supply_table {
     (

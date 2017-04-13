@@ -21,17 +21,11 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::mutex;
+use os::Mutex;
+use messages::*;
 extern crate bindgen_mcu;
-type TwiHandle = u32;
+pub type TwiHandle = u32;
 use core::sync::atomic::*;
-use main::messages::*;
-
-#[allow(dead_code)] pub const TWI0_HANDLE: TwiHandle = 0x40018000;
-#[allow(dead_code)] pub const TWI1_HANDLE: TwiHandle = 0x4001C000;
-
-#[allow(dead_code)] pub static TWI0: Twi = Twi::new(TWI0_HANDLE);
-#[allow(dead_code)] pub static TWI1: Twi = Twi::new(TWI1_HANDLE);
 
 #[repr(u32)]
 #[derive(Debug)]
@@ -91,7 +85,7 @@ extern "C" {
 
 pub struct Twi {
     p_twi: TwiHandle,
-    mutex: mutex::Mutex<()>,
+    mutex: Mutex<()>,
     initialized: AtomicBool,
 }
 
@@ -106,7 +100,7 @@ impl Twi {
     pub const fn new(p_twi: TwiHandle) -> Twi {
         Twi {
             p_twi: p_twi,
-            mutex: mutex::Mutex::new(()),
+            mutex: Mutex::new(()),
             initialized: ATOMIC_BOOL_INIT,
         }
     }

@@ -21,9 +21,11 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::{ec_io,freertos};
-use main::{power,supplies,twi_devices};
-use main::power::Supply;
+use rustsys::ec_io;
+use os;
+use drivers;
+use drivers::power::Supply;
+use devices;
 extern crate asf_rstc;
 
 /// Reset the system by shutting down all the power supplies including the
@@ -36,14 +38,14 @@ pub fn hard_reset()
     // in an unknown state.
     {
         debug!(DEBUG_RESET, "acquire power control lock");
-        let _plock = power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
+        let _plock = drivers::power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
         debug!(DEBUG_RESET, "acquire VRM TWI lock");
-        let _lock = twi_devices::VRM901.lock_timeout(1000).expect("timeout");
+        let _lock = devices::twi::VRM901.lock_timeout(1000).expect("timeout");
 
         // Unsafe: shuts down the task scheduler
         debug!(DEBUG_RESET, "suspend tasks");
         ec_io::flush_output();
-        unsafe {freertos::suspend_all()};
+        unsafe {os::freertos::suspend_all()};
     }
 
     // Locks are released now; may be picked up again by the individual supply
@@ -61,27 +63,27 @@ pub fn hard_reset()
 /// fucked up.
 pub fn shutdown_supplies_cleanly()
 {
-    let _lock = power::POWER_MUTEX.lock();
+    let _lock = drivers::power::POWER_MUTEX.lock();
 
-    static SUPPLIES_IN_ORDER: &'static [&'static(Supply + Sync)] = &[
-        &supplies::SW1,
-        &supplies::SW2,
-        &supplies::SW3,
-        &supplies::LDO_S0,
-        &supplies::LDO_S3,
-        &supplies::BUCK_1V2,
-        &supplies::BUCK_1V5,
-        &supplies::INV_N12,
-        &supplies::BUCK_5VA,
-        &supplies::BUCK_5VB,
-        &supplies::BUCK_3VA,
+    static SUPPLIES_IN_ORDER: &'static [&'static(devices::supplies::Supply + Sync)] = &[
+        &devices::supplies::SW1,
+        &devices::supplies::SW2,
+        &devices::supplies::SW3,
+        &devices::supplies::LDO_S0,
+        &devices::supplies::LDO_S3,
+        &devices::supplies::BUCK_1V2,
+        &devices::supplies::BUCK_1V5,
+        &devices::supplies::INV_N12,
+        &devices::supplies::BUCK_5VA,
+        &devices::supplies::BUCK_5VB,
+        &devices::supplies::BUCK_3VA,
     ];
     for supply in SUPPLIES_IN_ORDER {
         match supply.down() {
             Ok(_) => (),
             Err(e) => {println_async!("WARNING: {:?}", e);}
         }
-        match supply.wait_status(power::SupplyStatus::Down) {
+        match supply.wait_status(drivers::power::SupplyStatus::Down) {
             Ok(_) => (),
             Err(e) => {println_async!("WARNING: {:?}", e);}
         }
@@ -92,5 +94,5 @@ pub fn shutdown_supplies_cleanly()
 /// bring it back up after a timeout.
 unsafe fn shutdown_final()
 {
-    supplies::BUCK_3VB.down().unwrap();
+    devices::supplies::BUCK_3VB.down().unwrap();
 }

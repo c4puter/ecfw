@@ -21,28 +21,39 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use hardware::twi::*;
-use rustsys::mutex::Mutex;
+use drivers::twi::TwiDevice;
+use devices;
+use messages::Error;
+use os::Mutex;
 
-macro_rules! twi_table {
-    (
-        $( $name:ident @ $twi:ident : $addr:expr ; )*
-    ) => {
-        $(
-            #[allow(dead_code)]
-            pub static $name: Mutex<TwiDevice> = Mutex::new(TwiDevice::new(&$twi, $addr));
-        )*
-    }
+const TEMP_ADDR: u8 = 0u8;
+
+pub static SENSOR_LOGIC: TempSensor = TempSensor::new(&devices::twi::LM75B_LOGIC);
+pub static SENSOR_AMBIENT: TempSensor = TempSensor::new(&devices::twi::LM75B_AMBIENT);
+
+pub struct TempSensor {
+    twi: &'static Mutex<TwiDevice>
 }
 
-twi_table! {
-    U901            @ TWI0:0x20; // PCF8575
-    U101            @ TWI0:0x21; // PCF8575
-    U801            @ TWI0:0x37; // AS1130
-    VRM901          @ TWI0:0x47;
-    LM75B_LOGIC     @ TWI0:0x48;
-    LM75B_AMBIENT   @ TWI0:0x49;
-    SDRAM_SPD       @ TWI0:0x50;
-    CDCE913         @ TWI0:0x65; // Clock synthesizer
-    PCF8523         @ TWI0:0x68; // RTC
+pub type TenthsDegC = i32;
+
+impl TempSensor {
+    pub const fn new(twi: &'static Mutex<TwiDevice>) -> TempSensor {
+        TempSensor { twi: twi }
+    }
+
+    pub fn read(&self) -> Result<TenthsDegC,Error> {
+        let mut buf = [0u8; 2];
+        try!(self.twi.lock().read(&[TEMP_ADDR], &mut buf));
+
+        let raw = ((buf[0] as u32) << 8) | (buf[1] as u32);
+        let right_aligned = raw >> 5;
+        let masked = right_aligned & 0x7ff;
+        let sign_extended =
+            if (masked & 0x400) != 0 { masked | 0xfffff800 } else { masked };
+
+        let eighths_degc = sign_extended as i32;
+
+        Ok((10 * eighths_degc) / 8)
+    }
 }

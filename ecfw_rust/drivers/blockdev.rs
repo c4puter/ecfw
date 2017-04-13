@@ -31,9 +31,10 @@ use alloc::raw_vec::RawVec;
 use alloc::boxed::Box;
 use self::lwext4::ext4_blockdev_iface;
 pub use self::lwext4::ext4_blockdev;
-use hardware::sd::*;
-use main::gpt;
-use main::stralloc::StrAlloc;
+
+use drivers::sd::*;
+use drivers::gpt;
+use os::StrAlloc;
 
 const EOK: i32 = 0;
 const EIO: i32 = 5;

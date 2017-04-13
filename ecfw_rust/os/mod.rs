@@ -21,29 +21,37 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(associated_consts)]
-#![feature(const_fn)]
-#![feature(lang_items)]
-#![feature(asm)]
-#![feature(alloc)]
-#![feature(allocator)]
-#![feature(heap_api)]
+#[macro_use] mod queue;
+pub mod freertos;
+mod mutex;
+mod rwlock;
+mod stralloc;
 
-#![feature(plugin)]
-#![plugin(repeat)]
+pub use self::freertos::{
+    Task,
+    yield_task,
+    ticks,
+    ticks_running,
+    delay,
+    delay_period,
+    susp_safe_delay,
+};
 
-#![crate_type = "rlib"]
-#![allocator]
+pub use self::mutex::{
+    Mutex,
+    MutexLock,
+};
 
-extern crate esh;
-extern crate alloc;
-extern crate bindgen_mcu;
+pub use self::queue::{
+    Queue,
+};
 
-#[macro_use] pub mod os;
-#[macro_use] pub mod rustsys;
-#[macro_use] pub mod messages;
-#[macro_use] pub mod drivers;
-#[macro_use] pub mod devices;
-#[macro_use] pub mod data;
-#[macro_use] pub mod main;
+pub use self::rwlock::{
+    RwLock,
+    RwLockWriter,
+    RwLockReader,
+};
+
+pub use self::stralloc::{
+    StrAlloc,
+};

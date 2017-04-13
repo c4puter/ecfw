@@ -21,12 +21,8 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#[macro_use] pub mod queue;
 #[macro_use] pub mod ec_io;
 #[macro_use] pub mod debug;
 pub mod alloc_system;
 pub mod panicking;
 pub mod rust_support;
-pub mod freertos;
-pub mod mutex;
-pub mod rwlock;

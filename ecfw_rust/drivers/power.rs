@@ -21,18 +21,17 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::freertos;
-use rustsys::mutex::Mutex;
-use hardware::gpio::Gpio;
-use main::supplies;
-use main::messages::*;
-use main::twi_devices::VRM901;
+use os;
+use drivers::gpio::Gpio;
+use devices::supplies;
+use devices::twi::VRM901;
+use messages::*;
 use core::sync::atomic::*;
 
 /// Mutex used to lock power supply operations. External code should take this
 /// mutex before changing power supply settings, and release it when the change
 /// is complete and settled.
-pub static POWER_MUTEX: Mutex<()> = Mutex::new(());
+pub static POWER_MUTEX: os::Mutex<()> = os::Mutex::new(());
 
 #[allow(unused)]
 #[derive(Debug,Copy,Clone,PartialEq)]
@@ -62,7 +61,7 @@ pub trait Supply : Sync {
                     else {
                         if to_timeout > 0 {
                             to_timeout -= 1;
-                            freertos::susp_safe_delay(1);
+                            os::susp_safe_delay(1);
                         } else {
                             panic!("timeout waiting for supply {} state change: {:?} -> {:?}",
                                    self.name(), s, status)
@@ -211,7 +210,7 @@ impl Supply for VrmSupply {
 
         if let Some((gpio, wait)) = self.disch {
             gpio.set(true);
-            freertos::susp_safe_delay(wait);
+            os::susp_safe_delay(wait);
         }
 
         Ok(())
@@ -256,7 +255,7 @@ impl Supply for GpioSwitchedSupply {
             disgpio.set(false);
         }
         self.gpio.set(true);
-        freertos::susp_safe_delay(self.wait_ticks);
+        os::susp_safe_delay(self.wait_ticks);
         Ok(())
     }
 
@@ -270,7 +269,7 @@ impl Supply for GpioSwitchedSupply {
             disgpio.set(true);
             if wait > max_wait { max_wait = wait; }
         }
-        freertos::susp_safe_delay(max_wait);
+        os::susp_safe_delay(max_wait);
         Ok(())
     }
 

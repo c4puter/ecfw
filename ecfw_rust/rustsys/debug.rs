@@ -24,7 +24,7 @@
 use core::sync::atomic::*;
 use core::cmp::{PartialEq, Eq};
 use core::fmt;
-use main::messages;
+use messages;
 
 pub struct DebugClass {
     pub name: &'static str,
@@ -56,8 +56,8 @@ macro_rules! debug {
     (
         $name:ident, $( $values:tt ),*
     ) => {
-        if $crate::main::messages::$name.enabled() {
-            print!("{:8}: ", $crate::main::messages::$name.prefix);
+        if $crate::messages::$name.enabled() {
+            print!("{:8}: ", $crate::messages::$name.prefix);
             println!( $($values),* );
         }
     }
@@ -67,8 +67,8 @@ macro_rules! debug_async {
     (
         $name:ident, $( $values:tt ),*
     ) => {
-        if $crate::main::messages::$name.enabled() {
-            print_async!("{:8}: ", $crate::main::messages::$name.prefix);
+        if $crate::messages::$name.enabled() {
+            print_async!("{:8}: ", $crate::messages::$name.prefix);
             println_async!( $($values),* );
         }
     }

@@ -21,29 +21,34 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#![no_std]
-#![feature(associated_consts)]
-#![feature(const_fn)]
-#![feature(lang_items)]
-#![feature(asm)]
-#![feature(alloc)]
-#![feature(allocator)]
-#![feature(heap_api)]
+/*!
+Static mutex. Lighter than FreeRTOS's static mutex and requires no
+initialization.
+*/
 
-#![feature(plugin)]
-#![plugin(repeat)]
+use os::{RwLock, RwLockWriter};
 
-#![crate_type = "rlib"]
-#![allocator]
+pub struct Mutex<T: Sized + Sync> {
+    rwlock: RwLock<T>,
+}
 
-extern crate esh;
-extern crate alloc;
-extern crate bindgen_mcu;
+pub type MutexLock<'a, T> = RwLockWriter<'a, T>;
 
-#[macro_use] pub mod os;
-#[macro_use] pub mod rustsys;
-#[macro_use] pub mod messages;
-#[macro_use] pub mod drivers;
-#[macro_use] pub mod devices;
-#[macro_use] pub mod data;
-#[macro_use] pub mod main;
+impl<T> Mutex<T> where T: Sized + Sync {
+    pub const fn new(data: T) -> Mutex<T> {
+        Mutex {rwlock: RwLock::new(data)}
+    }
+
+    pub fn lock(&self) -> MutexLock<T> {
+        self.rwlock.write()
+    }
+
+    pub fn try_lock(&self) -> Option<MutexLock<T>> {
+        self.rwlock.try_write()
+    }
+
+    pub fn lock_timeout(&self, nticks: u32) -> Option<MutexLock<T>> {
+        self.rwlock.write_timeout(nticks)
+    }
+
+}
