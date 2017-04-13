@@ -27,6 +27,8 @@ use core::ptr;
 use core::mem;
 use core::str;
 use core::slice;
+use alloc::raw_vec::RawVec;
+use alloc::boxed::Box;
 use self::lwext4::ext4_blockdev_iface;
 pub use self::lwext4::ext4_blockdev;
 use hardware::sd::*;
@@ -53,11 +55,6 @@ static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
     bread_ctr:  0,
     bwrite_ctr: 0,
 };
-
-extern "C" {
-    fn pvPortMalloc(sz: usize) -> *mut u8;
-    fn vPortFree(pv: *mut u8);
-}
 
 #[allow(unused)]
 extern "C"
@@ -196,13 +193,14 @@ pub fn umount(bdname: &str, mountpoint: &str)
 #[no_mangle]
 pub unsafe extern "C" fn ext4_user_malloc(sz: usize) -> *mut u8
 {
-    pvPortMalloc(sz)
+    let rv = RawVec::<u8>::with_capacity(sz);
+    &mut ((*Box::into_raw(rv.into_box()))[0])
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn ext4_user_calloc(n: usize, sz: usize) -> *mut u8
 {
-    let p = pvPortMalloc(sz * n);
+    let p = ext4_user_malloc(sz * n);
 
     for i in 0..(sz * n) {
         *(p.offset(i as isize)) = 0;
@@ -213,5 +211,6 @@ pub unsafe extern "C" fn ext4_user_calloc(n: usize, sz: usize) -> *mut u8
 
 #[no_mangle]
 pub unsafe extern "C" fn ext4_user_free(pv: *mut u8) {
-    vPortFree(pv)
+    let _b = Box::from_raw(pv);
+    // _b is freed on drop
 }
