@@ -40,7 +40,6 @@ const EOK: i32 = 0;
 const EIO: i32 = 5;
 const ENOTSUP: i32 = 95;
 
-static mut BLOCKDEV_BUF: [u8; 512] = [0u8; 512];
 static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
     open:   Some(blockdev_open),
     bread:  Some(blockdev_bread),
@@ -50,7 +49,7 @@ static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
     unlock: Some(blockdev_unlock),
     ph_bsize:   512,
     ph_bcnt:    0,
-    ph_bbuf:    unsafe{&BLOCKDEV_BUF as *const u8 as *mut u8},
+    ph_bbuf:    &[0u8; 512][0] as *const _ as *mut u8,
     ph_refctr:  0,
     bread_ctr:  0,
     bwrite_ctr: 0,
