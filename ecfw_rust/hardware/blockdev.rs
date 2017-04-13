@@ -33,7 +33,6 @@ use self::lwext4::ext4_blockdev_iface;
 pub use self::lwext4::ext4_blockdev;
 use hardware::sd::*;
 use main::gpt;
-use rustsys::ec_io;
 use main::stralloc::StrAlloc;
 
 const EOK: i32 = 0;

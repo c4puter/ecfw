@@ -21,7 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#[macro_use] pub mod debug;
 pub mod messages;
 pub mod main;
 mod commands;

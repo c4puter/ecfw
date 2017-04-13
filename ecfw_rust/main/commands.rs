@@ -21,13 +21,13 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::{ec_io,freertos};
+use rustsys::freertos;
 use hardware::twi::TWI0;
 use hardware::gpio::*;
 use hardware::tempsensor;
 use hardware::sd::*;
 use hardware::blockdev;
-use main::{pins, supplies, reset, sysman, debug, messages, gpt};
+use main::{pins, supplies, reset, sysman, messages, gpt};
 use main::messages::*;
 use main::pins::*;
 
@@ -108,7 +108,7 @@ fn cmd_dbgen(args: &[&str]) -> StdResult
     if args.len() < 2 {
         Err(ERR_EXPECTED_ARGS)
     } else {
-        if debug::debug_set(args[1], true) {
+        if debug_set(args[1], true) {
             Ok(())
         } else {
             Err(ERR_CANNOT_FIND)
@@ -121,7 +121,7 @@ fn cmd_dbgdis(args: &[&str]) -> StdResult
     if args.len() < 2 {
         Err(ERR_EXPECTED_ARGS)
     } else {
-        if debug::debug_set(args[1], false) {
+        if debug_set(args[1], false) {
             Ok(())
         } else {
             Err(ERR_CANNOT_FIND)

@@ -21,7 +21,6 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::ec_io;
 use core::str;
 
 /// Print a hex dump.  pub fn hexprint(data: &[u8])

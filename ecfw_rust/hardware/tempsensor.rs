@@ -23,7 +23,7 @@
 
 use hardware::twi::TwiDevice;
 use main::twi_devices;
-use main::debug::Error;
+use main::messages::Error;
 use rustsys::mutex::Mutex;
 
 const TEMP_ADDR: u8 = 0u8;

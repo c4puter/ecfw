@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-pub use main::debug::*;
+pub use rustsys::debug::*;
 
 /// Table of all debug message categories.
 debug_table! {
@@ -34,6 +34,7 @@ debug_table! {
     DEBUG_ECBOOT:       "ecboot",   true;
     DEBUG_RESET:        "reset",    true;
     DEBUG_FS:           "ext3fs",   true;
+    DEBUG_ALLOC:        "alloc",    false;
 }
 
 /// Table of all error messages.

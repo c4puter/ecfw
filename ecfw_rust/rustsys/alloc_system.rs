@@ -28,12 +28,15 @@ extern "C" {
 
 #[no_mangle]
 pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
-    return unsafe { pvPortMalloc(size) };
+    let p = unsafe { pvPortMalloc(size) };
+    debug!(DEBUG_ALLOC, "allocate {} bytes at 0x{:08x}", size, (p as usize));
+    p
 }
 
 #[no_mangle]
-pub extern fn __rust_deallocate(_ptr: *mut u8, _old_size: usize, _align: usize) {
-    unsafe { vPortFree(_ptr) };
+pub extern fn __rust_deallocate(ptr: *mut u8, _old_size: usize, _align: usize) {
+    debug!(DEBUG_ALLOC, "free 0x{:08x}", (ptr as usize));
+    unsafe { vPortFree(ptr) };
 }
 
 #[no_mangle]

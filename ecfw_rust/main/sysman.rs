@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use rustsys::{queue, ec_io, freertos};
+use rustsys::{queue, freertos};
 use main::power;
 use main::supplies::*;
 use main::pins::*;

@@ -161,20 +161,20 @@ pub fn println_async(args: fmt::Arguments) {
 
 #[macro_export]
 macro_rules! print {
-    ($($arg:tt)*) => (ec_io::print(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::rustsys::ec_io::print(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! println {
-    ($($arg:tt)*) => (ec_io::println(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::rustsys::ec_io::println(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! print_async {
-    ($($arg:tt)*) => (ec_io::print_async(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::rustsys::ec_io::print_async(format_args!($($arg)*)));
 }
 
 #[macro_export]
 macro_rules! println_async {
-    ($($arg:tt)*) => (ec_io::println_async(format_args!($($arg)*)));
+    ($($arg:tt)*) => ($crate::rustsys::ec_io::println_async(format_args!($($arg)*)));
 }
