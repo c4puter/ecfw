@@ -191,8 +191,8 @@ fn cmd_panel(_args: &[&str]) -> StdResult
 
 fn cmd_temps(_args: &[&str]) -> StdResult
 {
-    let temp_logic = try!(drivers::tempsensor::SENSOR_LOGIC.read());
-    let temp_ambient = try!(drivers::tempsensor::SENSOR_AMBIENT.read());
+    let temp_logic = try!(devices::SENSOR_LOGIC.read());
+    let temp_ambient = try!(devices::SENSOR_AMBIENT.read());
 
     println!("Logic:   {}.{} degC", temp_logic/10, temp_logic%10);
     println!("Ambient: {}.{} degC", temp_ambient/10, temp_ambient%10);

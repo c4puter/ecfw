@@ -22,14 +22,10 @@
  */
 
 use drivers::twi::TwiDevice;
-use devices;
 use messages::Error;
 use os::Mutex;
 
 const TEMP_ADDR: u8 = 0u8;
-
-pub static SENSOR_LOGIC: TempSensor = TempSensor::new(&devices::twi::LM75B_LOGIC);
-pub static SENSOR_AMBIENT: TempSensor = TempSensor::new(&devices::twi::LM75B_AMBIENT);
 
 pub struct TempSensor {
     twi: &'static Mutex<TwiDevice>
