@@ -140,7 +140,7 @@ pub fn ls(bd: &mut ext4_blockdev) -> i32
     lwext4::ext4_dir_close(&mut dir);
 
     if lwext4::ext4_umount("/\0".as_ptr() as *const i8) != 0 { return 100; }
-    if lwext4::ext4_device_unregister("root\0".as_ptr() as *const i8) != 0 { return 101; }
+    lwext4::ext4_device_unregister("root\0".as_ptr() as *const i8);
     }
     return 0;
 }
@@ -152,11 +152,11 @@ pub unsafe extern "C" fn ext4_user_malloc(sz: usize) -> *mut u8
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ext4_user_calloc(sz: usize) -> *mut u8
+pub unsafe extern "C" fn ext4_user_calloc(n: usize, sz: usize) -> *mut u8
 {
-    let p = pvPortMalloc(sz);
+    let p = pvPortMalloc(sz * n);
 
-    for i in 0..sz {
+    for i in 0..(sz * n) {
         *(p.offset(i as isize)) = 0;
     }
 

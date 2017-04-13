@@ -125,7 +125,7 @@ TOTAL_FLASH=0x100000
 TOTAL_SRAM=0x20000
 
 CFLAGS = \
-	-Os -g -pipe -std=c99 -Wall -Wextra -Wno-int-conversion \
+	-O1 -g -pipe -std=c99 -Wall -Wextra -Wno-int-conversion \
 	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
 	-D__HEAP_SIZE__=${HEAP_SIZE} \
 	-DCONFIG_UNALIGNED_ACCESS=1 \
@@ -145,7 +145,7 @@ CFLAGS = \
 	-I esh \
 
 RUSTFLAGS = \
-	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-C opt-level=1 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
 
 BINDGENFLAGS = \
