@@ -40,7 +40,6 @@ extern crate esh;
 extern crate alloc;
 extern crate bindgen_mcu;
 
-#[macro_use]
-pub mod rustsys;
-pub mod main;
+#[macro_use] pub mod rustsys;
+#[macro_use] pub mod main;
 pub mod hardware;

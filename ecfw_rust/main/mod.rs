@@ -34,3 +34,4 @@ mod supplies;
 mod reset;
 mod sysman;
 pub mod gpt;
+pub mod stralloc;

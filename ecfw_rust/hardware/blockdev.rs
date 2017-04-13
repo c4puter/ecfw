@@ -32,8 +32,11 @@ pub use self::lwext4::ext4_blockdev;
 use hardware::sd::*;
 use main::gpt;
 use rustsys::ec_io;
+use main::stralloc::StrAlloc;
 
+const EOK: i32 = 0;
 const EIO: i32 = 5;
+const ENOTSUP: i32 = 95;
 
 static mut BLOCKDEV_BUF: [u8; 512] = [0u8; 512];
 static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
@@ -121,14 +124,35 @@ pub fn makedev(part: &gpt::GptEntry) -> ext4_blockdev
     }
 }
 
-pub fn ls(bd: &mut ext4_blockdev) -> i32
+pub fn ls(bd: &mut ext4_blockdev, bdname: &str, mountpoint: &str) -> i32
 {
     unsafe{
-    if lwext4::ext4_device_register(bd, "root\0".as_ptr() as *const i8) != 0 { return 1; }
-    if lwext4::ext4_mount("root\0".as_ptr() as *const i8, "/\0".as_ptr() as *const i8, false) != 0 { return 2; }
+
+    let mut alloc = StrAlloc::new();
+    let c_bdname = alloc.nulterm(bdname).unwrap().as_ptr() as *const i8;
+    let c_mountpoint = alloc.nulterm(mountpoint).unwrap().as_ptr() as *const i8;
+
+    debug!(DEBUG_FS, "register block device \"{}\"", bdname);
+    if lwext4::ext4_device_register(bd, c_bdname) != 0 { return 1; }
+
+    debug!(DEBUG_FS, "mount \"{}\" as \"{}\"", bdname, mountpoint);
+    if lwext4::ext4_mount(c_bdname, c_mountpoint, false) != 0 { return 2; }
+
+    debug!(DEBUG_FS, "recover journal on \"{}\"", mountpoint);
+    match lwext4::ext4_recover(c_mountpoint) {
+        ENOTSUP => { debug!(DEBUG_FS, "filesystem on \"{}\" has no journal", mountpoint); },
+        EOK => {},
+        e => { debug!(DEBUG_FS, "failed recovering journal with error={}", e); }
+    };
+
+    debug!(DEBUG_FS, "start journal on \"{}\", if supported", mountpoint);
+    if lwext4::ext4_journal_start(c_mountpoint) != 0 { return 4; }
+
+    debug!(DEBUG_FS, "enable write-back cache on \"{}\"", mountpoint);
+    if lwext4::ext4_cache_write_back(c_mountpoint, true) != 0 { return 5; }
 
     let mut dir: lwext4::ext4_dir = mem::zeroed();
-    lwext4::ext4_dir_open(&mut dir, "/\0".as_ptr() as *const i8);
+    lwext4::ext4_dir_open(&mut dir, c_mountpoint);
     let mut de: *const lwext4::ext4_direntry = lwext4::ext4_dir_entry_next(&mut dir);
 
     while de != ptr::null() {
@@ -138,11 +162,35 @@ pub fn ls(bd: &mut ext4_blockdev) -> i32
         de = lwext4::ext4_dir_entry_next(&mut dir);
     }
     lwext4::ext4_dir_close(&mut dir);
-
-    if lwext4::ext4_umount("/\0".as_ptr() as *const i8) != 0 { return 100; }
-    lwext4::ext4_device_unregister("root\0".as_ptr() as *const i8);
     }
     return 0;
+}
+
+pub fn umount(bdname: &str, mountpoint: &str)
+{
+    unsafe{
+        let mut alloc = StrAlloc::new();
+        let c_bdname = alloc.nulterm(bdname).unwrap().as_ptr() as *const i8;
+        let c_mountpoint = alloc.nulterm(mountpoint).unwrap().as_ptr() as *const i8;
+
+        debug!(DEBUG_FS, "flush cache on \"{}\"", mountpoint);
+        lwext4::ext4_cache_write_back(c_mountpoint, false);
+
+        debug!(DEBUG_FS, "stop journal on \"{}\", if supported", mountpoint);
+        match lwext4::ext4_journal_stop(c_mountpoint) {
+            EOK => {},
+            e => { debug!(DEBUG_FS, "stopping journal failed with error={}", e) },
+        };
+
+        debug!(DEBUG_FS, "unmount \"{}\"", mountpoint);
+        match lwext4::ext4_umount(c_mountpoint) {
+            EOK => {},
+            e => { debug!(DEBUG_FS, "unmount failed with error={}", e) },
+        };
+
+        debug!(DEBUG_FS, "unregister block device \"{}\"", bdname);
+        lwext4::ext4_device_unregister(c_bdname);
+    }
 }
 
 #[no_mangle]

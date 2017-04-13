@@ -446,9 +446,8 @@ fn cmd_ls(args: &[&str]) -> StdResult
     }
 
     let mut dev = blockdev::makedev(&entry);
-    let rc = blockdev::ls(&mut dev);
-
-    println!("Return code: {}", rc);
+    blockdev::ls(&mut dev, "root", "/");
+    blockdev::umount("root", "/");
 
     Ok(())
 }

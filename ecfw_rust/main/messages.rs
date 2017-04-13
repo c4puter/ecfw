@@ -33,6 +33,7 @@ debug_table! {
     DEBUG_PWRBTN:       "pwrbtn",   false;
     DEBUG_ECBOOT:       "ecboot",   true;
     DEBUG_RESET:        "reset",    true;
+    DEBUG_FS:           "ext3fs",   true;
 }
 
 /// Table of all error messages.
