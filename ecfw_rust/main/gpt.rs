@@ -25,7 +25,6 @@
 
 use hardware::sd::*;
 use main::messages::*;
-#[allow(unused)] use rustsys::ec_io;
 use core::fmt;
 use core::str;
 use core::char;
