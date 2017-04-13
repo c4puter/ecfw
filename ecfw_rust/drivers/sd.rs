@@ -24,11 +24,7 @@
 extern crate asf_sd_mmc;
 extern crate ctypes;
 
-use os::Mutex;
 use messages::*;
-
-#[allow(unused)]
-pub static SD: Mutex<Sd> = Mutex::new(Sd::new(0));
 
 pub struct Sd {
     slot: u8,

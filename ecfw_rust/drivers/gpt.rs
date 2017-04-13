@@ -25,6 +25,7 @@
 
 use drivers::sd::*;
 use messages::*;
+use os::Mutex;
 use core::fmt;
 use core::str;
 use core::char;
@@ -68,17 +69,18 @@ const BLOCK_SIZE: usize = 512;
 const SIGNATURE: u64 = 0x4546492050415254;  // "EFI PART"
 
 /// GPT header.
-pub struct Gpt {
+pub struct Gpt<'a> {
     buffer: [u8; BLOCK_SIZE],
     iblock: usize,
     guid: Guid,
     entry_len: usize,
     lba_entries: usize,
     number_entries: usize,
+    sd: &'a Mutex<Sd>,
 }
 
-impl Gpt {
-    pub const fn new() -> Gpt
+impl<'a> Gpt<'a> {
+    pub const fn new(sd: &Mutex<Sd>) -> Gpt
     {
         Gpt {
             buffer: [0u8; BLOCK_SIZE],
@@ -87,6 +89,7 @@ impl Gpt {
             entry_len: 0,
             lba_entries: 0,
             number_entries: 0,
+            sd: sd,
         }
     }
 
@@ -143,7 +146,7 @@ impl Gpt {
         if self.iblock == iblock {
             Ok(())
         } else {
-            match SD.lock().read_block(iblock, &mut self.buffer) {
+            match self.sd.lock().read_block(iblock, &mut self.buffer) {
                 Ok(()) => {
                     self.iblock = iblock;
                     Ok(()) },

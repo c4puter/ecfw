@@ -21,9 +21,11 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use os;
+use os::{RwLock, Mutex};
 use drivers::ledmatrix::LedMatrix;
+use drivers::sd::Sd;
 use devices::twi;
 
-pub static MATRIX: os::RwLock<LedMatrix> =
-    os::RwLock::new(LedMatrix::new(&twi::U801));
+pub static MATRIX: RwLock<LedMatrix> = RwLock::new(LedMatrix::new(&twi::U801));
+
+pub static SD: Mutex<Sd> = Mutex::new(Sd::new(0));

@@ -34,7 +34,7 @@ pub use self::lwext4::ext4_blockdev;
 
 use drivers::sd::*;
 use drivers::gpt;
-use os::StrAlloc;
+use os::{Mutex, StrAlloc};
 
 const EOK: i32 = 0;
 const EIO: i32 = 5;
@@ -55,6 +55,24 @@ static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
     bwrite_ctr: 0,
 };
 
+#[repr(C)]
+pub struct SdBlockDev<'a> {
+    lwext4_bd: ext4_blockdev,
+    sd: &'a Mutex<Sd>,
+}
+
+impl<'a> SdBlockDev<'a> {
+    fn from_ptr(p: *mut ext4_blockdev) -> &'a mut SdBlockDev<'a>
+    {
+        unsafe{ mem::transmute::<_, &mut SdBlockDev<'a>>(p) }
+    }
+
+    fn to_ptr(&mut self) -> *mut ext4_blockdev
+    {
+        &mut self.lwext4_bd
+    }
+}
+
 #[allow(unused)]
 extern "C"
 fn blockdev_open(bdev: *mut ext4_blockdev) -> i32
@@ -67,7 +85,9 @@ unsafe extern "C"
 fn blockdev_bread(bdev: *mut ext4_blockdev, buf: *mut ctypes::c_void,
                   blk_id: u64, blk_cnt: u32) -> i32
 {
-    match SD.lock().read_blocks(blk_id as usize, blk_cnt as u16, buf as *mut u8) {
+    let bd = SdBlockDev::from_ptr(bdev);
+    let mut sd = bd.sd.lock();
+    match sd.read_blocks(blk_id as usize, blk_cnt as u16, buf as *mut u8) {
         Ok(()) => 0,
         Err(_) => EIO,
     }
@@ -78,7 +98,9 @@ unsafe extern "C"
 fn blockdev_bwrite(bdev: *mut ext4_blockdev, buf: *const ctypes::c_void,
                    blk_id: u64, blk_cnt: u32) -> i32
 {
-    match SD.lock().write_blocks(blk_id as usize, blk_cnt as u16, buf as *const u8) {
+    let bd = SdBlockDev::from_ptr(bdev);
+    let mut sd = bd.sd.lock();
+    match sd.write_blocks(blk_id as usize, blk_cnt as u16, buf as *const u8) {
         Ok(()) => 0,
         Err(_) => EIO,
     }
@@ -105,22 +127,25 @@ fn blockdev_unlock(bdev: *mut ext4_blockdev) -> i32
     EIO
 }
 
-pub fn makedev(part: &gpt::GptEntry) -> ext4_blockdev
+pub fn makedev<'a>(sd: &'a Mutex<Sd>, part: &gpt::GptEntry) -> SdBlockDev<'a>
 {
-    ext4_blockdev {
-        bdif: unsafe{&mut BLOCKDEV_IFACE},
-        part_offset: (512 * part.start_lba) as u64,
-        part_size: (512 * (part.end_lba - part.start_lba + 1)) as u64,
-        bc: ptr::null_mut(),
-        lg_bsize: 0,
-        lg_bcnt: 0,
-        cache_write_back: 0,
-        fs: ptr::null_mut(),
-        journal: ptr::null_mut(),
+    SdBlockDev {
+        lwext4_bd: ext4_blockdev {
+            bdif: unsafe{&mut BLOCKDEV_IFACE},
+            part_offset: (512 * part.start_lba) as u64,
+            part_size: (512 * (part.end_lba - part.start_lba + 1)) as u64,
+            bc: ptr::null_mut(),
+            lg_bsize: 0,
+            lg_bcnt: 0,
+            cache_write_back: 0,
+            fs: ptr::null_mut(),
+            journal: ptr::null_mut(),
+        },
+        sd: sd,
     }
 }
 
-pub fn ls(bd: &mut ext4_blockdev, bdname: &str, mountpoint: &str) -> i32
+pub fn ls(bd: &mut SdBlockDev, bdname: &str, mountpoint: &str) -> i32
 {
     unsafe{
 
@@ -129,7 +154,7 @@ pub fn ls(bd: &mut ext4_blockdev, bdname: &str, mountpoint: &str) -> i32
     let c_mountpoint = alloc.nulterm(mountpoint).unwrap().as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "register block device \"{}\"", bdname);
-    if lwext4::ext4_device_register(bd, c_bdname) != 0 { return 1; }
+    if lwext4::ext4_device_register(bd.to_ptr(), c_bdname) != 0 { return 1; }
 
     debug!(DEBUG_FS, "mount \"{}\" as \"{}\"", bdname, mountpoint);
     if lwext4::ext4_mount(c_bdname, c_mountpoint, false) != 0 { return 2; }

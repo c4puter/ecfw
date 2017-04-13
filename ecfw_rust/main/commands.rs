@@ -335,9 +335,7 @@ fn cmd_mount(_args: &[&str]) -> StdResult
 
     CARDEN.set(true);
     os::delay(1);
-    let mut sd = drivers::sd::SD.lock();
-
-    sd.check()
+    devices::SD.lock().check()
 }
 
 fn cmd_umount(_args: &[&str]) -> StdResult
@@ -355,7 +353,7 @@ fn cmd_sdinfo(_args: &[&str]) -> StdResult
         return Err(ERR_NO_CARD);
     }
 
-    let mut sd = drivers::sd::SD.lock();
+    let mut sd = devices::SD.lock();
 
     println!("Type:      {:?}", sd.cardtype());
     println!("Version:   {:?}", sd.version());
@@ -375,7 +373,7 @@ fn cmd_readblock(args: &[&str]) -> StdResult
     let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
 
     let mut buf = [0u8; 512];
-    try!(drivers::sd::SD.lock().read_block(iblock, &mut buf));
+    try!(devices::SD.lock().read_block(iblock, &mut buf));
 
     hexprint(&buf);
     Ok(())
@@ -395,13 +393,13 @@ fn cmd_writeblock(args: &[&str]) -> StdResult
         buf[i - 2] = data;
     }
 
-    try!(drivers::sd::SD.lock().write_block(iblock, &buf));
+    try!(devices::SD.lock().write_block(iblock, &buf));
     Ok(())
 }
 
 fn cmd_partinfo(_args: &[&str]) -> StdResult
 {
-    let mut gpt = drivers::gpt::Gpt::new();
+    let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
     let mut entry = drivers::gpt::GptEntry::new();
 
     try!(gpt.read_header());
@@ -433,7 +431,7 @@ fn cmd_ls(args: &[&str]) -> StdResult
 
     let ipart = try!(argv_parsed(args, 1, "PART", u32::parseint)) as usize;
 
-    let mut gpt = drivers::gpt::Gpt::new();
+    let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
     let mut entry = drivers::gpt::GptEntry::new();
 
     try!(gpt.read_header());
@@ -443,7 +441,7 @@ fn cmd_ls(args: &[&str]) -> StdResult
         return Err(ERR_ARG_RANGE);
     }
 
-    let mut dev = drivers::blockdev::makedev(&entry);
+    let mut dev = drivers::blockdev::makedev(&devices::SD, &entry);
     drivers::blockdev::ls(&mut dev, "root", "/");
     drivers::blockdev::umount("root", "/");
 
