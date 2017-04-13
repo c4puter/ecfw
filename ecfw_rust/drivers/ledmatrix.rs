@@ -23,7 +23,6 @@
 
 use os;
 use drivers::{gpio, twi};
-use devices;
 use messages::*;
 
 /// LED current in mA. Maximum is 30mA.
@@ -37,9 +36,6 @@ pub const FULL_BRIGHTNESS: u8 = 255;
 
 /// LED current in AS1130 units
 pub const LED_CURRENT_AS1130: u8 = (LED_CURRENT / 0.11765) as u8;
-
-pub static MATRIX: os::RwLock<LedMatrix> =
-    os::RwLock::new(LedMatrix::new(&devices::twi::U801 ));
 
 // AS1130 register banks
 #[allow(dead_code)]
@@ -235,6 +231,18 @@ impl LedMatrix
         Ok(())
     }
 
+    /// Set the LED brightness to "full"
+    pub fn set_full_brightness(&mut self) -> StdResult
+    {
+        self.set_brightness(FULL_BRIGHTNESS)
+    }
+
+    /// Set the LED brightness to "standby"
+    pub fn set_standby_brightness(&mut self) -> StdResult
+    {
+        self.set_brightness(STANDBY_BRIGHTNESS)
+    }
+
     /// Get the raw current value for a brightness
     fn current_val(brightness: u8) -> u8
     {
@@ -245,6 +253,7 @@ impl LedMatrix
 pub struct LedGpio
 {
     pub addr: u8,
+    pub matrix: &'static os::RwLock<LedMatrix>,
     pub name: &'static str,
 }
 
@@ -253,11 +262,11 @@ impl gpio::Gpio for LedGpio
     fn init(&self) {}
 
     fn set(&self, v: bool) {
-        MATRIX.write().set_led(self.addr, v).unwrap();
+        self.matrix.write().set_led(self.addr, v).unwrap();
     }
 
     fn get(&self) -> bool {
-        MATRIX.read().get_led(self.addr)
+        self.matrix.read().get_led(self.addr)
     }
 
     fn name(&self) -> &'static str {

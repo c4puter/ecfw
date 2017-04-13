@@ -23,6 +23,7 @@
 
 use os;
 use drivers;
+use devices;
 use drivers::gpio::Gpio;
 use devices::pins::*;
 use devices::supplies::*;
@@ -115,7 +116,7 @@ pub fn run_status()
 
     loop {
         if cycle_count == 0 {
-            let mut mat = drivers::ledmatrix::MATRIX.write();
+            let mut mat = devices::MATRIX.write();
 
             for &pair in SUPPLY_STATUS_TABLE {
                 let stat = pair.supply.status().unwrap();
@@ -212,7 +213,7 @@ fn do_boot() -> StdResult
     }
 
     POWER_R.set(false);
-    try!(drivers::ledmatrix::MATRIX.write().set_brightness(drivers::ledmatrix::FULL_BRIGHTNESS));
+    try!(devices::MATRIX.write().set_full_brightness());
     POWER_STATE.store(0, Ordering::SeqCst);
     SPEAKER.set(true);
     os::delay(125);
@@ -242,7 +243,7 @@ fn do_shutdown() -> StdResult
     POWER_R.set(false);
     POWER_G.set(false);
     POWER_STATE.store(5, Ordering::SeqCst);
-    try!(drivers::ledmatrix::MATRIX.write().set_brightness(drivers::ledmatrix::STANDBY_BRIGHTNESS));
+    try!(devices::MATRIX.write().set_standby_brightness());
     Ok(())
 }
 

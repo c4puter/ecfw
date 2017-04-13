@@ -90,10 +90,10 @@ pub fn init_task()
     // Power supply safety can be released once pins are initialized
     devices::pins::EN_SAFETY.set(false);
     debug!(DEBUG_ECBOOT, "initialize LED matrix");
-    drivers::ledmatrix::MATRIX.write().init().unwrap();
+    devices::MATRIX.write().init().unwrap();
     os::delay(250);
     {
-        let mut mat = drivers::ledmatrix::MATRIX.write();
+        let mut mat = devices::MATRIX.write();
         mat.buffer_all(false);
         mat.flush().unwrap();
     }

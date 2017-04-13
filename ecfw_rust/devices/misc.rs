@@ -21,9 +21,9 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-mod misc;
-pub use self::misc::*;
+use os;
+use drivers::ledmatrix::LedMatrix;
+use devices::twi;
 
-pub mod twi;
-pub mod pins;
-pub mod supplies;
+pub static MATRIX: os::RwLock<LedMatrix> =
+    os::RwLock::new(LedMatrix::new(&twi::U801));

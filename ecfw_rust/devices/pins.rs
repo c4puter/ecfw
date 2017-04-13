@@ -23,8 +23,9 @@
 
 use drivers::gpio::*;
 use drivers::ledmatrix::LedGpio;
-use devices::twi::{U101,U901};
 use drivers::gpio::Mode::*;
+use devices::twi::{U101,U901};
+use devices::MATRIX;
 
 macro_rules! pin_table {
     (
@@ -138,76 +139,76 @@ pin_table!{
     ///////////////////////////////////
     // Power LEDs
 
-    P12V_PCI_R,         LedGpio, addr => 0x75;
-    P12V_PCI_G,         LedGpio, addr => 0x44;
-    P5V_PCI_A_R,        LedGpio, addr => 0x54;
-    P5V_PCI_A_G,        LedGpio, addr => 0x74;
+    P12V_PCI_R,         LedGpio, addr => 0x75, matrix => &MATRIX;
+    P12V_PCI_G,         LedGpio, addr => 0x44, matrix => &MATRIX;
+    P5V_PCI_A_R,        LedGpio, addr => 0x54, matrix => &MATRIX;
+    P5V_PCI_A_G,        LedGpio, addr => 0x74, matrix => &MATRIX;
 
-    P5V_PCI_B_R,        LedGpio, addr => 0x52;
-    P5V_PCI_B_G,        LedGpio, addr => 0x42;
+    P5V_PCI_B_R,        LedGpio, addr => 0x52, matrix => &MATRIX;
+    P5V_PCI_B_G,        LedGpio, addr => 0x42, matrix => &MATRIX;
 
-    P3V3_PCI_A_R,       LedGpio, addr => 0x53;
-    P3V3_PCI_A_G,       LedGpio, addr => 0x43;
+    P3V3_PCI_A_R,       LedGpio, addr => 0x53, matrix => &MATRIX;
+    P3V3_PCI_A_G,       LedGpio, addr => 0x43, matrix => &MATRIX;
 
-    P3V3_PCI_B_R,       LedGpio, addr => 0x50;
-    P3V3_PCI_B_G,       LedGpio, addr => 0x40;
+    P3V3_PCI_B_R,       LedGpio, addr => 0x50, matrix => &MATRIX;
+    P3V3_PCI_B_G,       LedGpio, addr => 0x40, matrix => &MATRIX;
 
-    N12V_PCI_R,         LedGpio, addr => 0x51;
-    N12V_PCI_G,         LedGpio, addr => 0x41;
+    N12V_PCI_R,         LedGpio, addr => 0x51, matrix => &MATRIX;
+    N12V_PCI_G,         LedGpio, addr => 0x41, matrix => &MATRIX;
 
-    P3V3_STBY_R,        LedGpio, addr => 0x25;
-    P3V3_STBY_G,        LedGpio, addr => 0x34;
+    P3V3_STBY_R,        LedGpio, addr => 0x25, matrix => &MATRIX;
+    P3V3_STBY_G,        LedGpio, addr => 0x34, matrix => &MATRIX;
 
-    P3V3_AUX_R,         LedGpio, addr => 0x23;
-    P3V3_AUX_G,         LedGpio, addr => 0x33;
+    P3V3_AUX_R,         LedGpio, addr => 0x23, matrix => &MATRIX;
+    P3V3_AUX_G,         LedGpio, addr => 0x33, matrix => &MATRIX;
 
-    P3V3_LOGIC_R,       LedGpio, addr => 0x72;
-    P3V3_LOGIC_G,       LedGpio, addr => 0x32;
+    P3V3_LOGIC_R,       LedGpio, addr => 0x72, matrix => &MATRIX;
+    P3V3_LOGIC_G,       LedGpio, addr => 0x32, matrix => &MATRIX;
 
-    P1V5_LOGIC_R,       LedGpio, addr => 0x22;
-    P1V5_LOGIC_G,       LedGpio, addr => 0x73;
+    P1V5_LOGIC_R,       LedGpio, addr => 0x22, matrix => &MATRIX;
+    P1V5_LOGIC_G,       LedGpio, addr => 0x73, matrix => &MATRIX;
 
-    P1V2_LOGIC_R,       LedGpio, addr => 0x20;
-    P1V2_LOGIC_G,       LedGpio, addr => 0x30;
+    P1V2_LOGIC_R,       LedGpio, addr => 0x20, matrix => &MATRIX;
+    P1V2_LOGIC_G,       LedGpio, addr => 0x30, matrix => &MATRIX;
 
-    PV75_TERM_R,        LedGpio, addr => 0x21;
-    PV75_TERM_G,        LedGpio, addr => 0x31;
+    PV75_TERM_R,        LedGpio, addr => 0x21, matrix => &MATRIX;
+    PV75_TERM_G,        LedGpio, addr => 0x31, matrix => &MATRIX;
 
     ///////////////////////////////////
     // Boot sequence LEDs
-    ECFW_R,             LedGpio, addr => 0x04;
-    ECFW_G,             LedGpio, addr => 0x14;
+    ECFW_R,             LedGpio, addr => 0x04, matrix => &MATRIX;
+    ECFW_G,             LedGpio, addr => 0x14, matrix => &MATRIX;
 
-    POWER_R,            LedGpio, addr => 0x03;
-    POWER_G,            LedGpio, addr => 0x13;
+    POWER_R,            LedGpio, addr => 0x03, matrix => &MATRIX;
+    POWER_G,            LedGpio, addr => 0x13, matrix => &MATRIX;
 
-    CARD_R,             LedGpio, addr => 0x01;
-    CARD_G,             LedGpio, addr => 0x11;
+    CARD_R,             LedGpio, addr => 0x01, matrix => &MATRIX;
+    CARD_G,             LedGpio, addr => 0x11, matrix => &MATRIX;
 
-    BIT_R,              LedGpio, addr => 0x02;
-    BIT_BRIDGE_G,       LedGpio, addr => 0x12;
-    BIT_CPU0_G,         LedGpio, addr => 0xA2;
-    BIT_CPU1_G,         LedGpio, addr => 0xB2;
+    BIT_R,              LedGpio, addr => 0x02, matrix => &MATRIX;
+    BIT_BRIDGE_G,       LedGpio, addr => 0x12, matrix => &MATRIX;
+    BIT_CPU0_G,         LedGpio, addr => 0xA2, matrix => &MATRIX;
+    BIT_CPU1_G,         LedGpio, addr => 0xB2, matrix => &MATRIX;
 
-    MEM_R,              LedGpio, addr => 0x70;
-    MEM_G,              LedGpio, addr => 0x10;
+    MEM_R,              LedGpio, addr => 0x70, matrix => &MATRIX;
+    MEM_G,              LedGpio, addr => 0x10, matrix => &MATRIX;
 
-    RUN_R,              LedGpio, addr => 0x00;
-    RUN_G,              LedGpio, addr => 0x71;
-    UPDOG_G,            LedGpio, addr => 0xB1;
+    RUN_R,              LedGpio, addr => 0x00, matrix => &MATRIX;
+    RUN_G,              LedGpio, addr => 0x71, matrix => &MATRIX;
+    UPDOG_G,            LedGpio, addr => 0xB1, matrix => &MATRIX;
 
     ///////////////////////////////////
     // Uncommitted LEDs
-    UNC0_R,             LedGpio, addr => 0x95;
-    UNC0_G,             LedGpio, addr => 0x85;
-    UNC1_R,             LedGpio, addr => 0x94;
-    UNC1_G,             LedGpio, addr => 0x84;
-    UNC2_R,             LedGpio, addr => 0x92;
-    UNC2_G,             LedGpio, addr => 0x82;
-    UNC3_R,             LedGpio, addr => 0x93;
-    UNC3_G,             LedGpio, addr => 0x83;
-    UNC4_R,             LedGpio, addr => 0x90;
-    UNC4_G,             LedGpio, addr => 0x80;
-    UNC5_R,             LedGpio, addr => 0x91;
-    UNC5_G,             LedGpio, addr => 0x81;
+    UNC0_R,             LedGpio, addr => 0x95, matrix => &MATRIX;
+    UNC0_G,             LedGpio, addr => 0x85, matrix => &MATRIX;
+    UNC1_R,             LedGpio, addr => 0x94, matrix => &MATRIX;
+    UNC1_G,             LedGpio, addr => 0x84, matrix => &MATRIX;
+    UNC2_R,             LedGpio, addr => 0x92, matrix => &MATRIX;
+    UNC2_G,             LedGpio, addr => 0x82, matrix => &MATRIX;
+    UNC3_R,             LedGpio, addr => 0x93, matrix => &MATRIX;
+    UNC3_G,             LedGpio, addr => 0x83, matrix => &MATRIX;
+    UNC4_R,             LedGpio, addr => 0x90, matrix => &MATRIX;
+    UNC4_G,             LedGpio, addr => 0x80, matrix => &MATRIX;
+    UNC5_R,             LedGpio, addr => 0x91, matrix => &MATRIX;
+    UNC5_G,             LedGpio, addr => 0x81, matrix => &MATRIX;
 }
