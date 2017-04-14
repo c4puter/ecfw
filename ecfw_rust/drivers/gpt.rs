@@ -30,6 +30,9 @@ use core::fmt;
 use core::str;
 use core::char;
 
+pub const BOOT_GUID: Guid = Guid::from_raw(
+    0x7cca2c66, 0xb705, 0x58cb, 0xb9d9, 0xe16a166b84d9);
+
 // GPT main header layout:      all values little endian
 //
 //      00 01 02 03 04 05 06 07   08 09 0a 0b 0c 0d 0e 0f
@@ -140,6 +143,26 @@ impl<'a> Gpt<'a> {
         Ok(())
     }
 
+    /// Populate a GptEntry structure with the boot partition. If no boot
+    /// partition is found, returns success but the entry will be invalid.
+    /// If multiple boot partitions are found, returns the first.
+    pub fn read_boot(&mut self, gptentry: &mut GptEntry) -> StdResult
+    {
+        for i in 0..self.number_entries() {
+            try!(self.read_entry(i, gptentry));
+
+            if gptentry.valid() {
+                if gptentry.type_guid == BOOT_GUID {
+                    return Ok(())
+                } else {
+                    gptentry.clear();
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     /// Read a block into the buffer, unless it's currently in the buffer.
     fn buffer_block(&mut self, iblock: usize) -> StdResult
     {
@@ -158,7 +181,7 @@ impl<'a> Gpt<'a> {
     }
 }
 
-#[derive(Copy,Clone)]
+#[derive(Copy,Clone,PartialEq)]
 pub struct Guid {
     a: u32,
     b: u16,
@@ -176,6 +199,13 @@ impl Guid {
             c: 0u16,
             d: 0u16,
             e: 0u64,
+        }
+    }
+
+    pub const fn from_raw(a: u32, b: u16, c: u16, d: u16, e: u64) -> Guid
+    {
+        Guid {
+            a: a, b: b, c: c, d: d, e: e & 0xffffffffffff
         }
     }
 
@@ -238,6 +268,12 @@ impl GptEntry {
         self.name_len = try!(
             read_utf16le_into_utf8(&mut self.name_buf, &data[0x38..data.len()]));
         Ok(())
+    }
+
+    /// Clear a GPT entry so .valid() returns false
+    pub fn clear(&mut self)
+    {
+        self.start_lba = 0
     }
 
     pub fn name(&self) -> &str

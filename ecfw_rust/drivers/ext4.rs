@@ -23,7 +23,7 @@
 
 extern crate lwext4;
 extern crate ctypes;
-use core::{ptr, mem, str, slice, ops};
+use core::{ptr, mem, str, slice, ops, convert};
 use core::marker::PhantomData;
 use alloc::raw_vec::RawVec;
 use alloc::boxed::Box;
@@ -42,6 +42,41 @@ pub struct SdBlockDev<'a> {
 }
 
 const EIO: i32 = 5;
+
+/// Error struct containing a number of bytes accessed before error, as well as
+/// an error code.
+pub struct IoError {
+    error: Error,
+    bytes: usize,
+}
+
+impl ops::Deref for IoError {
+    type Target = Error;
+
+    fn deref(&self) -> &Error {
+        &self.error
+    }
+}
+
+impl convert::From<IoError> for Error {
+    fn from(e: IoError) -> Error {
+        e.error()
+    }
+}
+
+impl IoError {
+    pub const fn new(error: Error, bytes: usize) -> IoError {
+        IoError { error: error, bytes: bytes }
+    }
+
+    pub fn bytes(&self) -> usize {
+        self.bytes
+    }
+
+    pub fn error(&self) -> Error {
+        self.error
+    }
+}
 
 /// Register a block device with a device name.
 pub fn register_device(bd: &mut SdBlockDev, dev_name: &str) -> StdResult
@@ -134,6 +169,21 @@ pub fn dir_open(path: &str) -> Result<Dir,Error>
     Ok(dir)
 }
 
+/// Open a file.
+///
+/// Flags: r, rb, w, wb, a, ab, r+, rb+, r+b, w+, wb+, w+b, a+, ab+, a+b
+pub fn fopen(path: &str, flags: &str) -> Result<File,Error>
+{
+    let mut alloc = StrAlloc::new();
+    let c_path = try!(alloc.nulterm(path)).as_ptr() as *const i8;
+    let c_flags = try!(alloc.nulterm(flags)).as_ptr() as *const i8;
+
+    let mut file: File = unsafe{mem::zeroed()};
+    try!(to_stdresult(unsafe{lwext4::ext4_fopen(&mut file.0, c_path, c_flags)}));
+
+    Ok(file)
+}
+
 #[repr(C)]
 pub struct Dir(lwext4::ext4_dir);
 
@@ -187,6 +237,90 @@ impl<'a> Iterator for DirIter<'a> {
     }
 }
 
+#[repr(C)]
+pub struct File(lwext4::ext4_file);
+
+pub enum Origin {
+    Set, Current, End
+}
+
+impl File {
+    /// Truncate file to the specified length.
+    pub fn truncate(&mut self, size: usize) -> StdResult
+    {
+        to_stdresult(unsafe{lwext4::ext4_ftruncate(&mut self.0, size as u64)})
+    }
+
+    /// Read data from file. Will attempt to fill `buf`; returns the number of
+    /// bytes read.
+    pub fn read(&mut self, buf: &mut [u8]) -> Result<usize,IoError>
+    {
+        let mut rcnt = 0usize;
+        let buflen = buf.len();
+
+        match to_stdresult(unsafe{
+            lwext4::ext4_fread(&mut self.0,
+                               buf.as_mut_ptr() as *mut ctypes::c_void,
+                               buflen, &mut rcnt)}) {
+
+            Ok(..) => { Ok(rcnt) },
+            Err(e) => { Err(IoError::new(e, rcnt)) },
+        }
+    }
+
+    /// Write data to file. Will attempt to write all of `buf`; returns the
+    /// number of bytes written.
+    pub fn write(&mut self, buf: &[u8]) -> Result<usize,IoError>
+    {
+        let mut rcnt = 0usize;
+        let buflen = buf.len();
+
+        match to_stdresult(unsafe{
+            lwext4::ext4_fwrite(&mut self.0,
+                                buf.as_ptr() as *mut ctypes::c_void,
+                                buflen, &mut rcnt)}) {
+
+            Ok(..) => { Ok(rcnt) },
+            Err(e) => { Err(IoError::new(e, rcnt)) },
+        }
+    }
+
+    /// Seek to a position.
+    pub fn seek(&mut self, offset: usize, origin: Origin) -> StdResult
+    {
+        let c_origin = match origin {
+            Origin::Set => lwext4::SEEK_SET,
+            Origin::Current => lwext4::SEEK_CUR,
+            Origin::End => lwext4::SEEK_END };
+
+        to_stdresult(unsafe{
+            lwext4::ext4_fseek(&mut self.0,
+                               offset as u64,
+                               c_origin)})
+    }
+
+    /// Get file position
+    pub fn tell(&mut self) -> usize
+    {
+        (unsafe{lwext4::ext4_ftell(&mut self.0)}) as usize
+    }
+
+    /// Get file size
+    pub fn size(&mut self) -> usize
+    {
+        (unsafe{lwext4::ext4_fsize(&mut self.0)}) as usize
+    }
+}
+
+impl ops::Drop for File {
+    fn drop(&mut self)
+    {
+        to_stdresult(unsafe{lwext4::ext4_fclose(&mut self.0)}).unwrap();
+    }
+}
+
+static mut BLOCKDEV_BUF: [u8; 512] = [0u8; 512];
+
 static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
     open:   Some(blockdev_open),
     bread:  Some(blockdev_bread),
@@ -196,7 +330,7 @@ static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
     unlock: Some(blockdev_unlock),
     ph_bsize:   512,
     ph_bcnt:    0,
-    ph_bbuf:    &[0u8; 512][0] as *const _ as *mut u8,
+    ph_bbuf:    unsafe{&BLOCKDEV_BUF} as *const _ as *mut u8,
     ph_refctr:  0,
     bread_ctr:  0,
     bwrite_ctr: 0,

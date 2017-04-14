@@ -99,6 +99,7 @@ error_table! {
     ERR_GPT_SIGNATURE:          "GPT: invalid signature";
     ERR_GPT_ZEROLEN:            "GPT: zero entry length";
     ERR_GPT_SIZEMULT:           "GPT: block size must be multiple of entry length";
+    ERR_NO_BOOT_PART:           "no boot parition found";
 
     ///////////////////////////////////////////////////////////////////
     // TWI_related

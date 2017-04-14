@@ -64,7 +64,8 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "readblock", f: cmd_readblock,   descr: "read block N from card" },
     Command{ name: "writeblock",f: cmd_writeblock,  descr: "write to block N, DATA..." },
     Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
-    Command{ name: "ls",        f: cmd_ls,          descr: "list root of partition N" },
+    Command{ name: "ls",        f: cmd_ls,          descr: "list PATH" },
+    Command{ name: "hd",        f: cmd_hd,          descr: "hexdump the first block of PATH" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
@@ -327,6 +328,8 @@ fn cmd_pwr_stat(args: &[&str]) -> StdResult
     Ok(())
 }
 
+static mut BLOCKDEV: Option<drivers::ext4::SdBlockDev> = None;
+
 fn cmd_mount(_args: &[&str]) -> StdResult
 {
     if !CARD.get() {
@@ -335,11 +338,32 @@ fn cmd_mount(_args: &[&str]) -> StdResult
 
     CARDEN.set(true);
     os::delay(1);
-    devices::SD.lock().check()
+    try!(devices::SD.lock().check());
+
+    let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
+    let mut entry = drivers::gpt::GptEntry::new();
+
+    try!(gpt.read_header());
+    try!(gpt.read_boot(&mut entry));
+
+    if !entry.valid() {
+        return Err(ERR_NO_BOOT_PART);
+    }
+
+    unsafe {
+        BLOCKDEV = Some(drivers::ext4::makedev(&devices::SD, &entry));
+        try!(drivers::ext4::register_device(BLOCKDEV.as_mut().unwrap(), "root"));
+    }
+
+    try!(drivers::ext4::mount("root", "/", false));
+    Ok(())
 }
 
 fn cmd_umount(_args: &[&str]) -> StdResult
 {
+    try!(drivers::ext4::umount("/"));
+    try!(drivers::ext4::unregister_device("root"));
+
     if !CARD.get() {
         return Err(ERR_NO_CARD)
     }
@@ -425,40 +449,28 @@ fn cmd_partinfo(_args: &[&str]) -> StdResult
 
 fn cmd_ls(args: &[&str]) -> StdResult
 {
+    let path = if args.len() == 2 { args[1] } else { "/" };
+
+    let mut dir = try!(drivers::ext4::dir_open(path));
+    for de in dir.iter() {
+        println!("{}", try!(de.name()));
+    }
+    Ok(())
+}
+
+fn cmd_hd(args: &[&str]) -> StdResult
+{
     if args.len() < 2 {
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let path = if args.len() == 3 { args[2] } else { "/" };
+    let path = args[1];
 
-    let ipart = try!(argv_parsed(args, 1, "PART", u32::parseint)) as usize;
+    let mut file = try!(drivers::ext4::fopen(path, "rb"));
+    let mut buf = [0u8; 512];
 
-    let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
-    let mut entry = drivers::gpt::GptEntry::new();
+    let bytes = try!(file.read(&mut buf));
 
-    try!(gpt.read_header());
-    try!(gpt.read_entry(ipart, &mut entry));
-
-    if !entry.valid() {
-        return Err(ERR_ARG_RANGE);
-    }
-
-    let mut dev = drivers::ext4::makedev(&devices::SD, &entry);
-    try!(drivers::ext4::register_device(&mut dev, "root"));
-    try!(drivers::ext4::mount("root", "/", false));
-
-    fn do_ls(path: &str) -> StdResult {
-        let mut dir = try!(drivers::ext4::dir_open(path));
-        for de in dir.iter() {
-            println!("{}", try!(de.name()));
-        }
-        Ok(())
-    }
-
-    let res = do_ls(path);
-
-    try!(drivers::ext4::umount("/"));
-    try!(drivers::ext4::unregister_device("root"));
-
-    res
+    hexprint(&buf[0..bytes]);
+    Ok(())
 }

@@ -134,6 +134,7 @@ CFLAGS = \
 	-DCONFIG_USE_USER_MALLOC=1 \
 	-DCONFIG_USE_DEFAULT_CFG=1 \
 	-DCONFIG_HAVE_OWN_ERRNO=1 \
+	-DCONFIG_HAVE_OWN_OFLAGS=1 \
 	-mcpu=cortex-m4 -mthumb \
 	-fdata-sections -ffunction-sections \
 	-iquote config \
