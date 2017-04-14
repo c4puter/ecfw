@@ -42,8 +42,10 @@ error_table! {
     ///////////////////////////////////////////////////////////////////
     // General, data processing
     ERR_UNKNOWN:                "unknown error";
+    ERR_UTF8:                   "invalid UTF-8";
     ERR_UTF16_ORPHAN:           "orphaned UTF-16 surrogate";
     ERR_CODEPOINT:              "invalid Unicode codepoint";
+    ERR_STRLEN:                 "string too long";
 
     // Command-related
     ERR_CANNOT_FIND:            "cannot find specified item";
@@ -53,6 +55,29 @@ error_table! {
     ERR_PARSE_ARGUMENT:         "cannot parse argument";
     ERR_RESET_FAILED:           "did not reset";
 
+    ///////////////////////////////////////////////////////////////////
+    // Errno
+    ERR_EPERM:                  "operation not permitted";
+    ERR_ENOENT:                 "no such file or directory";
+    ERR_EIO:                    "I/O error";
+    ERR_ENXIO:                  "no such device or address";
+    ERR_E2BIG:                  "argument list too long";
+    ERR_ENOMEM:                 "out of memory";
+    ERR_EACCES:                 "permission denied";
+    ERR_EFAULT:                 "bad address";
+    ERR_EEXIST:                 "file exists";
+    ERR_ENODEV:                 "no such device";
+    ERR_ENOTDIR:                "not a directory";
+    ERR_EISDIR:                 "is a directory";
+    ERR_EINVAL:                 "invalid argument";
+    ERR_EFBIG:                  "file too large";
+    ERR_ENOSPC:                 "no space left on device";
+    ERR_EROFS:                  "read-only file system";
+    ERR_EMLINK:                 "too many links";
+    ERR_ERANGE:                 "math result not representable";
+    ERR_ENOTEMPTY:              "directory not empty";
+    ERR_ENODATA:                "no data available";
+    ERR_ENOTSUP:                "not supported";
 
     ///////////////////////////////////////////////////////////////////
     // General IO-related

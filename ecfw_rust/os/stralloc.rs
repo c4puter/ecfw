@@ -25,6 +25,7 @@ use alloc::boxed::Box;
 use core::marker::PhantomData;
 use core::mem;
 use core::str;
+use messages::*;
 
 /// Size of allocated blocks
 const ALLOC_SZ: usize = 1024;
@@ -75,10 +76,10 @@ impl<'a> StrAlloc<'a> {
     }
 
     /// Allocate a block. If sz is too big, returns None.
-    pub fn alloc(& mut self, sz: usize) -> Option<& mut [u8]>
+    pub fn alloc(&mut self, sz: usize) -> Result<&mut [u8], Error>
     {
         if sz > ARRAY_SZ {
-            return None;
+            return Err(ERR_STRLEN);
         }
 
         let remaining_in_block = ARRAY_SZ -
@@ -91,7 +92,7 @@ impl<'a> StrAlloc<'a> {
             let alloc_idx = fb.header.next_index;
             fb.header.next_index += sz;
 
-            Some(&mut fb.array[alloc_idx..alloc_idx+sz])
+            Ok(&mut fb.array[alloc_idx..alloc_idx+sz])
         } else {
             // New block
             let mut prev_first: Option<Box<StrAllocBlock<'a>>> = None;
@@ -105,24 +106,20 @@ impl<'a> StrAlloc<'a> {
                         _pd: PhantomData },
                     array: [0u8; ARRAY_SZ] } ));
 
-            Some(&mut self.firstblock.as_mut().unwrap().array[0..sz])
+            Ok(&mut self.firstblock.as_mut().unwrap().array[0..sz])
         }
     }
 
     /// Shortcut function to NUL-terminate a string.
-    pub fn nulterm(& mut self, s: &str) -> Option<& str>
+    pub fn nulterm(&mut self, s: &str) -> Result<&str, Error>
     {
         let sb = s.as_bytes();
-        let bufp = self.alloc(sb.len() + 1);
+        let buf = try!(self.alloc(sb.len() + 1));
 
-        if let Some(buf) = bufp {
-            for i in 0..sb.len() {
-                buf[i] = sb[i];
-            }
-            buf[sb.len()] = 0;
-            Some(unsafe{str::from_utf8_unchecked(buf)})
-        } else {
-            None
+        for i in 0..sb.len() {
+            buf[i] = sb[i];
         }
+        buf[sb.len()] = 0;
+        Ok(unsafe{str::from_utf8_unchecked(buf)})
     }
 }

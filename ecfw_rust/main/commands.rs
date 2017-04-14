@@ -429,6 +429,8 @@ fn cmd_ls(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
 
+    let path = if args.len() == 3 { args[2] } else { "/" };
+
     let ipart = try!(argv_parsed(args, 1, "PART", u32::parseint)) as usize;
 
     let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
@@ -441,9 +443,22 @@ fn cmd_ls(args: &[&str]) -> StdResult
         return Err(ERR_ARG_RANGE);
     }
 
-    let mut dev = drivers::blockdev::makedev(&devices::SD, &entry);
-    drivers::blockdev::ls(&mut dev, "root", "/");
-    drivers::blockdev::umount("root", "/");
+    let mut dev = drivers::ext4::makedev(&devices::SD, &entry);
+    try!(drivers::ext4::register_device(&mut dev, "root"));
+    try!(drivers::ext4::mount("root", "/", false));
 
-    Ok(())
+    fn do_ls(path: &str) -> StdResult {
+        let mut dir = try!(drivers::ext4::dir_open(path));
+        for de in dir.iter() {
+            println!("{}", try!(de.name()));
+        }
+        Ok(())
+    }
+
+    let res = do_ls(path);
+
+    try!(drivers::ext4::umount("/"));
+    try!(drivers::ext4::unregister_device("root"));
+
+    res
 }

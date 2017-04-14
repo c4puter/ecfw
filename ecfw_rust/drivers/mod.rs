@@ -23,7 +23,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-pub mod blockdev;
+pub mod ext4;
 pub mod gpio;
 pub mod ledmatrix;
 pub mod sd;
