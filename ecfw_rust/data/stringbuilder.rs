@@ -23,7 +23,6 @@
 
 use messages::*;
 use core::str;
-use core::marker;
 use core::slice;
 use core::mem;
 use alloc::boxed::Box;
@@ -34,18 +33,16 @@ pub const MAXLEN: usize = 1024;
 /// MAXLEN is chosen as exactly 1kB; several other possibly heap-
 /// allocated types in this system are also that size. This is done to reduce
 /// heap fragmentation.
-pub struct StringBuilder<'a> {
+pub struct StringBuilder {
     inner: Box<[u8]>,
     len: usize,
-    _pd: marker::PhantomData<&'a str>,
 }
 
-impl<'a> StringBuilder<'a> {
-    pub fn new() -> StringBuilder<'a> {
+impl StringBuilder {
+    pub fn new() -> StringBuilder {
         StringBuilder {
             inner: Box::new([0u8; MAXLEN]),
             len: 0,
-            _pd: marker::PhantomData,
         }
     }
 
