@@ -23,7 +23,7 @@
 
 extern crate lwext4;
 extern crate ctypes;
-use core::{ptr, mem, str, slice, ops, convert};
+use core::{ptr, mem, str, slice, ops, convert, fmt};
 use core::marker::PhantomData;
 use alloc::raw_vec::RawVec;
 use alloc::boxed::Box;
@@ -33,6 +33,7 @@ pub use self::lwext4::ext4_blockdev;
 use drivers::sd::*;
 use drivers::gpt;
 use os::{Mutex, StrAlloc};
+use data::StringBuilder;
 use messages::*;
 
 #[repr(C)]
@@ -169,19 +170,146 @@ pub fn dir_open(path: &str) -> Result<Dir,Error>
     Ok(dir)
 }
 
+#[repr(u32)]
+#[derive(Copy,Clone,PartialEq)]
+pub enum OpenFlags {
+    Read = lwext4::O_RDONLY,
+    Write = lwext4::O_WRONLY | lwext4::O_CREAT | lwext4::O_TRUNC,
+    Append = lwext4::O_WRONLY | lwext4::O_CREAT | lwext4::O_APPEND,
+    ReadWrite = lwext4::O_RDWR,
+    ReadTruncate = lwext4::O_RDWR | lwext4::O_CREAT | lwext4::O_TRUNC,
+    ReadAppend = lwext4::O_RDWR | lwext4::O_CREAT | lwext4::O_APPEND,
+}
+
 /// Open a file.
-///
-/// Flags: r, rb, w, wb, a, ab, r+, rb+, r+b, w+, wb+, w+b, a+, ab+, a+b
-pub fn fopen(path: &str, flags: &str) -> Result<File,Error>
+pub fn fopen(path: &str, flags: OpenFlags) -> Result<File,Error>
+{
+    let mut alloc = StrAlloc::new();
+    let c_path = try!(alloc.nulterm(path)).as_ptr();
+    fopen_cstr(c_path, flags)
+}
+
+/// Open a file from a C string path. Used internally to reduce the allocations
+/// caused by additional null-termination when the string is already terminated
+/// or can be terminated cheaply.
+fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File,Error>
+{
+    let c_path = path as *const i8;
+    let mut file: File = unsafe{mem::zeroed()};
+    try!(to_stdresult(unsafe{lwext4::ext4_fopen2(&mut file.0, c_path, flags as i32)}));
+
+    Ok(file)
+}
+
+/// Open a file, expanding symlinks in the path first.
+pub fn fopen_expand(path: &str, flags: OpenFlags) -> Result<File,Error>
+{
+    let mut expanded = try!(expand_sb(path));
+
+    // Append \0 to get a C string
+    try!(expanded.append("\0"));
+    fopen_cstr(expanded.as_ref().as_ptr(), flags)
+}
+
+/// Stat a file.
+pub fn stat(path: &str) -> Result<Stat,Error>
+{
+    let mut alloc = StrAlloc::new();
+    let c_path = try!(alloc.nulterm(path)).as_ptr();
+    stat_cstr(c_path)
+}
+
+/// Stat a file from a C string path. Used internally to reduce the allocations
+/// caused by additional null-termination when the string is already terminated
+/// or can be terminated cheaply.
+fn stat_cstr(path: *const u8) -> Result<Stat,Error>
+{
+    let c_path = path as *const i8;
+    let mut inode: Stat = unsafe{mem::zeroed()};
+    let mut ret_ino = 0u32;
+
+    try!(to_stdresult(unsafe{lwext4::ext4_raw_inode_fill(
+                    c_path, &mut ret_ino, &mut inode.0)}));
+
+    Ok(inode as Stat)
+}
+
+#[repr(C)]
+pub struct Stat(lwext4::ext4_inode);
+
+/// Read a link.
+pub fn readlink(path: &str) -> Result<Box<str>,Error>
 {
     let mut alloc = StrAlloc::new();
     let c_path = try!(alloc.nulterm(path)).as_ptr() as *const i8;
-    let c_flags = try!(alloc.nulterm(flags)).as_ptr() as *const i8;
 
-    let mut file: File = unsafe{mem::zeroed()};
-    try!(to_stdresult(unsafe{lwext4::ext4_fopen(&mut file.0, c_path, c_flags)}));
+    let mut sb = StringBuilder::new();
 
-    Ok(file)
+    let rc = unsafe {
+        let mut buf = sb.as_mut_ref(false);
+        let len = buf.len();
+        let mut rcnt = 0usize;
+        lwext4::ext4_readlink(c_path, buf.as_mut_ptr() as *mut i8, len, &mut rcnt)
+    };
+
+    try!(to_stdresult(rc));
+
+    unsafe { sb.fix_length() };
+
+    Ok(sb.into_box())
+}
+
+/// Expand a path, following all symlinks, returning the stringbuilder so more
+/// can be appended. For internal use.
+fn expand_sb(path: &str) -> Result<StringBuilder,Error>
+{
+    let mut sb = StringBuilder::new();
+
+    for i in path.split('/') {
+        if i.len() == 0 {continue};
+
+        // In order to stat this path element, we append it to the string
+        // builder, stat that path, and then truncate it back off.
+        let len = sb.len();
+        try!(sb.append("/"));
+        try!(sb.append(i));
+        try!(sb.append("\0"));
+
+        let stat = try!(stat_cstr(sb.as_ref().as_ptr()));
+
+        // Truncate the \0 that was added just to get a C string
+        let without_nulterm = sb.len() - 1;
+        sb.truncate(without_nulterm);
+
+        if stat.inode_type() == InodeType::Symlink {
+            let link = try!(readlink(sb.as_ref()));
+
+            if link.as_bytes()[0] == '/' as u8 {
+                sb.truncate(0);
+            } else {
+                sb.truncate(len);
+                try!(sb.append("/"));
+            }
+            try!(sb.append(link.as_ref()));
+        }
+    }
+
+    if sb.len() == 0 && path.len() > 0 {
+        // Special case, we were given "/" or similar ("///", etc). These will
+        // produce an empty stringbuilder but should expand to "/"
+        try!(sb.append("/"));
+    }
+
+    Ok(sb)
+}
+
+/// Expand a path, following all symlinks.
+pub fn expand(path: &str) -> Result<Box<str>,Error>
+{
+    match expand_sb(path) {
+        Ok(sb) => Ok(sb.into_box()),
+        Err(e) => Err(e),
+    }
 }
 
 #[repr(C)]
@@ -316,6 +444,118 @@ impl ops::Drop for File {
     fn drop(&mut self)
     {
         to_stdresult(unsafe{lwext4::ext4_fclose(&mut self.0)}).unwrap();
+    }
+}
+
+#[repr(C)]
+#[derive(Copy,Clone,PartialEq)]
+pub enum InodeType {
+    Other = 0,
+    Fifo = 0x1000,
+    Chardev = 0x2000,
+    Dir = 0x4000,
+    Blockdev = 0x6000,
+    File = 0x8000,
+    Symlink = 0xA000,
+    Socket = 0xC000,
+}
+
+impl Stat {
+    /// Get mode. Warning, HURD has 32-bit mode and we ignore upper bits.
+    pub fn mode(&self) -> u16
+    {
+        u16::from_le(self.0.mode)
+    }
+
+    pub fn uid(&self) -> u16
+    {
+        u16::from_le(self.0.uid)
+    }
+
+    pub fn gid(&self) -> u16
+    {
+        u16::from_le(self.0.gid)
+    }
+
+    pub fn atime(&self) -> u32
+    {
+        u32::from_le(self.0.access_time)
+    }
+
+    pub fn ctime(&self) -> u32
+    {
+        u32::from_le(self.0.change_inode_time)
+    }
+
+    pub fn mtime(&self) -> u32
+    {
+        u32::from_le(self.0.modification_time)
+    }
+
+    pub fn linkcount(&self) -> u16
+    {
+        u16::from_le(self.0.links_count)
+    }
+
+    pub fn flags(&self) -> u32
+    {
+        u32::from_le(self.0.flags)
+    }
+
+    pub fn inode_type(&self) -> InodeType
+    {
+        let mode = self.mode();
+        let typebits = mode as u32 & lwext4::EXT4_INODE_MODE_TYPE_MASK;
+
+        match typebits {
+            lwext4::EXT4_INODE_MODE_FIFO        => InodeType::Fifo,
+            lwext4::EXT4_INODE_MODE_CHARDEV     => InodeType::Chardev,
+            lwext4::EXT4_INODE_MODE_DIRECTORY   => InodeType::Dir,
+            lwext4::EXT4_INODE_MODE_BLOCKDEV    => InodeType::Blockdev,
+            lwext4::EXT4_INODE_MODE_FILE        => InodeType::File,
+            lwext4::EXT4_INODE_MODE_SOFTLINK    => InodeType::Symlink,
+            lwext4::EXT4_INODE_MODE_SOCKET      => InodeType::Socket,
+            _                                   => InodeType::Other
+        }
+    }
+}
+
+/// When printed, Stat emits an ls-style mode readout.
+impl fmt::Display for Stat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result
+    {
+        let t = match self.inode_type() {
+            InodeType::Fifo     => "p",
+            InodeType::Chardev  => "c",
+            InodeType::Dir      => "d",
+            InodeType::Blockdev => "b",
+            InodeType::File     => "-",
+            InodeType::Symlink  => "l",
+            InodeType::Socket   => "s",
+            InodeType::Other    => "X"
+        };
+
+        let mode = self.mode();
+
+        fn rwx(n: u16) -> &'static str {
+            match n & 0b111 {
+                0b000 => "---",
+                0b001 => "--x",
+                0b010 => "-w-",
+                0b011 => "-wx",
+                0b100 => "r--",
+                0b101 => "r-x",
+                0b110 => "rw-",
+                0b111 => "rwx",
+                _     => "---" // stupid compiler
+            }
+        }
+
+        try!(write!(f, "{}", t));
+        try!(write!(f, "{}", rwx(mode >> 6)));
+        try!(write!(f, "{}", rwx(mode >> 3)));
+        try!(write!(f, "{}", rwx(mode >> 0)));
+        Ok(())
     }
 }
 

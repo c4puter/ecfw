@@ -25,7 +25,7 @@ use os;
 use drivers;
 use drivers::gpio::Gpio;
 use devices;
-use data::{ParseInt, hexprint};
+use data::{ParseInt, hexprint, StringBuilder};
 use devices::pins::*;
 use main::{reset, sysman};
 use messages::*;
@@ -66,6 +66,8 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
     Command{ name: "ls",        f: cmd_ls,          descr: "list PATH" },
     Command{ name: "hd",        f: cmd_hd,          descr: "hexdump the first block of PATH" },
+    Command{ name: "readlink",  f: cmd_readlink,    descr: "readlink" },
+    Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
@@ -451,9 +453,23 @@ fn cmd_ls(args: &[&str]) -> StdResult
 {
     let path = if args.len() == 2 { args[1] } else { "/" };
 
+    // Use a stringbuilder to append each item to the path, for stat()
+    let mut sb = StringBuilder::new();
+    try!(sb.append(path));
+    let pab = path.as_bytes();
+    if pab[pab.len() - 1] != '/' as u8 {
+        try!(sb.append("/"));
+    }
+    let only_path = sb.len();
+
     let mut dir = try!(drivers::ext4::dir_open(path));
     for de in dir.iter() {
-        println!("{}", try!(de.name()));
+        let name = try!(de.name());
+        try!(sb.append(name));
+        let stat = try!(drivers::ext4::stat(sb.as_ref()));
+        sb.truncate(only_path);
+
+        println!("{} {}", stat, name);
     }
     Ok(())
 }
@@ -466,11 +482,40 @@ fn cmd_hd(args: &[&str]) -> StdResult
 
     let path = args[1];
 
-    let mut file = try!(drivers::ext4::fopen(path, "rb"));
+    let mut file = try!(drivers::ext4::fopen_expand(
+            path, drivers::ext4::OpenFlags::Read));
     let mut buf = [0u8; 512];
 
     let bytes = try!(file.read(&mut buf));
 
     hexprint(&buf[0..bytes]);
+    Ok(())
+}
+
+fn cmd_readlink(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let path = args[1];
+
+    let link = try!(drivers::ext4::readlink(path));
+
+    println!("{}", link);
+    Ok(())
+}
+
+fn cmd_expand(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let path = args[1];
+
+    let path = try!(drivers::ext4::expand(path));
+
+    println!("{}", path);
     Ok(())
 }
