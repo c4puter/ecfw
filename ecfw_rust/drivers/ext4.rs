@@ -86,17 +86,12 @@ pub fn mount(dev_name: &str, mount_point: &str, read_only: bool) -> StdResult
 
     debug!(DEBUG_FS, "recover journal on \"{}\"", mount_point);
     match to_stdresult(unsafe{lwext4::ext4_recover(c_mp)}) {
-        Ok(_) => {
-            journaled = true;
+        Ok(_) => { journaled = true; },
+        Err(e) if e == ERR_ENOTSUP => {
+            debug!(DEBUG_FS, "filesystem \"{}\" has no journal", mount_point);
+            journaled = false;
         },
-        Err(e) => {
-            if e == ERR_ENOTSUP {
-                debug!(DEBUG_FS, "filesystem \"{}\" has no journal", mount_point);
-                journaled = false;
-            } else {
-                return Err(e);
-            }
-        },
+        Err(e) => { return Err(e); },
     }
 
     if journaled {
