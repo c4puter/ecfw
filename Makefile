@@ -275,7 +275,7 @@ define bindgen
 
 endef
 
-do-bindgen: have-bindgen $(foreach i,${BINDGEN_SOURCES},$(call nth,2,${i}))
+do-bindgen: have-bindgen ${ASF_UNF_DIR} $(foreach i,${BINDGEN_SOURCES},$(call nth,2,${i}))
 	$(foreach i,${BINDGEN_SOURCES}, \
 		$(call bindgen,$(call nth,2,${i}),$(call nth,1,${i})))
 	@touch do-bindgen
