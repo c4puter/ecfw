@@ -24,6 +24,7 @@
 use os;
 use drivers;
 use drivers::gpio::Gpio;
+use drivers::ftrans::FTrans;
 use devices;
 use data::{ParseInt, hexprint, StringBuilder};
 use devices::pins::*;
@@ -68,6 +69,7 @@ pub static COMMAND_TABLE: &'static [Command] = &[
     Command{ name: "hd",        f: cmd_hd,          descr: "hexdump the first block of PATH" },
     Command{ name: "readlink",  f: cmd_readlink,    descr: "readlink" },
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
+    Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
@@ -517,5 +519,12 @@ fn cmd_expand(args: &[&str]) -> StdResult
     let path = try!(drivers::ext4::expand(path));
 
     println!("{}", path);
+    Ok(())
+}
+
+fn cmd_ftrans(_args: &[&str]) -> StdResult
+{
+    let mut ftrans = FTrans::new();
+    ftrans.run();
     Ok(())
 }

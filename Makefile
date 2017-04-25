@@ -120,7 +120,7 @@ ASF_UNF_DIR = resources/asf-unf
 ###############################################################################
 
 STACK_SIZE=0x400
-HEAP_SIZE=0x1c000
+HEAP_SIZE=0x1bc00
 TOTAL_FLASH=0x100000
 TOTAL_SRAM=0x20000
 

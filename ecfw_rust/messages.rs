@@ -45,6 +45,7 @@ error_table! {
     ERR_UTF8:                   "invalid UTF-8";
     ERR_UTF16_ORPHAN:           "orphaned UTF-16 surrogate";
     ERR_CODEPOINT:              "invalid Unicode codepoint";
+    ERR_BASE64:                 "invalid base64 data";
     ERR_STRLEN:                 "string too long";
 
     // Command-related
@@ -100,6 +101,7 @@ error_table! {
     ERR_GPT_ZEROLEN:            "GPT: zero entry length";
     ERR_GPT_SIZEMULT:           "GPT: block size must be multiple of entry length";
     ERR_NO_BOOT_PART:           "no boot parition found";
+    ERR_FILE_NOT_OPEN:          "file not open";
 
     ///////////////////////////////////////////////////////////////////
     // TWI_related

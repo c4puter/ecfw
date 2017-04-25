@@ -24,6 +24,7 @@
 mod parseint;
 mod hexprint;
 mod stringbuilder;
+pub mod base64;
 
 pub use self::parseint::ParseInt;
 pub use self::hexprint::hexprint;

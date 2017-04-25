@@ -63,6 +63,13 @@ impl StringBuilder {
         }
     }
 
+    /// Append a single character, encoded as UTF-8. Behaves the same as
+    /// append().
+    pub fn append_char(&mut self, c: char) -> StdResult {
+        let mut buf = [0u8; 4];
+        self.append(c.encode_utf8(&mut buf))
+    }
+
     /// Get the constructed string as a box, consuming the builder.
     pub fn into_box(self) -> Box<str> {
         unsafe {

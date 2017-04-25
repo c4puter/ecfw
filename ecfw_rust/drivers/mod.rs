@@ -31,3 +31,4 @@ pub mod tempsensor;
 pub mod twi;
 pub mod gpt;
 pub mod power;
+pub mod ftrans;

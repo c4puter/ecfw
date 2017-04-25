@@ -36,7 +36,7 @@ struct UartWriter {}
 struct UartWriterAsync {}
 
 queue_static_new! {
-    STDIN_QUEUE: [u8; 256];
+    STDIN_QUEUE: [u8; 1024];
     STDOUT_QUEUE: [u8; 72];
 }
 
