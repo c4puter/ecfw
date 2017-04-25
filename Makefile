@@ -245,7 +245,6 @@ genclean: clean
 	rm -rf ${RUSTLIB_FILES}
 
 distclean: genclean
-	rm -rf resources/rustsrc
 
 debug: ecfw
 	bash ./scripts/debug
