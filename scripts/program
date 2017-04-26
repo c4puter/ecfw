@@ -1,8 +1,0 @@
-# JLinkExe -device ATSAM4S16C -CommanderScript jlink-script.jlink
-
-if pgrep openocd >/dev/null; then
-    echo openocd already running! >&2
-    exit 1
-fi
-
-openocd -f scripts/atmelice.cfg -c "adapter_khz 1000" -c init -c halt -c "program ecfw.hex verify" -c reset -c exit

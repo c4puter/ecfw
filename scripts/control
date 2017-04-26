@@ -1,0 +1,67 @@
+#!/bin/bash
+shopt -s nullglob
+
+function find_bmp() {
+    local devs=(/dev/serial/by-id/usb-Black_Sphere_Technologies_Black_Magic_Probe_*-if00)
+    local ndevs=${#devs[@]}
+
+    if [[ $ndevs -eq 0 ]]; then
+        echo "No Black Magic Probe found, please plug one in and check /dev/serial/by-id" >&2
+        return 1
+    elif [[ $ndevs -eq 1 ]]; then
+        echo "${devs[0]}"
+        return 0
+    fi
+
+    echo "Please select a Black Magic Probe:" >/dev/tty
+    echo "" >/dev/tty
+
+    for ((i=0 ; i<$ndevs; i++)); do
+        local base="$(basename "${devs[$i]}")"
+        local sn0="${base:48}"
+        local sn="${sn0%-if00}"
+        local dev="$(readlink -m "${devs[$i]}")"
+
+        echo "    $i: $sn ($dev)" > /dev/tty
+    done
+
+    echo "" >/dev/tty
+    echo -n "Selection: " >/dev/tty
+    read n
+
+    echo "${devs[$n]}"
+}
+
+function bmp_load() {
+    arm-none-eabi-gdb $FW \
+        --quiet \
+        -ex "target extended-remote $BMP_PATH" \
+        -ex "monitor swdp_scan" \
+        "$@"
+}
+
+function bmp() {
+    arm-none-eabi-gdb \
+        --quiet \
+        -ex "target extended-remote $BMP_PATH" \
+        -ex "monitor swdp_scan" \
+        "$@"
+}
+
+FW=$1
+BMP_PATH=$(find_bmp)
+
+case $2 in
+    reset)
+        bmp --ex "monitor hard_srst" --ex quit
+        ;;
+    program)
+        bmp --ex "attach 1" \
+            --ex "load $FW" --ex "set confirm off" --ex kill --ex quit
+        ;;
+    debug)
+        bmp_load --ex "attach 1" \
+                 --ex "set mem inaccessible-by-default off" \
+                 --ex "layout split"
+        ;;
+esac

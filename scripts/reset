@@ -1,6 +1,0 @@
-if pgrep openocd >/dev/null; then
-    echo openocd already running! >&2
-    exit 1
-fi
-
-openocd -f scripts/atmelice.cfg -c init -c halt -c reset -c exit

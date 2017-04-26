@@ -247,13 +247,13 @@ genclean: clean
 distclean: genclean
 
 debug: ecfw
-	bash ./scripts/debug
+	bash ./scripts/control ecfw debug
 
 program: ecfw
-	bash ./scripts/program
+	bash ./scripts/control ecfw program
 
 reset:
-	bash ./scripts/reset
+	bash ./scripts/control ecfw reset
 
 # }}}
 
