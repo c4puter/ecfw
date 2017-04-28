@@ -21,6 +21,8 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+use messages::*;
+
 /// A str->int parser that handles radix specifiers.
 ///
 ///     extern crate parseint;
@@ -39,18 +41,18 @@
 /// - `0x`, `0X`: hexadecimal
 
 pub trait ParseInt where Self: Sized {
-    fn parseint(s: &str) -> Result<Self, &'static str>;
+    fn parseint(s: &str) -> Result<Self,Error>;
 }
 
-fn parsedigit(c: char, radix: u8) -> Result<u8, &'static str> {
+fn parsedigit(c: char, radix: u8) -> Result<u8,Error> {
     match c.to_digit(radix as u32) {
         Some(c) => Ok(c as u8),
-        None => Err("digit invalid or out of range for radix")
+        None => Err(ERR_DIGIT)
     }
 }
 
 impl ParseInt for u64 {
-    fn parseint(s: &str) -> Result<u64, &'static str> {
+    fn parseint(s: &str) -> Result<u64,Error> {
         #[derive(PartialEq)]
         enum State {
             Radix1,
@@ -96,7 +98,7 @@ impl ParseInt for u64 {
                 let parsed = try!(parsedigit(c, radix as u8));
                 let limit = (u64::max_value() - parsed as u64) / radix;
                 if accumulator > limit {
-                    return Err("number out of range")
+                    return Err(ERR_NRANGE)
                 }
                 accumulator = accumulator * radix + parsed as u64;
             }
@@ -107,7 +109,7 @@ impl ParseInt for u64 {
 }
 
 impl ParseInt for i64 {
-    fn parseint(s: &str) -> Result<i64, &'static str> {
+    fn parseint(s: &str) -> Result<i64,Error> {
         // Here's the tricky bit. i64 parseint is the one that performs the
         // conversion between signed and unsigned. Watch ranges!
 
@@ -127,11 +129,11 @@ impl ParseInt for i64 {
             } else if absval <= u64::max_value() / 2 {
                 return Ok(-(absval as i64));
             } else {
-                return Err("number out of range")
+                return Err(ERR_NRANGE)
             }
         } else {
             if absval > (i64::max_value() as u64) {
-                return Err("number out of range");
+                return Err(ERR_NRANGE);
             } else {
                 return Ok(absval as i64);
             }
@@ -140,51 +142,51 @@ impl ParseInt for i64 {
 }
 
 impl ParseInt for u32 {
-    fn parseint(s: &str) -> Result<u32, &'static str> {
+    fn parseint(s: &str) -> Result<u32,Error> {
         match try!(u64::parseint(s)) {
             n if n <= (u32::max_value() as u64) => Ok(n as u32),
-            _ => Err("number out of range")
+            _ => Err(ERR_NRANGE)
         }
     }
 }
 impl ParseInt for u16 {
-    fn parseint(s: &str) -> Result<u16, &'static str> {
+    fn parseint(s: &str) -> Result<u16,Error> {
         match try!(u64::parseint(s)) {
             n if n <= (u16::max_value() as u64) => Ok(n as u16),
-            _ => Err("number out of range")
+            _ => Err(ERR_NRANGE)
         }
     }
 }
 impl ParseInt for u8 {
-    fn parseint(s: &str) -> Result<u8, &'static str> {
+    fn parseint(s: &str) -> Result<u8,Error> {
         match try!(u64::parseint(s)) {
             n if n <= (u8::max_value() as u64) => Ok(n as u8),
-            _ => Err("number out of range")
+            _ => Err(ERR_NRANGE)
         }
     }
 }
 
 impl ParseInt for i32 {
-    fn parseint(s: &str) -> Result<i32, &'static str> {
+    fn parseint(s: &str) -> Result<i32,Error> {
         match try!(i64::parseint(s)) {
             n if n >= (i32::min_value() as i64) && n <= (i32::max_value() as i64) => Ok(n as i32),
-            _ => Err("number out of range")
+            _ => Err(ERR_NRANGE)
         }
     }
 }
 impl ParseInt for i16 {
-    fn parseint(s: &str) -> Result<i16, &'static str> {
+    fn parseint(s: &str) -> Result<i16,Error> {
         match try!(i64::parseint(s)) {
             n if n >= (i16::min_value() as i64) && n <= (i16::max_value() as i64) => Ok(n as i16),
-            _ => Err("number out of range")
+            _ => Err(ERR_NRANGE)
         }
     }
 }
 impl ParseInt for i8 {
-    fn parseint(s: &str) -> Result<i8, &'static str> {
+    fn parseint(s: &str) -> Result<i8,Error> {
         match try!(i64::parseint(s)) {
             n if n >= (i8::min_value() as i64) && n <= (i8::max_value() as i64) => Ok(n as i8),
-            _ => Err("number out of range")
+            _ => Err(ERR_NRANGE)
         }
     }
 }

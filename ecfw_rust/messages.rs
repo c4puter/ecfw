@@ -47,6 +47,8 @@ error_table! {
     ERR_CODEPOINT:              "invalid Unicode codepoint";
     ERR_BASE64:                 "invalid base64 data";
     ERR_STRLEN:                 "string too long";
+    ERR_DIGIT:                  "digit invalid or out of range for radix";
+    ERR_NRANGE:                 "number out of range";
 
     // Command-related
     ERR_CANNOT_FIND:            "cannot find specified item";

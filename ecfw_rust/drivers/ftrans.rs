@@ -21,7 +21,7 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-use data::{StringBuilder,base64};
+use data::{StringBuilder,base64,ParseInt};
 use drivers::ext4;
 use rustsys::ec_io;
 use core::iter::Iterator;
@@ -77,10 +77,48 @@ impl FTrans {
         let mut iter = cmd.split(" ");
 
         match iter.next() {
+
+            // open {base64 filename} {crc32}
+            // Make 'filename' the currently open file. File will be opened
+            // for read/write with the insertion point at the end.
             Some("open") => self.do_open(&mut iter),
+
+            // close
+            // Close the currently open file.
             Some("close") => self.do_close(&mut iter),
+
+            // read
+            // Read 512 bytes (or whatever is left), moving the insertion point.
+            // Returns as:
+            //  ack {base64 data} {crc32}
             Some("read") => self.do_read(&mut iter),
+
+            // write {base64 data} {crc32}
+            // Write up to 512 bytes, moving the insertion point.
+            // Returns as:
+            //  ack
+            //  error nack
             Some("write") => self.do_write(&mut iter),
+
+            // truncate {file size} {crc32 of size encoded as u32 LE}
+            // Truncate the file to the given size
+            // Returns as:
+            //  ack
+            //  error nack
+            Some("truncate") => self.do_truncate(&mut iter),
+
+            // seekset {position} {crc32 of position encoded as i32 LE}
+            // Set position relative to zero
+            Some("seekset") => self.do_seek(ext4::Origin::Set, &mut iter),
+
+            // seekcur {position} {crc32 of position encoded as i32 LE}
+            // Set position relative to current point
+            Some("seekcur") => self.do_seek(ext4::Origin::Current, &mut iter),
+
+            // seekend {position} {crc32 of position encoded as i32 LE}
+            // Set position relative to end
+            Some("seekend") => self.do_seek(ext4::Origin::End, &mut iter),
+
             Some("quit") => Ok(true),
             _ => {self.handle_invalid(); Ok(false)},
         }
@@ -156,6 +194,44 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 try!(file.write(slice));
+                println_async!("ack");
+                Ok(false)
+            },
+            None => {
+                Err(ERR_FILE_NOT_OPEN)
+            }
+        }
+    }
+
+    fn do_truncate<'a, I>(&mut self, iter: &'a mut I) -> Result<bool,Error>
+            where I: Iterator<Item=&'a str>
+    {
+        let sz_str = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
+        let sz = try!(u32::parseint(sz_str));
+
+        match self.file {
+            Some(ref mut file) => {
+                try!(file.truncate(sz as usize));
+                println_async!("ack");
+                Ok(false)
+            },
+            None => {
+                Err(ERR_FILE_NOT_OPEN)
+            }
+        }
+    }
+
+
+    fn do_seek<'a, I>(&mut self, origin: ext4::Origin, iter: &'a mut I)
+            -> Result<bool,Error>
+            where I: Iterator<Item=&'a str>
+    {
+        let pos_str = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
+        let pos = try!(i32::parseint(pos_str));
+
+        match self.file {
+            Some(ref mut file) => {
+                try!(file.seek(pos as usize, origin));
                 println_async!("ack");
                 Ok(false)
             },
