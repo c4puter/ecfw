@@ -75,15 +75,15 @@ enum CtrlReg
     Status = 0x0f,
 }
 
-pub struct LedMatrix
+pub struct LedMatrix<'a>
 {
-    twi: &'static os::Mutex<twi::TwiDevice>,
+    twi: &'a os::Mutex<twi::TwiDevice<'a>>,
     buffer: [u8; 24],
 }
 
-impl LedMatrix
+impl<'a> LedMatrix<'a>
 {
-    pub const fn new(twi: &'static os::Mutex<twi::TwiDevice>) -> LedMatrix
+    pub const fn new(twi: &'a os::Mutex<twi::TwiDevice<'a>>) -> LedMatrix<'a>
     {
         LedMatrix {
             twi: twi,
@@ -250,14 +250,14 @@ impl LedMatrix
     }
 }
 
-pub struct LedGpio
+pub struct LedGpio<'a>
 {
     pub addr: u8,
-    pub matrix: &'static os::RwLock<LedMatrix>,
+    pub matrix: &'a os::RwLock<LedMatrix<'a>>,
     pub name: &'static str,
 }
 
-impl gpio::Gpio for LedGpio
+impl<'a> gpio::Gpio for LedGpio<'a>
 {
     fn init(&self) {}
 

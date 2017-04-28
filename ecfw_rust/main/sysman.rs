@@ -79,13 +79,13 @@ fn handle_one_event(evt: Event) -> StdResult
 /// Supply/LED status indication struct. This pairs a power supply with the LEDs
 /// that indicate its status.
 #[derive(Copy,Clone)]
-struct SupplyStatusPair {
-    supply: &'static(drivers::power::Supply + Sync),
-    good: &'static drivers::ledmatrix::LedGpio,
-    bad: &'static drivers::ledmatrix::LedGpio,
+struct SupplyStatusPair<'a> {
+    supply: &'a (drivers::power::Supply + Sync),
+    good: &'a drivers::ledmatrix::LedGpio<'a>,
+    bad: &'a drivers::ledmatrix::LedGpio<'a>,
 }
 
-static SUPPLY_STATUS_TABLE: &'static [SupplyStatusPair] = &[
+static SUPPLY_STATUS_TABLE: &[SupplyStatusPair] = &[
     SupplyStatusPair{ supply: &SW1,              good: &P12V_PCI_G,   bad: &P12V_PCI_R },
     SupplyStatusPair{ supply: &BUCK_5VA,         good: &P5V_PCI_A_G,  bad: &P5V_PCI_A_R },
     SupplyStatusPair{ supply: &SW2,              good: &P5V_PCI_B_G,  bad: &P5V_PCI_B_R },

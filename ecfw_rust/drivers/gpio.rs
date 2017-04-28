@@ -100,8 +100,8 @@ impl Gpio for SamGpio {
 
 unsafe impl Sync for SamGpio {}
 
-pub struct PcfGpio {
-    pub dev: &'static Mutex<twi::TwiDevice>,
+pub struct PcfGpio<'a> {
+    pub dev: &'a Mutex<twi::TwiDevice<'a>>,
     pub pin: u8,
     pub default: bool,
     pub invert: bool,
@@ -117,7 +117,7 @@ pub struct PcfGpio {
     pub name: &'static str,
 }
 
-impl Gpio for PcfGpio {
+impl<'a> Gpio for PcfGpio<'a> {
     fn init(&self) {
         self.set(self.default);
     }
@@ -174,4 +174,4 @@ impl Gpio for PcfGpio {
     fn name(&self) -> &'static str { self.name }
 }
 
-unsafe impl Sync for PcfGpio {}
+unsafe impl<'a> Sync for PcfGpio<'a> {}

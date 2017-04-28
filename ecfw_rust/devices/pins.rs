@@ -31,7 +31,7 @@ macro_rules! pin_table {
     (
         $( $name:ident, $kind:tt, $( $key:ident => $data:expr ),* );* ;
     ) => {
-        pub static PIN_TABLE: &'static [&'static(Gpio + Sync)] = &[
+        pub static PIN_TABLE: &[&(Gpio + Sync)] = &[
             $( &$name ),*
         ];
 

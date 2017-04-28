@@ -126,31 +126,31 @@ pub trait Supply : Sync {
 }
 
 /// Power supply section on the voltage regulator module
-pub struct VrmSupply {
+pub struct VrmSupply<'a> {
     vrm_id: u8,         // ID used by the VRM I2C interface
-    disch: Option<(&'static Gpio, u32)>,
+    disch: Option<(&'a Gpio, u32)>,
     set_state: AtomicBool,
     transitioning: AtomicBool,
-    deps: &'static [&'static(Supply)],
+    deps: &'a [&'a Supply],
     name: &'static str,
 }
 
 /// Power supply controlled by a single "enable" line on GPIO
-pub struct GpioSwitchedSupply {
-    gpio: &'static Gpio,
-    disch: Option<(&'static Gpio, u32)>,
+pub struct GpioSwitchedSupply<'a> {
+    gpio: &'a Gpio,
+    disch: Option<(&'a Gpio, u32)>,
     wait_ticks: u32,    // Number of 1ms ticks to wait after switching
                         // to consider the supply settled
-    deps: &'static [&'static(Supply)],
+    deps: &'a [&'a Supply],
     name: &'static str,
 }
 
-impl VrmSupply {
+impl<'a> VrmSupply<'a> {
     pub const fn new(
         name: &'static str,
-        deps: &'static [&'static Supply],
+        deps: &'a [&'a Supply],
         vrm_id: u8,
-        disch: Option<(&'static Gpio, u32)>) -> VrmSupply
+        disch: Option<(&'a Gpio, u32)>) -> VrmSupply<'a>
     {
         VrmSupply {
             vrm_id: vrm_id,
@@ -166,7 +166,7 @@ impl VrmSupply {
     pub const CTRL_BIT_POWER_GOOD: u8 = 1u8 << 1;
 }
 
-impl Supply for VrmSupply {
+impl<'a> Supply for VrmSupply<'a> {
     fn status(&self) -> Result<SupplyStatus, Error> {
         let up_bits = VrmSupply::CTRL_BIT_ENABLED | VrmSupply::CTRL_BIT_POWER_GOOD;
         let mut buf = [0u8; 1];
@@ -225,13 +225,13 @@ impl Supply for VrmSupply {
     }
 }
 
-impl GpioSwitchedSupply {
+impl<'a> GpioSwitchedSupply<'a> {
     pub const fn new(
         name: &'static str,
-        deps: &'static [&'static Supply],
-        gpio: &'static Gpio,
+        deps: &'a [&'a Supply],
+        gpio: &'a Gpio,
         wait_ticks: u32,
-        disch: Option<(&'static Gpio, u32)>) -> GpioSwitchedSupply
+        disch: Option<(&'a Gpio, u32)>) -> GpioSwitchedSupply<'a>
     {
         GpioSwitchedSupply {
             gpio: gpio,
@@ -243,7 +243,7 @@ impl GpioSwitchedSupply {
     }
 }
 
-impl Supply for GpioSwitchedSupply {
+impl<'a> Supply for GpioSwitchedSupply<'a> {
     fn status(&self) -> Result<SupplyStatus, Error> {
         if self.gpio.get() { Ok(SupplyStatus::Up) } else { Ok(SupplyStatus::Down) }
     }
@@ -283,5 +283,5 @@ impl Supply for GpioSwitchedSupply {
 }
 
 
-unsafe impl Sync for VrmSupply {}
-unsafe impl Sync for GpioSwitchedSupply {}
+unsafe impl<'a> Sync for VrmSupply<'a> {}
+unsafe impl<'a> Sync for GpioSwitchedSupply<'a> {}

@@ -27,14 +27,14 @@ use os::Mutex;
 
 const TEMP_ADDR: u8 = 0u8;
 
-pub struct TempSensor {
-    twi: &'static Mutex<TwiDevice>
+pub struct TempSensor<'a> {
+    twi: &'a Mutex<TwiDevice<'a>>
 }
 
 pub type TenthsDegC = i32;
 
-impl TempSensor {
-    pub const fn new(twi: &'static Mutex<TwiDevice>) -> TempSensor {
+impl<'a> TempSensor<'a> {
+    pub const fn new(twi: &'a Mutex<TwiDevice<'a>>) -> TempSensor<'a> {
         TempSensor { twi: twi }
     }
 

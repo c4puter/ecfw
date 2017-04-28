@@ -89,8 +89,8 @@ pub struct Twi {
     initialized: AtomicBool,
 }
 
-pub struct TwiDevice {
-    pub twi: &'static Twi,
+pub struct TwiDevice<'a> {
+    pub twi: &'a Twi,
     pub addr: u8,
 }
 
@@ -185,8 +185,8 @@ impl Twi {
     }
 }
 
-impl TwiDevice {
-    pub const fn new(twi: &'static Twi, addr: u8) -> TwiDevice {
+impl<'a> TwiDevice<'a> {
+    pub const fn new(twi: &'a Twi, addr: u8) -> TwiDevice<'a> {
         TwiDevice {
             twi: twi,
             addr: addr,

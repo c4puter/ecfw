@@ -23,7 +23,7 @@
 
 use messages::*;
 
-static BASE64_ENCODE_LUT: &'static [u8; 64] =
+static BASE64_ENCODE_LUT: &[u8; 64] =
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 fn enc_one_symbol(src: u32) -> u8 { (*BASE64_ENCODE_LUT)[src as usize] }

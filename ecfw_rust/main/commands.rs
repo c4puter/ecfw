@@ -32,13 +32,13 @@ use main::{reset, sysman};
 use messages::*;
 use core::fmt;
 
-pub struct Command {
-    pub name: &'static str,
+pub struct Command<'a> {
+    pub name: &'a str,
     pub f: fn(args: &[&str]) -> StdResult,
-    pub descr: &'static str,
+    pub descr: &'a str,
 }
 
-pub static COMMAND_TABLE: &'static [Command] = &[
+pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "help",      f: cmd_help,    descr: "display commands and their descriptions" },
     Command{ name: "free",      f: cmd_free,    descr: "display free heap" },
     Command{ name: "reset",     f: cmd_reset,   descr: "reset entire system" },

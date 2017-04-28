@@ -29,7 +29,7 @@ macro_rules! supply_table {
     (
         $( $name:ident, $kind:tt, $( $arg:expr ),* );* ;
     ) => {
-        pub static SUPPLY_TABLE: &'static [&'static(Supply)] = &[
+        pub static SUPPLY_TABLE: &[&(Supply)] = &[
             $( &$name ),*
         ];
 
