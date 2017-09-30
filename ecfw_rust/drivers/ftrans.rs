@@ -21,6 +21,8 @@
  * OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
+extern crate lwext4_crc32;
+extern crate ctypes;
 use data::{StringBuilder,base64,ParseInt};
 use drivers::ext4;
 use rustsys::ec_io;
@@ -50,8 +52,13 @@ impl FTrans {
 
             match c {
                 3 | 4 => { /* ^C or ^D */ break; },
-                0x20 ... 0x7e => { overflowed = sb.append_char(c as char).is_err(); },
+                0x20 ... 0x7e => {
+                    overflowed = sb.append_char(c as char).is_err();
+                    ec_io::putc_async(c);
+                },
                 b'\r' => {
+                    ec_io::putc_async(b'\r');
+                    ec_io::putc_async(b'\n');
                     if overflowed {
                         self.handle_overflow();
                     } else if invalid {
@@ -60,7 +67,7 @@ impl FTrans {
                         match self.process_cmd(sb.as_ref()) {
                             Ok(true) => { break; },
                             Ok(false) => (),
-                            Err(_) => { self.handle_invalid(); }
+                            Err(e) => { self.handle_error(e); }
                         }
                     }
                     sb.truncate(0);
@@ -77,11 +84,11 @@ impl FTrans {
         let mut iter = cmd.split(" ");
 
         match iter.next() {
-
             // open {base64 filename} {crc32}
             // Make 'filename' the currently open file. File will be opened
             // for read/write with the insertion point at the end.
-            Some("open") => self.do_open(&mut iter),
+            //Some("open") => self.do_open(&mut iter),
+            Some("open") => self.data_cmd(&mut iter, FTrans::open_wrapped),
 
             // close
             // Close the currently open file.
@@ -98,48 +105,76 @@ impl FTrans {
             // Returns as:
             //  ack
             //  error nack
-            Some("write") => self.do_write(&mut iter),
+            Some("write") => self.data_cmd(&mut iter, FTrans::write_wrapped),
 
-            // truncate {file size} {crc32 of size encoded as u32 LE}
+            // truncate {file size as u32 LE, base64} {crc32}
             // Truncate the file to the given size
             // Returns as:
             //  ack
             //  error nack
-            Some("truncate") => self.do_truncate(&mut iter),
+            Some("truncate") => self.data_cmd(&mut iter, FTrans::truncate_wrapped),
 
-            // seekset {position} {crc32 of position encoded as i32 LE}
+            // seekset {position as u32 LE, base64} {crc32}
             // Set position relative to zero
-            Some("seekset") => self.do_seek(ext4::Origin::Set, &mut iter),
+            Some("seekset") => self.data_cmd(
+                &mut iter,
+                |s, i| {FTrans::seek_wrapped(s, i, ext4::Origin::Set)}),
 
-            // seekcur {position} {crc32 of position encoded as i32 LE}
+            // seekcur {position as u32 LE, base64} {crc32}
             // Set position relative to current point
-            Some("seekcur") => self.do_seek(ext4::Origin::Current, &mut iter),
-
-            // seekend {position} {crc32 of position encoded as i32 LE}
-            // Set position relative to end
-            Some("seekend") => self.do_seek(ext4::Origin::End, &mut iter),
+            Some("seekcur") => self.data_cmd(
+                &mut iter,
+                |s, i| {FTrans::seek_wrapped(s, i, ext4::Origin::Current)}),
 
             Some("quit") => Ok(true),
             _ => {self.handle_invalid(); Ok(false)},
         }
     }
 
-    fn do_open<'a, I>(&mut self, iter: &'a mut I) -> Result<bool,Error>
-            where I: Iterator<Item=&'a str>
+    fn data_cmd<'a, I, F>(&mut self, iter: &'a mut I, f: F)
+            -> Result<bool,Error>
+            where
+                I: Iterator<Item=&'a str>,
+                F: Fn(&mut Self, &[u8]) -> Result<bool,Error>
     {
-        let filename_b64 = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
-
         let mut decode_buf = [0u8; 512];
 
-        let written = try!(base64::decode(&mut decode_buf, filename_b64.as_bytes()));
+        let data_b64 = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
+        let n_bytes = try!(base64::decode(&mut decode_buf, data_b64.as_bytes()));
 
-        let slice = &decode_buf[0..written];
-        let strslice = str::from_utf8(slice).unwrap();
+        let rx_crc32_str = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
+        let rx_crc32 = try!(u32::parseint(rx_crc32_str));
 
+        let actual_crc32 = crc32(&decode_buf[0..n_bytes]);
+
+        if actual_crc32 != rx_crc32 {
+            Err(ERR_CKSUM)
+        } else {
+            f(self, &decode_buf[0..n_bytes])
+        }
+    }
+
+    fn open_wrapped(&mut self, filename: &[u8]) -> Result<bool, Error>
+    {
+        let strslice = str::from_utf8(filename).unwrap();
         self.file = Some(try!(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)));
 
         println_async!("ack");
         Ok(false)
+    }
+
+    fn write_wrapped(&mut self, data: &[u8]) -> Result<bool, Error>
+    {
+        match self.file {
+            Some(ref mut file) => {
+                try!(file.write(data));
+                println_async!("ack");
+                Ok(false)
+            },
+            None => {
+                Err(ERR_FILE_NOT_OPEN)
+            }
+        }
     }
 
     fn do_close<'a, I>(&mut self, _iter: &'a mut I) -> Result<bool,Error>
@@ -182,32 +217,9 @@ impl FTrans {
         }
     }
 
-    fn do_write<'a, I>(&mut self, iter: &'a mut I) -> Result<bool,Error>
-            where I: Iterator<Item=&'a str>
+    fn truncate_wrapped(&mut self, sz_encoded: &[u8]) -> Result<bool, Error>
     {
-        let data_b64 = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
-        let mut decode_buf = [0u8; 512];
-        let written = try!(base64::decode(&mut decode_buf, data_b64.as_bytes()));
-
-        let slice = &decode_buf[0..written];
-
-        match self.file {
-            Some(ref mut file) => {
-                try!(file.write(slice));
-                println_async!("ack");
-                Ok(false)
-            },
-            None => {
-                Err(ERR_FILE_NOT_OPEN)
-            }
-        }
-    }
-
-    fn do_truncate<'a, I>(&mut self, iter: &'a mut I) -> Result<bool,Error>
-            where I: Iterator<Item=&'a str>
-    {
-        let sz_str = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
-        let sz = try!(u32::parseint(sz_str));
+        let sz = try!(bytes_to_u32(sz_encoded));
 
         match self.file {
             Some(ref mut file) => {
@@ -221,13 +233,10 @@ impl FTrans {
         }
     }
 
-
-    fn do_seek<'a, I>(&mut self, origin: ext4::Origin, iter: &'a mut I)
-            -> Result<bool,Error>
-            where I: Iterator<Item=&'a str>
+    fn seek_wrapped(&mut self, pos_encoded: &[u8], origin: ext4::Origin)
+            -> Result<bool, Error>
     {
-        let pos_str = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
-        let pos = try!(i32::parseint(pos_str));
+        let pos = try!(bytes_to_u32(pos_encoded));
 
         match self.file {
             Some(ref mut file) => {
@@ -241,12 +250,37 @@ impl FTrans {
         }
     }
 
-
     fn handle_overflow(&self) {
         println_async!("error overflow");
     }
 
     fn handle_invalid(&self) {
         println_async!("error invalid_byte_or_command");
+    }
+
+    fn handle_error(&self, e: Error) {
+        println_async!("error {}", e);
+    }
+}
+
+fn crc32(data: &[u8]) -> u32 {
+    let len = data.len();
+    !unsafe{
+        lwext4_crc32::ext4_crc32(
+            0xffffffff,
+            data as *const _ as *const ctypes::c_void,
+            len as u32)}
+}
+
+fn bytes_to_u32(data: &[u8]) -> Result<u32, Error>
+{
+    if data.len() != 4 {
+        Err(ERR_ARG_RANGE)
+    } else {
+        Ok(
+            (data[0] as u32) |
+            ((data[1] as u32) << 8) |
+            ((data[2] as u32) << 16) |
+            ((data[3] as u32) << 24))
     }
 }

@@ -109,6 +109,7 @@ BINDGEN_SOURCES = \
 	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
 	asf_hsmci.rs:${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.h \
 	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
+	lwext4_crc32.rs:lwext4/include/ext4_crc32.h \
 	lwext4_blockdev.rs:lwext4/include/ext4_blockdev.h \
 	lwext4.rs:lwext4/include/ext4.h \
 

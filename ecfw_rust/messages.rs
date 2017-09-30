@@ -49,6 +49,7 @@ error_table! {
     ERR_STRLEN:                 "string too long";
     ERR_DIGIT:                  "digit invalid or out of range for radix";
     ERR_NRANGE:                 "number out of range";
+    ERR_CKSUM:                  "invalid checksum";
 
     // Command-related
     ERR_CANNOT_FIND:            "cannot find specified item";
