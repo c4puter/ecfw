@@ -76,19 +76,23 @@ pub fn init_task()
     let unused = unsafe{bindgen_mcu::get_stack_unused()};
     debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
+    ec_io::flush_output();
     debug!(DEBUG_ECBOOT, "initialize TWI");
     devices::twi::TWI0.init(400000).unwrap();
 
+    ec_io::flush_output();
     debug!(DEBUG_ECBOOT, "initialize GPIO");
     for &pin in devices::pins::PIN_TABLE {
         pin.init();
     }
 
+    // Power supply safety can be released once pins are initialized
+    devices::pins::EN_SAFETY.set(false);
+
     // Put all power supplies in known state - all but standby rail down
     reset::shutdown_supplies_cleanly();
 
-    // Power supply safety can be released once pins are initialized
-    devices::pins::EN_SAFETY.set(false);
+    ec_io::flush_output();
     debug!(DEBUG_ECBOOT, "initialize LED matrix");
     devices::MATRIX.write().init().unwrap();
     os::delay(250);
@@ -98,6 +102,7 @@ pub fn init_task()
         mat.flush().unwrap();
     }
 
+    ec_io::flush_output();
     debug!(DEBUG_ECBOOT, "initialize HSMCI (SD)");
     drivers::sd::init();
 
@@ -133,6 +138,7 @@ pub extern "C" fn main() -> i32 {
 
     os::Task::new(init_task, "init", 10000, 0);
 
+    ec_io::flush_output();
     debug_async!(DEBUG_ECBOOT, "start scheduler and hand off to init task...");
     os::freertos::run();
 

@@ -147,7 +147,7 @@ CFLAGS = \
 	-I esh \
 
 RUSTFLAGS = \
-	-C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-C opt-level=1 -Z no-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
 
 BINDGENFLAGS = \
