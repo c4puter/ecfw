@@ -39,8 +39,7 @@ impl FTrans {
         FTrans{ file: None }
     }
 
-    /// Open a file transfer session. Quits when either ^C, ^D, or a "quit"
-    /// command is received.
+    /// Open a file transfer session. Quits when either ^C or ^D is received.
     pub fn run(&mut self) {
         ec_io::flush_output();
         let mut sb = StringBuilder::new();
@@ -54,20 +53,15 @@ impl FTrans {
                 3 | 4 => { /* ^C or ^D */ break; },
                 0x20 ... 0x7e => {
                     overflowed = sb.append_char(c as char).is_err();
-                    ec_io::putc_async(c);
                 },
                 b'\r' => {
-                    ec_io::putc_async(b'\r');
-                    ec_io::putc_async(b'\n');
                     if overflowed {
                         self.handle_overflow();
                     } else if invalid {
                         self.handle_invalid();
                     } else {
-                        match self.process_cmd(sb.as_ref()) {
-                            Ok(true) => { break; },
-                            Ok(false) => (),
-                            Err(e) => { self.handle_error(e); }
+                        if let Err(e) = self.process_cmd(sb.as_ref()) {
+                            self.handle_error(e);
                         }
                     }
                     sb.truncate(0);
@@ -80,7 +74,7 @@ impl FTrans {
     }
 
     /// Process one command received. Return whether we should exit
-    fn process_cmd(&mut self, cmd: &str) -> Result<bool,Error> {
+    fn process_cmd(&mut self, cmd: &str) -> Result<(),Error> {
         let mut iter = cmd.split(" ");
 
         match iter.next() {
@@ -126,16 +120,14 @@ impl FTrans {
                 &mut iter,
                 |s, i| {FTrans::seek_wrapped(s, i, ext4::Origin::Current)}),
 
-            Some("quit") => Ok(true),
-            _ => {self.handle_invalid(); Ok(false)},
+            _ => {self.handle_invalid(); Ok(())},
         }
     }
 
-    fn data_cmd<'a, I, F>(&mut self, iter: &'a mut I, f: F)
-            -> Result<bool,Error>
+    fn data_cmd<'a, I, F>(&mut self, iter: &'a mut I, f: F) -> Result<(), Error>
             where
                 I: Iterator<Item=&'a str>,
-                F: Fn(&mut Self, &[u8]) -> Result<bool,Error>
+                F: Fn(&mut Self, &[u8]) -> Result<(), Error>
     {
         let mut decode_buf = [0u8; 512];
 
@@ -154,22 +146,22 @@ impl FTrans {
         }
     }
 
-    fn open_wrapped(&mut self, filename: &[u8]) -> Result<bool, Error>
+    fn open_wrapped(&mut self, filename: &[u8]) -> Result<(), Error>
     {
         let strslice = str::from_utf8(filename).unwrap();
         self.file = Some(try!(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)));
 
         println_async!("ack");
-        Ok(false)
+        Ok(())
     }
 
-    fn write_wrapped(&mut self, data: &[u8]) -> Result<bool, Error>
+    fn write_wrapped(&mut self, data: &[u8]) -> Result<(), Error>
     {
         match self.file {
             Some(ref mut file) => {
                 try!(file.write(data));
                 println_async!("ack");
-                Ok(false)
+                Ok(())
             },
             None => {
                 Err(ERR_FILE_NOT_OPEN)
@@ -177,7 +169,7 @@ impl FTrans {
         }
     }
 
-    fn do_close<'a, I>(&mut self, _iter: &'a mut I) -> Result<bool,Error>
+    fn do_close<'a, I>(&mut self, _iter: &'a mut I) -> Result<(), Error>
             where I: Iterator<Item=&'a str>
     {
         let was_open = self.file.is_some();
@@ -190,10 +182,10 @@ impl FTrans {
             println_async!("warn was_not_open");
         }
 
-        Ok(false)
+        Ok(())
     }
 
-    fn do_read<'a, I>(&mut self, _iter: &'a mut I) -> Result<bool,Error>
+    fn do_read<'a, I>(&mut self, _iter: &'a mut I) -> Result<(), Error>
             where I: Iterator<Item=&'a str>
     {
         let mut file_buf = [0u8; 512];
@@ -211,13 +203,13 @@ impl FTrans {
                 }
                 println_async!("");
 
-                Ok(false)
+                Ok(())
             },
             None => Err(ERR_FILE_NOT_OPEN)
         }
     }
 
-    fn truncate_wrapped(&mut self, sz_encoded: &[u8]) -> Result<bool, Error>
+    fn truncate_wrapped(&mut self, sz_encoded: &[u8]) -> Result<(), Error>
     {
         let sz = try!(bytes_to_u32(sz_encoded));
 
@@ -225,7 +217,7 @@ impl FTrans {
             Some(ref mut file) => {
                 try!(file.truncate(sz as usize));
                 println_async!("ack");
-                Ok(false)
+                Ok(())
             },
             None => {
                 Err(ERR_FILE_NOT_OPEN)
@@ -234,7 +226,7 @@ impl FTrans {
     }
 
     fn seek_wrapped(&mut self, pos_encoded: &[u8], origin: ext4::Origin)
-            -> Result<bool, Error>
+            -> Result<(), Error>
     {
         let pos = try!(bytes_to_u32(pos_encoded));
 
@@ -242,7 +234,7 @@ impl FTrans {
             Some(ref mut file) => {
                 try!(file.seek(pos as usize, origin));
                 println_async!("ack");
-                Ok(false)
+                Ok(())
             },
             None => {
                 Err(ERR_FILE_NOT_OPEN)
