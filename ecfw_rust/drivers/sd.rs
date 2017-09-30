@@ -90,8 +90,22 @@ impl Sd {
     /// Check whether the card is ready, initializing
     pub fn check(&mut self) -> StdResult {
         assert!(self.slot == 0);
-        let ec = unsafe { asf_sd_mmc::sd_mmc_check(self.slot) };
-        to_stdresult(ec)
+
+        // ASF SD driver will return SD_MMC_ERR_NO_CARD once, then
+        // SD_MMC_INIT_ONGOING, then success. Call several times to
+        // hide this stupid behavior.
+
+        let mut got_no_card = false;
+
+        loop {
+            let ec = unsafe { asf_sd_mmc::sd_mmc_check(self.slot) };
+
+            if ec as u32 == asf_sd_mmc::SD_MMC_ERR_NO_CARD && !got_no_card {
+                got_no_card = true;
+            } else if ec as u32 != asf_sd_mmc::SD_MMC_INIT_ONGOING {
+                return to_stdresult(ec);
+            }
+        }
     }
 
     /// Get card type. Must be initialized.
