@@ -196,12 +196,13 @@ impl FTrans {
                 let bytes_read = try!(file.read(&mut file_buf));
                 let b64_converted = base64::encode(
                     &mut b64_buf, &file_buf[0..bytes_read]).unwrap();
+                let crc = crc32(&file_buf[0..bytes_read]);
 
                 print_async!("ack ");
                 for i in &b64_buf[0..b64_converted] {
                     print_async!("{}", *i as char);
                 }
-                println_async!("");
+                println_async!(" {}", crc);
 
                 Ok(())
             },
