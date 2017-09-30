@@ -74,7 +74,7 @@ impl FTrans {
     }
 
     /// Process one command received. Return whether we should exit
-    fn process_cmd(&mut self, cmd: &str) -> Result<(),Error> {
+    fn process_cmd(&mut self, cmd: &str) -> StdResult {
         let mut iter = cmd.split(" ");
 
         match iter.next() {
@@ -124,10 +124,10 @@ impl FTrans {
         }
     }
 
-    fn data_cmd<'a, I, F>(&mut self, iter: &'a mut I, f: F) -> Result<(), Error>
+    fn data_cmd<'a, I, F>(&mut self, iter: &'a mut I, f: F) -> StdResult
             where
                 I: Iterator<Item=&'a str>,
-                F: Fn(&mut Self, &[u8]) -> Result<(), Error>
+                F: Fn(&mut Self, &[u8]) -> StdResult
     {
         let mut decode_buf = [0u8; 512];
 
@@ -146,7 +146,7 @@ impl FTrans {
         }
     }
 
-    fn open_wrapped(&mut self, filename: &[u8]) -> Result<(), Error>
+    fn open_wrapped(&mut self, filename: &[u8]) -> StdResult
     {
         let strslice = str::from_utf8(filename).unwrap();
         self.file = Some(try!(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)));
@@ -155,7 +155,7 @@ impl FTrans {
         Ok(())
     }
 
-    fn write_wrapped(&mut self, data: &[u8]) -> Result<(), Error>
+    fn write_wrapped(&mut self, data: &[u8]) -> StdResult
     {
         match self.file {
             Some(ref mut file) => {
@@ -169,7 +169,7 @@ impl FTrans {
         }
     }
 
-    fn do_close<'a, I>(&mut self, _iter: &'a mut I) -> Result<(), Error>
+    fn do_close<'a, I>(&mut self, _iter: &'a mut I) -> StdResult
             where I: Iterator<Item=&'a str>
     {
         let was_open = self.file.is_some();
@@ -185,7 +185,7 @@ impl FTrans {
         Ok(())
     }
 
-    fn do_read<'a, I>(&mut self, _iter: &'a mut I) -> Result<(), Error>
+    fn do_read<'a, I>(&mut self, _iter: &'a mut I) -> StdResult
             where I: Iterator<Item=&'a str>
     {
         let mut file_buf = [0u8; 512];
@@ -209,7 +209,7 @@ impl FTrans {
         }
     }
 
-    fn truncate_wrapped(&mut self, sz_encoded: &[u8]) -> Result<(), Error>
+    fn truncate_wrapped(&mut self, sz_encoded: &[u8]) -> StdResult
     {
         let sz = try!(bytes_to_u32(sz_encoded));
 
@@ -226,7 +226,7 @@ impl FTrans {
     }
 
     fn seek_wrapped(&mut self, pos_encoded: &[u8], origin: ext4::Origin)
-            -> Result<(), Error>
+            -> StdResult
     {
         let pos = try!(bytes_to_u32(pos_encoded));
 
