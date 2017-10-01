@@ -27,6 +27,8 @@ use core::cell::*;
 use core::mem;
 use core::slice;
 use alloc::boxed::*;
+use alloc::allocator;
+use alloc::allocator::Alloc;
 use alloc::heap;
 
 pub struct Queue<'a, T> where T: 'a + Send + Copy + Sized {
@@ -81,8 +83,9 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     }
 
     pub fn new_dynamic(sz: usize) -> Queue<'a, T> {
-        let buffer = unsafe{
-            heap::allocate(sz * mem::size_of::<Cell<Option<T>>>(), 4)};
+        let layout = allocator::Layout::from_size_align(
+            sz * mem::size_of::<Cell<Option<T>>>(), 4).unwrap();
+        let buffer = unsafe{heap::Heap.alloc_zeroed(layout)}.unwrap();
         let as_slice = unsafe{
             slice::from_raw_parts_mut(buffer as *mut Cell<Option<T>>, sz)};
         for i in 0..sz {

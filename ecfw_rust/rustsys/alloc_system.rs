@@ -23,31 +23,24 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern fn __rust_allocate(size: usize, _align: usize) -> *mut u8 {
+pub extern fn __rust_alloc(size: usize, _align: usize, _err: *mut u8) -> *mut u8 {
     let p = unsafe { pvPortMalloc(size) };
     debug!(DEBUG_ALLOC, "allocate {} bytes at 0x{:08x}", size, (p as usize));
     p
 }
 
 #[no_mangle]
-pub extern fn __rust_deallocate(ptr: *mut u8, _old_size: usize, _align: usize) {
+pub extern fn __rust_dealloc(ptr: *mut u8, _old_size: usize, _align: usize) {
     debug!(DEBUG_ALLOC, "free 0x{:08x}", (ptr as usize));
     unsafe { vPortFree(ptr) };
 }
 
 #[no_mangle]
-pub extern fn __rust_reallocate(_ptr: *mut u8, _old_size: usize, _size: usize,
-                                _align: usize) -> *mut u8 {
-    panic!("cannot reallocate");
-}
-
-#[no_mangle]
-pub extern fn __rust_reallocate_inplace(_ptr: *mut u8, _old_size: usize,
-                                        _size: usize, _align: usize) -> usize {
-    panic!("cannot reallocate");
-}
-
-#[no_mangle]
 pub extern fn __rust_usable_size(size: usize, _align: usize) -> usize {
     size
+}
+
+#[no_mangle]
+pub extern fn __rust_oom(_err: *const u8) -> ! {
+    panic!("out of memory");
 }

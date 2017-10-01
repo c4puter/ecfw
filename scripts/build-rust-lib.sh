@@ -43,6 +43,8 @@ mkdir -p $RUSTLIB_DIR
 pushd $RUSTSRC >/dev/null
 mkdir -p lib_out
 rustc -C opt-level=2 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+    --crate-type rlib \
+    --crate-name "$1" \
     -L "$RUSTLIB_DIR_ABS" \
     lib$1/lib.rs --out-dir "$RUSTLIB_DIR_ABS"
 

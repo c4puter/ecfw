@@ -123,8 +123,8 @@ pub fn init()
         asf_usart::usart_enable_tx(USART_DBG);
         asf_usart::usart_enable_rx(USART_DBG);
         asf_usart::usart_enable_interrupt(USART_DBG, asf_usart::US_IER_RXRDY as u32);
-        bindgen_mcu::mcu_set_irq_prio(asf_usart::IRQn::USART1_IRQn as i32, 4, 1);
-        bindgen_mcu::mcu_enable_irq(asf_usart::IRQn::USART1_IRQn as i32);
+        bindgen_mcu::mcu_set_irq_prio(asf_usart::IRQn_USART1_IRQn as i32, 4, 1);
+        bindgen_mcu::mcu_enable_irq(asf_usart::IRQn_USART1_IRQn as i32);
     }
     os::Task::new(move || { putc_task(&STDOUT_QUEUE); }, "ec_io", 200, 0);
 }

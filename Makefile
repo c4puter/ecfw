@@ -53,6 +53,7 @@ OBJECTS = \
 	${ASF_UNF_DIR}/asf/drivers/rstc/rstc.o \
 	${ASF_UNF_DIR}/asf/drivers/usart/usart.o \
 	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
+	${ASF_UNF_DIR}/asf/drivers/spi/spi.o \
 	${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.o \
 	${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
@@ -80,7 +81,7 @@ OBJECTS = \
 	lwext4/src/ext4_trans.o \
 	lwext4/src/ext4_xattr.o \
 
-RUSTLIBS = core alloc
+RUSTLIBS = core std_unicode alloc
 
 RUST_CRATES = \
 	libecfw_rust.rlib \
@@ -104,6 +105,7 @@ BINDGEN_SOURCES = \
 	asf_usart.rs:${ASF_UNF_DIR}/asf/drivers/usart/usart.h \
 	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
 	asf_hsmci.rs:${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.h \
+	asf_spi.rs:${ASF_UNF_DIR}/asf/drivers/spi/spi.h \
 	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
 	lwext4_crc32.rs:lwext4/include/ext4_crc32.h \
 	lwext4_blockdev.rs:lwext4/include/ext4_blockdev.h \
@@ -159,7 +161,8 @@ BINDGENFLAGS = \
 	--raw-line '\#![allow(non_upper_case_globals)]' \
 	--raw-line 'extern crate ctypes;' \
 	--opaque-type 'ext4_bcache' \
-	-- $(filter-out -mcpu=cortex-m4 -mthumb,${CFLAGS})
+	-- $(filter-out -mcpu=cortex-m4 -mthumb,${CFLAGS}) \
+	-isystem $(word 1,$(wildcard /usr/lib/gcc/arm-none-eabi/*/include))
 
 
 LDFLAGS = \

@@ -18,19 +18,20 @@
  */
 
 #![no_std]
-#![feature(associated_consts)]
 #![feature(const_fn)]
 #![feature(lang_items)]
 #![feature(asm)]
 #![feature(alloc)]
-#![feature(allocator)]
+#![feature(allocator_api)]
 #![feature(heap_api)]
+#![feature(const_cell_new)]
+#![feature(const_unsafe_cell_new)]
+#![feature(const_atomic_bool_new)]
 
 #![feature(plugin)]
 #![plugin(repeat)]
 
 #![crate_type = "rlib"]
-#![allocator]
 
 extern crate esh;
 extern crate alloc;
