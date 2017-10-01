@@ -76,13 +76,13 @@ impl StringBuilder {
             let raw = Box::into_raw(self.inner);
             let slice = slice::from_raw_parts_mut(raw as *mut u8, self.len);
             let newbox = Box::from_raw(slice);
-            mem::transmute::<Box<[u8]>, Box<str>>(newbox)
+            mem::transmute(newbox)
         }
     }
 
     /// Get the constructed string as a borrowed reference.
     pub fn as_ref(&self) -> &str {
-        unsafe{mem::transmute::<&[u8], &str>(&self.inner[0..self.len])}
+        unsafe{mem::transmute(&self.inner[0..self.len])}
     }
 
     /// Get the current length
