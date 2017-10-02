@@ -498,6 +498,11 @@ impl Stat {
         u32::from_le(self.0.flags)
     }
 
+    pub fn size(&self) -> u32
+    {
+        u32::from_le(self.0.size_lo)
+    }
+
     pub fn inode_type(&self) -> InodeType
     {
         let mode = self.mode();

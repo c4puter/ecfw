@@ -130,7 +130,7 @@ void mcu_init_spi(void)
     spi_disable_loopback(SPI);
     spi_set_transfer_delay(SPI, 0, 0, 0);
     spi_set_bits_per_transfer(SPI, 0, SPI_CSR_BITS_8_BIT);
-    spi_set_baudrate_div(SPI, 0, 16);
+    spi_set_baudrate_div(SPI, 0, 4);
     spi_configure_cs_behavior(SPI, 0, SPI_CS_KEEP_LOW);
     spi_set_clock_polarity(SPI, 0, 0);
     spi_set_clock_phase(SPI, 0, 1);
@@ -140,6 +140,11 @@ void mcu_init_spi(void)
 bool mcu_spi_write(uint8_t b)
 {
     return spi_write(SPI, b, 0, 0) != SPI_OK;
+}
+
+uint32_t mcu_spi_pdc_base(void)
+{
+    return spi_get_pdc_base(SPI);
 }
 
 /*

@@ -50,8 +50,6 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "i2c_read",  f: cmd_i2c_read,    descr: "read I2C from ADDR at LOCATION, N bytes" },
     Command{ name: "i2c_write", f: cmd_i2c_write,   descr: "write I2C to ADDR at LOCATION, BYTES" },
 
-    Command{ name: "spi_write", f: cmd_spi_write,   descr: "write BYTES to SPI" },
-
     Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
@@ -290,23 +288,6 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
     Ok(())
 }
 
-fn cmd_spi_write(args: &[&str]) -> StdResult
-{
-    if args.len() < 1 {
-        return Err(ERR_EXPECTED_ARGS);
-    }
-
-    let mut buffer = [0 as u8; 16];
-    let n = args.len() - 1;
-    for i in 0..n {
-        let arg = try!(argv_parsed(args, i + 1, "BYTES", u8::parseint));
-        buffer[i] = arg;
-    }
-
-    try!(devices::SPI.write(&buffer[0..n]));
-    Ok(())
-}
-
 fn cmd_gpio_read(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
@@ -536,7 +517,7 @@ fn cmd_ls(args: &[&str]) -> StdResult
         let stat = try!(drivers::ext4::stat(sb.as_ref()));
         sb.truncate(only_path);
 
-        println!("{} {}", stat, name);
+        println!("{} {:8} {}", stat, stat.size(), name);
     }
     Ok(())
 }
@@ -568,16 +549,31 @@ fn cmd_spi_dump(args: &[&str]) -> StdResult
     let path = args[1];
     let mut file = drivers::ext4::fopen_expand(path, drivers::ext4::OpenFlags::Read)?;
 
-    let mut buf = [0u8; 512];
+    let mut buf1 = [0u8; 4096];
+    let mut buf2 = [0u8; 4096];
+    let mut wr1 = None;
 
     loop {
-        let n_read = try!(file.read(&mut buf));
+        let n_read1 = try!(file.read(&mut buf1));
 
-        if n_read == 0 {
+        if let Some(wr) = wr1.take() {
+            devices::SPI.end_write(wr);
+        }
+
+        if n_read1 == 0 {
             break;
         }
 
-        try!(devices::SPI.write(&buf[0..n_read]));
+        let wr2 = devices::SPI.start_write(&buf1[0..n_read1])?;
+
+        let n_read2 = try!(file.read(&mut buf2));
+        devices::SPI.end_write(wr2);
+
+        if n_read2 == 0 {
+            break;
+        }
+
+        wr1 = Some(devices::SPI.start_write(&buf2[0..n_read2])?);
     }
 
     Ok(())

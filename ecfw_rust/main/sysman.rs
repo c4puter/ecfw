@@ -115,13 +115,14 @@ pub fn run_status()
             let mut mat = devices::MATRIX.write();
 
             for &pair in SUPPLY_STATUS_TABLE {
-                let stat = pair.supply.status().unwrap();
+                let stat = pair.supply.status();
 
                 let (good, bad) = match stat {
-                    SupplyStatus::Down        => ( false, false ),
-                    SupplyStatus::Up          => ( true,  false ),
-                    SupplyStatus::Transition  => ( true,  true ),
-                    SupplyStatus::Error       => ( false, true ),
+                    Ok(SupplyStatus::Down)        => ( false, false ),
+                    Ok(SupplyStatus::Up)          => ( true,  false ),
+                    Ok(SupplyStatus::Transition)  => ( true,  true ),
+                    Ok(SupplyStatus::Error)       => ( false, true ),
+                    Err(_) => (false, true),
                 };
 
                 mat.buffer_led(pair.good.addr, good);

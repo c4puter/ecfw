@@ -17,14 +17,21 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-use os::Mutex;
+use os::{Mutex,MutexLock};
 use messages::*;
 extern crate bindgen_mcu;
+extern crate asf_pdc;
+extern crate ctypes;
 use core::sync::atomic::*;
+use core::ptr;
 
 pub struct Spi {
     mutex: Mutex<()>,
     initialized: AtomicBool,
+}
+
+pub struct SpiDmaWrite<'a> {
+    lock: Option<MutexLock<'a, ()>>,
 }
 
 /// Threadsafe wrapper around SPI peripheral. This must be iniitalized before
@@ -48,20 +55,45 @@ impl Spi {
         Ok(())
     }
 
-    pub fn write(&self, buffer: &[u8]) -> StdResult {
+    /// Start a write via DMA. end_write() must be called after this.
+    pub fn start_write(&self, buffer: &[u8]) -> Result<SpiDmaWrite, Error> {
         if !self.initialized.load(Ordering::Relaxed) {
             panic!("SPI: use before init()");
         }
-        let _lock = self.mutex.lock();
 
-        for b in buffer.iter() {
-            let failed = unsafe {
-                bindgen_mcu::mcu_spi_write(*b)
-            };
-            if failed {
-                return Err(ERR_TIMEOUT);
-            }
+        let lock = self.mutex.lock();
+
+        let mut packet = asf_pdc::pdc_packet {
+            ul_addr: buffer.as_ptr() as u32,
+            ul_size: buffer.len() as u32 };
+        let pdc_base = unsafe{bindgen_mcu::mcu_spi_pdc_base()} as *mut asf_pdc::Pdc;
+
+        unsafe {
+            asf_pdc::pdc_tx_init(pdc_base, &mut packet, ptr::null_mut());
+            asf_pdc::pdc_enable_transfer(pdc_base, 0x00000100);
         }
-        Ok(())
+        Ok(SpiDmaWrite{lock: Some(lock)})
+    }
+
+    /// Check whether a write has completed.
+    pub fn write_finished(&self, _dmawrite: &SpiDmaWrite) -> bool {
+        let pdc_base = unsafe{bindgen_mcu::mcu_spi_pdc_base()} as *mut asf_pdc::Pdc;
+        unsafe{asf_pdc::pdc_read_tx_counter(pdc_base) == 0}
+    }
+
+    /// Clean up after a DMA write.
+    pub fn end_write(&self, mut dmawrite: SpiDmaWrite) {
+        while !self.write_finished(&dmawrite) {}
+        let pdc_base = unsafe{bindgen_mcu::mcu_spi_pdc_base()} as *mut asf_pdc::Pdc;
+        unsafe{asf_pdc::pdc_disable_transfer(pdc_base, 0x00000200);}
+        dmawrite.lock = None;
+    }
+}
+
+impl <'a> Drop for SpiDmaWrite<'a> {
+    fn drop(&mut self) {
+        if self.lock.is_some() {
+            panic!("SPI DMA lock went out of scope without calling end_write()");
+        }
     }
 }

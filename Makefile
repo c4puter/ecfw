@@ -55,6 +55,7 @@ OBJECTS = \
 	${ASF_UNF_DIR}/asf/drivers/twi/twi.o \
 	${ASF_UNF_DIR}/asf/drivers/spi/spi.o \
 	${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.o \
+	${ASF_UNF_DIR}/asf/drivers/pdc/pdc.o \
 	${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
 	${ASF_UNF_DIR}/asf/services/delay/sam/cycle_counter.o \
@@ -105,6 +106,7 @@ BINDGEN_SOURCES = \
 	asf_usart.rs:${ASF_UNF_DIR}/asf/drivers/usart/usart.h \
 	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
 	asf_hsmci.rs:${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.h \
+	asf_pdc.rs:${ASF_UNF_DIR}/asf/drivers/pdc/pdc.h \
 	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
 	lwext4_crc32.rs:lwext4/include/ext4_crc32.h \
 	lwext4_blockdev.rs:lwext4/include/ext4_blockdev.h \
