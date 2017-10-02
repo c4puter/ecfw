@@ -55,6 +55,10 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
+    Command{ name: "clkdiv",    f: cmd_clkdiv,      descr: "set clock divider N to VALUE" },
+    Command{ name: "clkrat",    f: cmd_clkrat,      descr: "set clock PLL ratio to N/M" },
+    Command{ name: "clkload",   f: cmd_clkload,     descr: "set clock load capacitance to PF" },
+
     Command{ name: "pwr_stat",  f: cmd_pwr_stat,    descr: "display status of SUPPLY" },
 
     Command{ name: "mount",     f: cmd_mount,       descr: "mount SD card" },
@@ -332,6 +336,50 @@ fn cmd_gpio_write(args: &[&str]) -> StdResult
     }
 
     Ok(())
+}
+
+fn cmd_clkdiv(args: &[&str]) -> StdResult
+{
+    if args.len() < 3 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let n_divider = try!(argv_parsed(args, 1, "N", u32::parseint));
+    let div_val = try!(argv_parsed(args, 1, "VALUE", u32::parseint));
+
+    if n_divider == 1 {
+        devices::CLOCK_SYNTH.y1div(div_val)
+    } else if n_divider == 2 {
+        devices::CLOCK_SYNTH.y2div(div_val)
+    } else if n_divider == 3 {
+        devices::CLOCK_SYNTH.y3div(div_val)
+    } else {
+        Err(ERR_ARG_RANGE)
+    }
+}
+
+fn cmd_clkrat(args: &[&str]) -> StdResult
+{
+    if args.len() < 3 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let num = try!(argv_parsed(args, 1, "N", u32::parseint));
+    let den = try!(argv_parsed(args, 1, "M", u32::parseint));
+
+    devices::CLOCK_SYNTH.ratio(num, den)?;
+    devices::CLOCK_SYNTH.usepll(true)
+}
+
+fn cmd_clkload(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let load = try!(argv_parsed(args, 1, "PF", u32::parseint));
+
+    devices::CLOCK_SYNTH.loadcap(load)
 }
 
 fn cmd_pwr_stat(args: &[&str]) -> StdResult
