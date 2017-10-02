@@ -111,4 +111,8 @@ error_table! {
     ERR_TWI_RXNACK:             "TWI: receive NACK";
     ERR_TWI_TXOVF:              "TWI: transmit overrun";
     ERR_TWI_TXNACK:             "TWI: transmit NACK";
+
+    ///////////////////////////////////////////////////////////////////
+    // Clock synthesizer
+    ERR_PLL_RANGE:              "PLL frequency out of range";
 }

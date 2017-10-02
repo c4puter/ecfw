@@ -22,6 +22,7 @@ pub mod gpio;
 pub mod ledmatrix;
 pub mod sd;
 pub mod tempsensor;
+pub mod clocksynth;
 pub mod twi;
 pub mod spi;
 pub mod gpt;
