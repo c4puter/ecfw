@@ -24,9 +24,21 @@ extern "C" {
 }
 
 #[no_mangle]
-pub extern fn __rust_alloc(size: usize, _align: usize, _err: *mut u8) -> *mut u8 {
-    let p = unsafe { pvPortMalloc(size) };
-    debug!(DEBUG_ALLOC, "allocate {} bytes at 0x{:08x}", size, (p as usize));
+pub extern fn __rust_alloc(size: usize, align: usize, _err: *mut u8) -> *mut u8
+{
+    if align > 8 {
+        panic!("alloc requested alignment greater than 8 ({})", align);
+    } else if align.count_ones() != 1 {
+        panic!("alloc requested alignment non-power-of-2 ({})", align);
+    }
+
+    // Size must be a multiple of 8 bytes or the FreeRTOS allocator can come
+    // unaligned. Gah.
+    let size_aligned = size + 7 & !7;
+
+    let p = unsafe { pvPortMalloc(size_aligned) };
+    debug!(DEBUG_ALLOC, "allocate {:4} bytes at 0x{:08x} (align {}, actual 8)",
+        size, (p as usize), align);
     p
 }
 
