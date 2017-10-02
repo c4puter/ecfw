@@ -31,6 +31,7 @@ debug_table! {
     DEBUG_RESET:        "reset",    true;
     DEBUG_FS:           "ext3fs",   true;
     DEBUG_ALLOC:        "alloc",    false;
+    DEBUG_CLOCK:        "clock",    false;
 }
 
 /// Table of all error messages.

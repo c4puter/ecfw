@@ -344,8 +344,8 @@ fn cmd_clkdiv(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let n_divider = try!(argv_parsed(args, 1, "N", u32::parseint));
-    let div_val = try!(argv_parsed(args, 1, "VALUE", u32::parseint));
+    let n_divider = argv_parsed(args, 1, "N", u32::parseint)?;
+    let div_val = argv_parsed(args, 2, "VALUE", u32::parseint)?;
 
     if n_divider == 1 {
         devices::CLOCK_SYNTH.y1div(div_val)
@@ -364,11 +364,12 @@ fn cmd_clkrat(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let num = try!(argv_parsed(args, 1, "N", u32::parseint));
-    let den = try!(argv_parsed(args, 1, "M", u32::parseint));
+    let num = argv_parsed(args, 1, "N", u32::parseint)?;
+    let den = argv_parsed(args, 2, "M", u32::parseint)?;
 
     devices::CLOCK_SYNTH.ratio(num, den)?;
-    devices::CLOCK_SYNTH.usepll(true)
+    devices::CLOCK_SYNTH.usepll(true)?;
+    Ok(())
 }
 
 fn cmd_clkload(args: &[&str]) -> StdResult

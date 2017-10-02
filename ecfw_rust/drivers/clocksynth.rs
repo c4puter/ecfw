@@ -38,40 +38,40 @@ impl<'a> ClockSynth<'a> {
     /// Set the Y1 output divider, from 1 to 1023
     pub fn y1div(&self, div: u32) -> StdResult
     {
-        if div > 1023 {
+        if div < 1 || div > 1023 {
             Err(ERR_NRANGE)
         } else {
             let reg02 = 0xb4 | ((div & 0x300) >> 8) as u8;
             let reg03 = (div & 0xff) as u8;
-            self.twi.lock().write(&[0x02], &[reg02, reg03])
+            self.twi.lock().write(&[0x02], &[2, reg02, reg03])
         }
     }
 
     /// Set the Y2 output divider, from 1 to 127
     pub fn y2div(&self, div: u32) -> StdResult
     {
-        if div > 127 {
+        if div < 1 || div > 127 {
             Err(ERR_NRANGE)
         } else {
             let mut reg16 = [0u8; 1];
             let mut twilock = self.twi.lock();
-            twilock.read(&[0x16], &mut reg16)?;
+            twilock.read(&[0x16 | 0x80], &mut reg16)?;
 
             reg16[0] &= 0x7f;
             reg16[0] |= div as u8;
 
-            twilock.write(&[0x16], &reg16)
+            twilock.write(&[0x16], &[1, reg16[0]])
         }
     }
 
     /// Set the Y3 output divider, from 1 to 127
     pub fn y3div(&self, div: u32) -> StdResult
     {
-        if div > 127 {
+        if div < 1 || div > 127 {
             Err(ERR_NRANGE)
         } else {
             let reg17 = div as u8;
-            self.twi.lock().write(&[0x17], &[reg17])
+            self.twi.lock().write(&[0x17], &[1, reg17])
         }
     }
 
@@ -82,7 +82,7 @@ impl<'a> ClockSynth<'a> {
             Err(ERR_NRANGE)
         } else {
             let reg05 = (pf << 3) as u8;
-            self.twi.lock().write(&[0x05], &[reg05])
+            self.twi.lock().write(&[0x05], &[1, reg05])
         }
     }
 
@@ -91,7 +91,7 @@ impl<'a> ClockSynth<'a> {
     {
         let mut reg14 = [0u8; 1];
         let mut twilock = self.twi.lock();
-        twilock.read(&[0x14], &mut reg14)?;
+        twilock.read(&[0x14 | 0x80], &mut reg14)?;
 
         if v {
             reg14[0] &= !0x80;
@@ -99,7 +99,7 @@ impl<'a> ClockSynth<'a> {
             reg14[0] |= 0x80;
         }
 
-        twilock.write(&[0x14], &reg14)?;
+        twilock.write(&[0x14], &[1, reg14[0]])?;
         Ok(())
     }
 
@@ -137,12 +137,21 @@ impl<'a> ClockSynth<'a> {
             150000000 ... 174999999 => 2,
             _ => 3 };
 
+        debug!(DEBUG_CLOCK,
+               "configuring PLL with P={}, N={}. N'={}, Q={}, R={}",
+                p, n, np, q, r);
+
         let reg18 = ((n & 0xff0) >> 4) as u8;
-        let reg19 = (((n & 0x00f) << 4) | ((r & 0xf0) >> 4)) as u8;
-        let reg1a = (((r & 0x0f) << 4) | ((q & 0x38) >> 3)) as u8;
+        let reg19 = (((n & 0x00f) << 4) | ((r & 0x1e0) >> 5)) as u8;
+        let reg1a = (((r & 0x1f) << 3) | ((q & 0x38) >> 3)) as u8;
         let reg1b = (((q & 0x07) << 5) | ((p & 0x03) << 2) | frange) as u8;
 
-        self.twi.lock().write(&[0x18], &[reg18, reg19, reg1a, reg1b])
+        let mut twilock = self.twi.lock();
+        twilock.write(&[0x18], &[1, reg18])?;
+        twilock.write(&[0x19], &[1, reg19])?;
+        twilock.write(&[0x1a], &[1, reg1a])?;
+        twilock.write(&[0x1b], &[1, reg1b])?;
+        Ok(())
     }
 }
 
