@@ -126,7 +126,7 @@ impl<'a> ClockSynth<'a> {
         // log2(16 * x) - 4 == log2(x)
         // This ensures sub-integer values are accounted for because I'm too
         // lazy to check whether they matter
-        let p = 4 - log2(16 * n / m) - 4;
+        let p = 4u32.saturating_sub(log2(16 * n / m).saturating_sub(4));
         let np = n * (1 << p);
         let q = np / m;
         let r = np - m * q;
@@ -134,7 +134,7 @@ impl<'a> ClockSynth<'a> {
         let frange = match freq {
             0 ... 124999999 => 0,
             125000000 ... 149999999 => 1,
-            150000000 ... 175000000 => 2,
+            150000000 ... 174999999 => 2,
             _ => 3 };
 
         let reg18 = ((n & 0xff0) >> 4) as u8;
