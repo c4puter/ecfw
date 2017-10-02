@@ -136,7 +136,7 @@ pub extern "C" fn main() -> i32 {
     debug_async!(DEBUG_ECBOOT, "");
     debug_async!(DEBUG_ECBOOT, "initialized EC core and USART");
 
-    os::Task::new(init_task, "init", 16000, 0);
+    os::Task::new(init_task, "init", 10000, 0);
 
     ec_io::flush_output();
     debug_async!(DEBUG_ECBOOT, "start scheduler and hand off to init task...");

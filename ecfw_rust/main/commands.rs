@@ -27,6 +27,7 @@ use devices::pins::*;
 use main::{reset, sysman};
 use messages::*;
 use core::fmt;
+use alloc::vec;
 
 pub struct Command<'a> {
     pub name: &'a str,
@@ -549,8 +550,9 @@ fn cmd_spi_dump(args: &[&str]) -> StdResult
     let path = args[1];
     let mut file = drivers::ext4::fopen_expand(path, drivers::ext4::OpenFlags::Read)?;
 
-    let mut buf1 = [0u8; 4096];
-    let mut buf2 = [0u8; 4096];
+    let mut buf1 = vec::from_elem(0u8, 4096);
+    let mut buf2 = vec::from_elem(0u8, 4096);
+
     let mut wr1 = None;
 
     loop {

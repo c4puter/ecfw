@@ -20,6 +20,7 @@
 extern "C" {
     fn pvPortMalloc(sz: usize) -> *mut u8;
     fn vPortFree(pv: *mut u8);
+    fn memset(p: *mut u8, val: i32, size: usize) -> *mut u8;
 }
 
 #[no_mangle]
@@ -27,6 +28,12 @@ pub extern fn __rust_alloc(size: usize, _align: usize, _err: *mut u8) -> *mut u8
     let p = unsafe { pvPortMalloc(size) };
     debug!(DEBUG_ALLOC, "allocate {} bytes at 0x{:08x}", size, (p as usize));
     p
+}
+
+#[no_mangle]
+pub extern fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8) -> *mut u8 {
+    let p = __rust_alloc(size, align, err);
+    unsafe { memset(p, 0, size) }
 }
 
 #[no_mangle]
