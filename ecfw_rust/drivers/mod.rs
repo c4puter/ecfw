@@ -23,6 +23,7 @@ pub mod ledmatrix;
 pub mod sd;
 pub mod tempsensor;
 pub mod twi;
+pub mod spi;
 pub mod gpt;
 pub mod power;
 pub mod ftrans;

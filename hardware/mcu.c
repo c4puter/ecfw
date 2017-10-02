@@ -21,6 +21,7 @@
 #include <asf/boards/board.h>
 #include <asf/services/ioport/ioport.h>
 #include <asf/services/clock/sysclk.h>
+#include <asf/drivers/spi/spi.h>
 #include <FreeRTOS.h>
 #include "mcu.h"
 
@@ -118,6 +119,27 @@ void mcu_set_irq_prio(int irqn, int preempt, int sub)
 {
     int g = NVIC_GetPriorityGrouping();
     NVIC_SetPriority(irqn, NVIC_EncodePriority(g, preempt, sub));
+}
+
+void mcu_init_spi(void)
+{
+    spi_enable_clock(SPI);
+    spi_reset(SPI);
+    spi_set_master_mode(SPI);
+    spi_disable_mode_fault_detect(SPI);
+    spi_disable_loopback(SPI);
+    spi_set_transfer_delay(SPI, 0, 0, 0);
+    spi_set_bits_per_transfer(SPI, 0, SPI_CSR_BITS_8_BIT);
+    spi_set_baudrate_div(SPI, 0, 16);
+    spi_configure_cs_behavior(SPI, 0, SPI_CS_KEEP_LOW);
+    spi_set_clock_polarity(SPI, 0, 0);
+    spi_set_clock_phase(SPI, 0, 1);
+    spi_enable(SPI);
+}
+
+bool mcu_spi_write(uint8_t b)
+{
+    return spi_write(SPI, b, 0, 0) != SPI_OK;
 }
 
 /*

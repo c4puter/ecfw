@@ -60,8 +60,8 @@ pin_table!{
     CPU_SUSP,           SamGpio, port => PIOC, pin => 27, mode => Output, default => false, invert => false;
     FAN_PWM,            SamGpio, port => PIOA, pin => 22, mode => Output, default => false, invert => false;
     FAN_TACH,           SamGpio, port => PIOA, pin => 15, mode => Input,  default => false, invert => false;
-    FPGA_CCLK,          SamGpio, port => PIOA, pin => 14, mode => Output, default => false, invert => false;
-    FPGA_DATA,          SamGpio, port => PIOA, pin => 13, mode => Output, default => false, invert => false;
+    FPGA_CCLK,          SamGpio, port => PIOA, pin => 14, mode => PerA,   default => false, invert => false;
+    FPGA_DATA,          SamGpio, port => PIOA, pin => 13, mode => PerA,   default => false, invert => false;
     FPGA_DONE0,         SamGpio, port => PIOA, pin =>  8, mode => Input,  default => false, invert => false;
     FPGA_DONE1,         SamGpio, port => PIOA, pin =>  7, mode => Input,  default => false, invert => false;
     FPGA_DONE2,         SamGpio, port => PIOA, pin =>  6, mode => Input,  default => false, invert => false;

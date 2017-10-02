@@ -77,6 +77,10 @@ pub fn init_task()
     devices::twi::TWI0.init(400000).unwrap();
 
     ec_io::flush_output();
+    debug!(DEBUG_ECBOOT, "initialize SPI");
+    devices::SPI.init().unwrap();
+
+    ec_io::flush_output();
     debug!(DEBUG_ECBOOT, "initialize GPIO");
     for &pin in devices::pins::PIN_TABLE {
         pin.init();

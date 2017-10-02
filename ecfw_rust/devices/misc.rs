@@ -21,6 +21,7 @@ use os::{RwLock, Mutex};
 use drivers::ledmatrix::LedMatrix;
 use drivers::sd::Sd;
 use drivers::tempsensor::TempSensor;
+use drivers::spi::Spi;
 use devices::twi;
 
 pub static MATRIX: RwLock<LedMatrix> = RwLock::new(LedMatrix::new(&twi::U801));
@@ -30,3 +31,5 @@ pub static SD: Mutex<Sd> = Mutex::new(Sd::new(0));
 pub static SENSOR_LOGIC: TempSensor = TempSensor::new(&twi::LM75B_LOGIC);
 
 pub static SENSOR_AMBIENT: TempSensor = TempSensor::new(&twi::LM75B_AMBIENT);
+
+pub static SPI: Spi = Spi::new();

@@ -50,6 +50,8 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "i2c_read",  f: cmd_i2c_read,    descr: "read I2C from ADDR at LOCATION, N bytes" },
     Command{ name: "i2c_write", f: cmd_i2c_write,   descr: "write I2C to ADDR at LOCATION, BYTES" },
 
+    Command{ name: "spi_write", f: cmd_spi_write,   descr: "write BYTES to SPI" },
+
     Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
@@ -63,6 +65,7 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
     Command{ name: "ls",        f: cmd_ls,          descr: "list PATH" },
     Command{ name: "hd",        f: cmd_hd,          descr: "hexdump the first block of PATH" },
+    Command{ name: "spi_dump",  f: cmd_spi_dump,    descr: "dump PATH to SPI" },
     Command{ name: "readlink",  f: cmd_readlink,    descr: "readlink" },
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
     Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer" },
@@ -283,6 +286,23 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
     Ok(())
 }
 
+fn cmd_spi_write(args: &[&str]) -> StdResult
+{
+    if args.len() < 1 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let mut buffer = [0 as u8; 16];
+    let n = args.len() - 1;
+    for i in 0..n {
+        let arg = try!(argv_parsed(args, i + 1, "BYTES", u8::parseint));
+        buffer[i] = arg;
+    }
+
+    try!(devices::SPI.write(&buffer[0..n]));
+    Ok(())
+}
+
 fn cmd_gpio_read(args: &[&str]) -> StdResult
 {
     if args.len() < 2 {
@@ -487,6 +507,30 @@ fn cmd_hd(args: &[&str]) -> StdResult
     let bytes = try!(file.read(&mut buf));
 
     hexprint(&buf[0..bytes]);
+    Ok(())
+}
+
+fn cmd_spi_dump(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let path = args[1];
+    let mut file = drivers::ext4::fopen_expand(path, drivers::ext4::OpenFlags::Read)?;
+
+    let mut buf = [0u8; 512];
+
+    loop {
+        let n_read = try!(file.read(&mut buf));
+
+        if n_read == 0 {
+            break;
+        }
+
+        try!(devices::SPI.write(&buf[0..n_read]));
+    }
+
     Ok(())
 }
 

@@ -36,4 +36,8 @@ void mcu_enable_irq(int irqn);
 void mcu_disable_irq(int irqn);
 void mcu_set_irq_prio(int irqn, int preempt, int sub);
 
+void mcu_init_spi(void);
+// return true on timeout
+bool mcu_spi_write(uint8_t b);
+
 #endif // MCU_H
