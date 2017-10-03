@@ -154,6 +154,16 @@ pub fn umount(mount_point: &str) -> StdResult
     Ok(())
 }
 
+/// Flush a filesystem's cache.
+pub fn sync(mount_point: &str) -> StdResult
+{
+    let mut alloc = StrAlloc::new();
+    let c_mp = try!(alloc.nulterm(mount_point)).as_ptr() as *const i8;
+
+    debug!(DEBUG_FS, "flush cache on \"{}\"", mount_point);
+    to_stdresult(unsafe{lwext4::ext4_cache_flush(c_mp)})
+}
+
 /// Open a directory.
 pub fn dir_open(path: &str) -> Result<Dir,Error>
 {

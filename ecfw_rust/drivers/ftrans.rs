@@ -84,6 +84,10 @@ impl FTrans {
             // Close the currently open file.
             Some("close") => self.do_close(&mut iter),
 
+            // sync
+            // Flush the filesystem cache
+            Some("sync") => self.do_sync(&mut iter),
+
             // read
             // Read 512 bytes (or whatever is left), moving the insertion point.
             // Returns as:
@@ -179,6 +183,17 @@ impl FTrans {
         }
 
         Ok(())
+    }
+
+    fn do_sync<'a, I>(&mut self, _iter: &'a mut I) -> StdResult
+            where I: Iterator<Item=&'a str>
+    {
+        if let Err(e) = ext4::sync("/") {
+            Err(e)
+        } else {
+            println_async!("ack");
+            Ok(())
+        }
     }
 
     fn do_read<'a, I>(&mut self, _iter: &'a mut I) -> StdResult

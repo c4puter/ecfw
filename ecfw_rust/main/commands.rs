@@ -62,6 +62,7 @@ pub static COMMAND_TABLE: &[Command] = &[
 
     Command{ name: "mount",     f: cmd_mount,       descr: "mount SD card" },
     Command{ name: "umount",    f: cmd_umount,      descr: "unmount SD card" },
+    Command{ name: "sync",      f: cmd_sync,        descr: "flush filesystem cache" },
     Command{ name: "sdinfo",    f: cmd_sdinfo,      descr: "print SD card info" },
     Command{ name: "readblock", f: cmd_readblock,   descr: "read block N from card" },
     Command{ name: "writeblock",f: cmd_writeblock,  descr: "write to block N, DATA..." },
@@ -420,6 +421,11 @@ fn cmd_umount(_args: &[&str]) -> StdResult
     }
     CARDEN.set(false);
     Ok(())
+}
+
+fn cmd_sync(_args: &[&str]) -> StdResult
+{
+    drivers::ext4::sync("/")
 }
 
 fn cmd_sdinfo(_args: &[&str]) -> StdResult
