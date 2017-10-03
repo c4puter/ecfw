@@ -61,6 +61,10 @@ pub fn shutdown_supplies_cleanly()
 {
     let _lock = drivers::power::POWER_MUTEX.lock();
 
+    unsafe {
+        devices::CLOCK_SYNTH.disable_mck();
+    }
+
     static SUPPLIES_IN_ORDER: &[&(devices::supplies::Supply + Sync)] = &[
         &devices::supplies::SW1,
         &devices::supplies::SW2,

@@ -209,12 +209,24 @@ fn do_boot() -> StdResult
         debug!(DEBUG_SYSMAN, "reached S0");
     }
 
+    debug!(DEBUG_SYSMAN, "initialize clock synthesizer");
+    devices::CLOCK_SYNTH.y1div(25)?;
+    devices::CLOCK_SYNTH.y2div(3)?;
+    devices::CLOCK_SYNTH.y3div(2)?;
+    devices::CLOCK_SYNTH.ratio(75, 8)?;
+    devices::CLOCK_SYNTH.usepll(true)?;
+    unsafe {
+        devices::CLOCK_SYNTH.enable_mck();
+    }
+
     POWER_R.set(false);
     try!(devices::MATRIX.write().set_full_brightness());
     POWER_STATE.store(0, Ordering::SeqCst);
+    unsafe {os::freertos::suspend_all();}
     SPEAKER.set(true);
-    os::delay(125);
+    os::susp_safe_delay(125);
     SPEAKER.set(false);
+    unsafe {os::freertos::resume_all();}
     Ok(())
 }
 
@@ -222,6 +234,10 @@ fn do_shutdown() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "shutdown");
     POWER_R.set(true);
+
+    unsafe {
+        devices::CLOCK_SYNTH.disable_mck();
+    }
 
     if let Err(e) = transition_s3_from_s0() {
         POWER_G.set(false);

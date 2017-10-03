@@ -70,7 +70,7 @@ extern "C" {
         xTimeIncrement: u32);
     fn xTaskGetTickCount() -> u32;
     fn vTaskSuspendAll();
-    fn vTaskResumeAll();
+    fn xTaskResumeAll() -> usize;
     fn xTaskGetCurrentTaskHandle() -> TaskHandle;
 
     // Notification functions
@@ -190,7 +190,7 @@ pub unsafe fn suspend_all() {
 }
 
 pub unsafe fn resume_all() {
-    vTaskResumeAll();
+    xTaskResumeAll();
 }
 
 /// Get the handle of the currently running task

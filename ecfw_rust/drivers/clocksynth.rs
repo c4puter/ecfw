@@ -20,6 +20,9 @@
 use drivers::twi::TwiDevice;
 use messages::*;
 use os::Mutex;
+use os;
+use rustsys::ec_io;
+use bindgen_mcu;
 
 pub struct ClockSynth<'a> {
     twi: &'a Mutex<TwiDevice<'a>>,
@@ -152,6 +155,42 @@ impl<'a> ClockSynth<'a> {
         twilock.write(&[0x1a], &[1, reg1a])?;
         twilock.write(&[0x1b], &[1, reg1b])?;
         Ok(())
+    }
+
+    /// Switch to the input from the clock synthesizer as this MCU's clock
+    /// source. This is VERY unsafe: the resulting clock frequency must 1)
+    /// be valid within the microcontroller's requirements (subject to the
+    /// external crystal frequency, the values passed to the synthesizer,
+    /// and the internal configuration in conf_clock.h), and 2) be equal to
+    /// BOARD_MCK if you don't want serial baud rates to go wonky.
+    ///
+    /// This PANICs if some of its checks fail, and doesn't check everything.
+    ///
+    /// Beware.
+    pub unsafe fn enable_mck(&self)
+    {
+        let mut twilock = self.twi.lock();
+        debug!(DEBUG_CLOCK, "switching to external clock");
+        ec_io::flush_output();
+        os::freertos::suspend_all();
+        let mut buf = [0u8];
+        if let Err(_) = twilock.read(&[0x80], &mut buf) {
+            panic!("Tried to enable external clock when main I2C is down");
+        }
+
+        bindgen_mcu::mcu_use_external_clock(true);
+        os::freertos::resume_all();
+    }
+
+    /// Switch back to the internal clock. This is safer, but you're still
+    /// messing with clock sources.
+    pub unsafe fn disable_mck(&self)
+    {
+        debug!(DEBUG_CLOCK, "switching to internal clock");
+        ec_io::flush_output();
+        os::freertos::suspend_all();
+        bindgen_mcu::mcu_use_external_clock(false);
+        os::freertos::resume_all();
     }
 }
 
