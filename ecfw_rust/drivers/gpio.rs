@@ -79,7 +79,7 @@ impl Gpio for SamGpio {
 
     fn set(&self, v: bool) {
         unsafe {
-            let inv_v = if self.invert {!v} else {v};
+            let inv_v = v ^ self.invert;
             bindgen_mcu::mcu_set_pin_level(self.port + self.pin, inv_v);
         }
     }
@@ -87,7 +87,7 @@ impl Gpio for SamGpio {
     fn get(&self) -> bool {
         unsafe {
             let v = bindgen_mcu::mcu_get_pin_level(self.port + self.pin);
-            if self.invert {!v} else {v}
+            v ^ self.invert
         }
     }
 
@@ -123,7 +123,7 @@ impl<'a> Gpio for PcfGpio<'a> {
         // MSB................LSB  MSB.................LSB
         // 7  6  5  4  3  2  1  0  17 16 15 14 13 12 11 10
 
-        let inv_v = if self.invert {!v} else {v};
+        let inv_v = v ^ self.invert;
 
         let mut data = [0 as u8; 2];
         let pinbit =
@@ -164,7 +164,7 @@ impl<'a> Gpio for PcfGpio<'a> {
         let data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 
         let v = data_u16 & pinbit != 0;
-        if self.invert { !v } else { v }
+        v ^ self.invert
     }
 
     fn name(&self) -> &'static str { self.name }
