@@ -66,6 +66,30 @@ uint32_t get_stack_unused(void)
     return (uint32_t)i - (uint32_t)&_sstack;
 }
 
+void mcu_use_external_clock(bool ext)
+{
+    struct pll_config pllcfg;
+
+    pmc_switch_mck_to_mainck(1);
+
+    if (ext) {
+        pmc_osc_bypass_main_xtal();
+        pll_enable_source(CONFIG_PLL1_SOURCE);
+        pll_config_defaults(&pllcfg, 1);
+        pll_enable(&pllcfg, 1);
+        pll_wait_for_lock(1);
+        pmc_switch_mck_to_pllbck(CONFIG_SYSCLK_PRES);
+        pll_disable(0);
+    } else {
+        pll_enable_source(CONFIG_PLL0_SOURCE);
+        pll_config_defaults(&pllcfg, 0);
+        pll_enable(&pllcfg, 0);
+        pll_wait_for_lock(0);
+        pmc_switch_mck_to_pllack(CONFIG_SYSCLK_PRES);
+        pll_disable(1);
+    }
+}
+
 unsigned int mcu_get_peripheral_hz(void)
 {
     return sysclk_get_peripheral_hz();

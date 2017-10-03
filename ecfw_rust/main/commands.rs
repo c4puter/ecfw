@@ -25,6 +25,7 @@ use devices;
 use data::{ParseInt, hexprint, StringBuilder};
 use devices::pins::*;
 use main::{reset, sysman};
+use bindgen_mcu;
 use messages::*;
 use core::fmt;
 use alloc::vec;
@@ -57,6 +58,8 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "clkdiv",    f: cmd_clkdiv,      descr: "set clock divider N to VALUE" },
     Command{ name: "clkrat",    f: cmd_clkrat,      descr: "set clock PLL ratio to N/M" },
     Command{ name: "clkload",   f: cmd_clkload,     descr: "set clock load capacitance to PF" },
+    Command{ name: "extclk",    f: cmd_extclk,      descr: "use external clock" },
+    Command{ name: "intclk",    f: cmd_intclk,      descr: "use internal clock" },
 
     Command{ name: "pwr_stat",  f: cmd_pwr_stat,    descr: "display status of SUPPLY" },
 
@@ -363,6 +366,18 @@ fn cmd_clkload(args: &[&str]) -> StdResult
     let load = try!(argv_parsed(args, 1, "PF", u32::parseint));
 
     devices::CLOCK_SYNTH.loadcap(load)
+}
+
+fn cmd_extclk(_args: &[&str]) -> StdResult
+{
+    unsafe{bindgen_mcu::mcu_use_external_clock(true);}
+    Ok(())
+}
+
+fn cmd_intclk(_args: &[&str]) -> StdResult
+{
+    unsafe{bindgen_mcu::mcu_use_external_clock(false);}
+    Ok(())
 }
 
 fn cmd_pwr_stat(args: &[&str]) -> StdResult

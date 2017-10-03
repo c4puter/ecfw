@@ -27,6 +27,8 @@ void mcu_init(void);
 void write_stack_canaries(void);
 uint32_t get_stack_unused(void);
 
+void mcu_use_external_clock(bool ext);
+
 unsigned int mcu_get_peripheral_hz(void);
 bool mcu_get_pin_level(unsigned int pin);
 void mcu_set_pin_level(unsigned int pin, bool value);
