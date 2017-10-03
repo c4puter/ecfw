@@ -92,7 +92,7 @@ pub trait Supply : Sync {
         let mut count = 0usize;
 
         for &dep in self.deps() {
-            if try!(dep.status()) != SupplyStatus::Up {
+            if dep.status()? != SupplyStatus::Up {
                 count += 1;
             }
         }
@@ -110,7 +110,7 @@ pub trait Supply : Sync {
                 let dep_ptr = dep as *const Supply;
 
                 if dep_ptr == self_ptr {
-                    if try!(supply.status()) != SupplyStatus::Down {
+                    if supply.status()? != SupplyStatus::Down {
                         count += 1;
                     }
                 }
@@ -166,7 +166,7 @@ impl<'a> Supply for VrmSupply<'a> {
     fn status(&self) -> Result<SupplyStatus, Error> {
         let up_bits = VrmSupply::CTRL_BIT_ENABLED | VrmSupply::CTRL_BIT_POWER_GOOD;
         let mut buf = [0u8; 1];
-        try!(VRM901.lock().read(&[self.vrm_id], &mut buf));
+        VRM901.lock().read(&[self.vrm_id], &mut buf)?;
         let up = buf[0] & up_bits == up_bits;
 
         if self.transitioning.load(Ordering::Relaxed) {
@@ -182,7 +182,7 @@ impl<'a> Supply for VrmSupply<'a> {
     }
 
     fn up(&self) -> StdResult {
-        assert!(try!(self.count_deps_not_up()) == 0);
+        assert!(self.count_deps_not_up()? == 0);
 
         match self.disch {
             Some((gpio, _wait)) => {
@@ -190,16 +190,16 @@ impl<'a> Supply for VrmSupply<'a> {
             },
             None => ()
         }
-        try!(VRM901.lock().write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED]));
+        VRM901.lock().write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED])?;
         self.set_state.store(true, Ordering::SeqCst);
         self.transitioning.store(true, Ordering::SeqCst);
         Ok(())
     }
 
     fn down(&self) -> StdResult {
-        assert!(try!(self.count_rev_deps_not_down()) == 0);
+        assert!(self.count_rev_deps_not_down()? == 0);
 
-        try!(VRM901.lock().write(&[self.vrm_id], &[0]));
+        VRM901.lock().write(&[self.vrm_id], &[0])?;
 
         self.set_state.store(false, Ordering::Relaxed);
         self.transitioning.store(false, Ordering::Relaxed);
@@ -245,7 +245,7 @@ impl<'a> Supply for GpioSwitchedSupply<'a> {
     }
 
     fn up(&self) -> StdResult {
-        assert!(try!(self.count_deps_not_up()) == 0);
+        assert!(self.count_deps_not_up()? == 0);
 
         if let Some((disgpio, _wait)) = self.disch {
             disgpio.set(false);
@@ -256,7 +256,7 @@ impl<'a> Supply for GpioSwitchedSupply<'a> {
     }
 
     fn down(&self) -> StdResult {
-        assert!(try!(self.count_rev_deps_not_down()) == 0);
+        assert!(self.count_rev_deps_not_down()? == 0);
 
         let mut max_wait = self.wait_ticks;
 

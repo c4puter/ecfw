@@ -19,12 +19,12 @@
 
 //! GPT reader module
 
+use data::utf;
 use drivers::sd::*;
 use messages::*;
 use os::Mutex;
 use core::fmt;
 use core::str;
-use core::char;
 
 pub const BOOT_GUID: Guid = Guid::from_raw(
     0x7cca2c66, 0xb705, 0x58cb, 0xb9d9, 0xe16a166b84d9);
@@ -95,7 +95,7 @@ impl<'a> Gpt<'a> {
     /// Read the initial GPT header from the card
     pub fn read_header(&mut self) -> StdResult
     {
-        try!(self.buffer_block(GPT_HEADER_LBA));
+        self.buffer_block(GPT_HEADER_LBA)?;
 
         let sig = read_be(&self.buffer[0..8]);
         if sig != SIGNATURE {
@@ -134,8 +134,8 @@ impl<'a> Gpt<'a> {
         let block_offset = self.entry_len * (ientry % entries_per_block);
         let entry_end = block_offset + self.entry_len;
 
-        try!(self.buffer_block(block_index));
-        try!(gptentry.load(&self.buffer[block_offset..entry_end]));
+        self.buffer_block(block_index)?;
+        gptentry.load(&self.buffer[block_offset..entry_end])?;
         Ok(())
     }
 
@@ -145,7 +145,7 @@ impl<'a> Gpt<'a> {
     pub fn read_boot(&mut self, gptentry: &mut GptEntry) -> StdResult
     {
         for i in 0..self.number_entries() {
-            try!(self.read_entry(i, gptentry));
+            self.read_entry(i, gptentry)?;
 
             if gptentry.valid() {
                 if gptentry.type_guid == BOOT_GUID {
@@ -261,8 +261,8 @@ impl GptEntry {
         self.end_lba = read_le(&data[0x28..0x30]) as usize;
         self.attributes = read_le(&data[0x30..0x38]) as u32;
 
-        self.name_len = try!(
-            read_utf16le_into_utf8(&mut self.name_buf, &data[0x38..data.len()]));
+        self.name_len =
+            utf::read_utf16le_into_utf8(&mut self.name_buf, &data[0x38..data.len()])?;
         Ok(())
     }
 
@@ -302,70 +302,3 @@ fn read_le(data: &[u8]) -> u64
     read_be(data).swap_bytes() >> (8 * (8 - data.len()))
 }
 
-/// Read UTF-16LE data into a UTF-8 buffer. Processes the entire length, but
-/// returns the number of consecutive nonzero bytes written.
-///
-/// Errors on invalid codepoints, including orphaned surrogates. Asserts that
-/// dest is long enough (must be at least src.len()*2).
-///
-/// Warning - this is not necessarily standard-compliant: it does not guarantee
-/// errors on invalid conditions, only when it can't figure out what to do.
-/// In particular, a single isolated high surrogate will be silently dropped
-/// (whereas a single isolated low surrogate will cause complaint).
-fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, Error>
-{
-    assert!(dest.len() >= src.len() * 2);
-
-    let mut prev_surrogate = 0u32;
-    let mut codepoint = 0u32;
-    let mut idest = 0usize;
-    let mut first_zero: Option<usize> = None;
-
-    for isrc in 0..src.len() {
-        if isrc % 2 == 0 {
-            codepoint = src[isrc] as u32;
-            continue;
-        }
-
-        codepoint |= (src[isrc] as u32) << 8;
-
-        if codepoint >= 0xD800 && codepoint <= 0xDBFF {
-            // high surrogate
-            prev_surrogate = codepoint;
-            continue;
-        }
-        if codepoint >= 0xDC00 && codepoint <= 0xDFFF {
-            // low surrogate
-            if prev_surrogate == 0 {
-                return Err(ERR_UTF16_ORPHAN);
-            } else {
-                codepoint = 0x10000 +
-                    ((prev_surrogate & 0x03ff) << 10) +
-                    (codepoint & 0x03ff);
-            }
-        }
-        if codepoint > 0x10FFFF {
-            return Err(ERR_CODEPOINT);
-        }
-
-        if codepoint == 0 && first_zero.is_none() {
-            first_zero = Some(idest);
-        }
-
-        idest += write_one_utf8(dest, idest, codepoint);
-    }
-
-    match first_zero {
-        Some(x) => { Ok(x) },
-        None    => { Ok(idest) },
-    }
-}
-
-/// Write a single codepoint into a buffer, returning the number of bytes written
-fn write_one_utf8(dest: &mut [u8], idest: usize, codepoint: u32) -> usize
-{
-    let c = unsafe{char::from_u32_unchecked(codepoint)};
-    let destlen = dest.len();
-    let s = c.encode_utf8(&mut dest[idest..destlen]);
-    s.len()
-}

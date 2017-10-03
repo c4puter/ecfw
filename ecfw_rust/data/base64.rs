@@ -101,7 +101,7 @@ pub fn decode(dest: &mut [u8], src: &[u8]) -> Result<usize,Error>
 
         for symbol in i {
             as_bits <<= 6;
-            as_bits |= try!(dec_one_symbol(*symbol)) as u32;
+            as_bits |= dec_one_symbol(*symbol)? as u32;
         }
 
         dest[written + 0] = ((as_bits & 0xff0000) >> 16) as u8;

@@ -73,72 +73,72 @@ supply_table!{
 }
 
 pub fn transition_s3_from_s5() -> StdResult {
-    try!(BUCK_5VB.up());
-    try!(BUCK_5VA.up());
+    BUCK_5VB.up()?;
+    BUCK_5VA.up()?;
 
-    try!(BUCK_5VB.wait_status(SupplyStatus::Up));
-    try!(BUCK_1V5.up());
+    BUCK_5VB.wait_status(SupplyStatus::Up)?;
+    BUCK_1V5.up()?;
 
-    try!(BUCK_5VA.wait_status(SupplyStatus::Up));
-    try!(BUCK_1V2.up());
+    BUCK_5VA.wait_status(SupplyStatus::Up)?;
+    BUCK_1V2.up()?;
 
-    try!(BUCK_1V5.wait_status(SupplyStatus::Up));
-    try!(LDO_S3.up());
+    BUCK_1V5.wait_status(SupplyStatus::Up)?;
+    LDO_S3.up()?;
 
-    try!(BUCK_1V2.wait_status(SupplyStatus::Up));
-    try!(LDO_S3.wait_status(SupplyStatus::Up));
+    BUCK_1V2.wait_status(SupplyStatus::Up)?;
+    LDO_S3.wait_status(SupplyStatus::Up)?;
 
     Ok(())
 }
 
 pub fn transition_s0_from_s3() -> StdResult {
-    try!(BUCK_3VA.up());
-    try!(LDO_S0.up());
-    try!(INV_N12.up());
-    try!(SW1.up());
-    try!(SW2.up());
-    try!(SW3.up());
+    BUCK_3VA.up()?;
+    LDO_S0.up()?;
+    INV_N12.up()?;
+    SW1.up()?;
+    SW2.up()?;
+    SW3.up()?;
 
-    try!(BUCK_3VA.wait_status(SupplyStatus::Up));
-    try!(LDO_S0.wait_status(SupplyStatus::Up));
-    try!(INV_N12.wait_status(SupplyStatus::Up));
-    try!(SW1.wait_status(SupplyStatus::Up));
-    try!(SW2.wait_status(SupplyStatus::Up));
-    try!(SW3.wait_status(SupplyStatus::Up));
+    BUCK_3VA.wait_status(SupplyStatus::Up)?;
+    LDO_S0.wait_status(SupplyStatus::Up)?;
+    INV_N12.wait_status(SupplyStatus::Up)?;
+    SW1.wait_status(SupplyStatus::Up)?;
+    SW2.wait_status(SupplyStatus::Up)?;
+    SW3.wait_status(SupplyStatus::Up)?;
     Ok(())
 }
 
 pub fn transition_s3_from_s0() -> StdResult {
-    try!(SW3.down());
-    try!(SW2.down());
-    try!(SW1.down());
-    try!(INV_N12.down());
-    try!(LDO_S0.down());
-    try!(BUCK_3VA.down());
+    SW3.down()?;
+    SW2.down()?;
+    SW1.down()?;
+    INV_N12.down()?;
+    LDO_S0.down()?;
+    BUCK_3VA.down()?;
 
-    try!(SW3.wait_status(SupplyStatus::Down));
-    try!(SW2.wait_status(SupplyStatus::Down));
-    try!(SW1.wait_status(SupplyStatus::Down));
-    try!(INV_N12.wait_status(SupplyStatus::Down));
-    try!(LDO_S0.wait_status(SupplyStatus::Down));
-    try!(BUCK_3VA.wait_status(SupplyStatus::Down));
+    SW3.wait_status(SupplyStatus::Down)?;
+    SW2.wait_status(SupplyStatus::Down)?;
+    SW1.wait_status(SupplyStatus::Down)?;
+    INV_N12.wait_status(SupplyStatus::Down)?;
+    LDO_S0.wait_status(SupplyStatus::Down)?;
+    BUCK_3VA.wait_status(SupplyStatus::Down)?;
     Ok(())
 }
 
 pub fn transition_s5_from_s3() -> StdResult {
-    try!(LDO_S3.down());
-    try!(BUCK_1V2.down());
+    LDO_S3.down()?;
+    BUCK_1V2.down()?;
 
-    try!(LDO_S3.wait_status(SupplyStatus::Down));
-    try!(BUCK_1V5.down());
+    LDO_S3.wait_status(SupplyStatus::Down)?;
+    BUCK_1V5.down()?;
 
-    try!(BUCK_1V2.wait_status(SupplyStatus::Down));
-    try!(BUCK_5VA.down());
+    BUCK_1V2.wait_status(SupplyStatus::Down)?;
+    BUCK_5VA.down()?;
 
-    try!(BUCK_1V5.wait_status(SupplyStatus::Down));
-    try!(BUCK_5VB.down());
+    BUCK_1V5.wait_status(SupplyStatus::Down)?;
+    BUCK_5VB.down()?;
 
-    try!(BUCK_5VA.wait_status(SupplyStatus::Down));
-    try!(BUCK_5VB.wait_status(SupplyStatus::Down));
+    BUCK_5VA.wait_status(SupplyStatus::Down)?;
+    BUCK_5VB.wait_status(SupplyStatus::Down)?;
     Ok(())
 }

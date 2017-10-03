@@ -79,7 +79,7 @@ impl IoError {
 pub fn register_device(bd: &mut SdBlockDev, dev_name: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_name = try!(alloc.nulterm(dev_name)).as_ptr() as *const i8;
+    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "register block device \"{}\"", dev_name);
     to_stdresult(unsafe{lwext4::ext4_device_register(bd.to_ptr(), c_name)})
@@ -89,7 +89,7 @@ pub fn register_device(bd: &mut SdBlockDev, dev_name: &str) -> StdResult
 pub fn unregister_device(dev_name: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_name = try!(alloc.nulterm(dev_name)).as_ptr() as *const i8;
+    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "unregister block device \"{}\"", dev_name);
 
@@ -110,11 +110,11 @@ pub fn mount(dev_name: &str, mount_point: &str, read_only: bool) -> StdResult
 {
     let journaled;
     let mut alloc = StrAlloc::new();
-    let c_name = try!(alloc.nulterm(dev_name)).as_ptr() as *const i8;
-    let c_mp = try!(alloc.nulterm(mount_point)).as_ptr() as *const i8;
+    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
+    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "mount \"{}\" as \"{}\"", dev_name, mount_point);
-    try!(to_stdresult(unsafe{lwext4::ext4_mount(c_name, c_mp, read_only)}));
+    to_stdresult(unsafe{lwext4::ext4_mount(c_name, c_mp, read_only)})?;
 
     debug!(DEBUG_FS, "recover journal on \"{}\"", mount_point);
     match to_stdresult(unsafe{lwext4::ext4_recover(c_mp)}) {
@@ -128,10 +128,10 @@ pub fn mount(dev_name: &str, mount_point: &str, read_only: bool) -> StdResult
 
     if journaled {
         debug!(DEBUG_FS, "start journal on \"{}\"", mount_point);
-        try!(to_stdresult(unsafe{lwext4::ext4_journal_start(c_mp)}));
+        to_stdresult(unsafe{lwext4::ext4_journal_start(c_mp)})?;
     }
 
-    try!(to_stdresult(unsafe{lwext4::ext4_cache_write_back(c_mp, true)}));
+    to_stdresult(unsafe{lwext4::ext4_cache_write_back(c_mp, true)})?;
 
     Ok(())
 }
@@ -140,16 +140,16 @@ pub fn mount(dev_name: &str, mount_point: &str, read_only: bool) -> StdResult
 pub fn umount(mount_point: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_mp = try!(alloc.nulterm(mount_point)).as_ptr() as *const i8;
+    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "flush cache on \"{}\"", mount_point);
-    try!(to_stdresult(unsafe{lwext4::ext4_cache_write_back(c_mp, false)}));
+    to_stdresult(unsafe{lwext4::ext4_cache_write_back(c_mp, false)})?;
 
     debug!(DEBUG_FS, "stop journal on \"{}\", if any", mount_point);
-    try!(to_stdresult(unsafe{lwext4::ext4_journal_stop(c_mp)}));
+    to_stdresult(unsafe{lwext4::ext4_journal_stop(c_mp)})?;
 
     debug!(DEBUG_FS, "umount \"{}\"", mount_point);
-    try!(to_stdresult(unsafe{lwext4::ext4_umount(c_mp)}));
+    to_stdresult(unsafe{lwext4::ext4_umount(c_mp)})?;
 
     Ok(())
 }
@@ -158,7 +158,7 @@ pub fn umount(mount_point: &str) -> StdResult
 pub fn sync(mount_point: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_mp = try!(alloc.nulterm(mount_point)).as_ptr() as *const i8;
+    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "flush cache on \"{}\"", mount_point);
     to_stdresult(unsafe{lwext4::ext4_cache_flush(c_mp)})
@@ -168,10 +168,10 @@ pub fn sync(mount_point: &str) -> StdResult
 pub fn dir_open(path: &str) -> Result<Dir,Error>
 {
     let mut alloc = StrAlloc::new();
-    let c_path = try!(alloc.nulterm(path)).as_ptr() as *const i8;
+    let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
 
     let mut dir: Dir = unsafe{mem::zeroed()};
-    try!(to_stdresult(unsafe{lwext4::ext4_dir_open(&mut dir.0, c_path)}));
+    to_stdresult(unsafe{lwext4::ext4_dir_open(&mut dir.0, c_path)})?;
 
     Ok(dir)
 }
@@ -191,7 +191,7 @@ pub enum OpenFlags {
 pub fn fopen(path: &str, flags: OpenFlags) -> Result<File,Error>
 {
     let mut alloc = StrAlloc::new();
-    let c_path = try!(alloc.nulterm(path)).as_ptr();
+    let c_path = alloc.nulterm(path)?.as_ptr();
     fopen_cstr(c_path, flags)
 }
 
@@ -202,7 +202,7 @@ fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File,Error>
 {
     let c_path = path as *const i8;
     let mut file: File = unsafe{mem::zeroed()};
-    try!(to_stdresult(unsafe{lwext4::ext4_fopen2(&mut file.0, c_path, flags as i32)}));
+    to_stdresult(unsafe{lwext4::ext4_fopen2(&mut file.0, c_path, flags as _)})?;
 
     Ok(file)
 }
@@ -210,10 +210,10 @@ fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File,Error>
 /// Open a file, expanding symlinks in the path first.
 pub fn fopen_expand(path: &str, flags: OpenFlags) -> Result<File,Error>
 {
-    let mut expanded = try!(expand_sb(path));
+    let mut expanded = expand_sb(path)?;
 
     // Append \0 to get a C string
-    try!(expanded.append("\0"));
+    expanded.append("\0")?;
     fopen_cstr(expanded.as_ref().as_ptr(), flags)
 }
 
@@ -221,7 +221,7 @@ pub fn fopen_expand(path: &str, flags: OpenFlags) -> Result<File,Error>
 pub fn stat(path: &str) -> Result<Stat,Error>
 {
     let mut alloc = StrAlloc::new();
-    let c_path = try!(alloc.nulterm(path)).as_ptr();
+    let c_path = alloc.nulterm(path)?.as_ptr();
     stat_cstr(c_path)
 }
 
@@ -234,8 +234,8 @@ fn stat_cstr(path: *const u8) -> Result<Stat,Error>
     let mut inode: Stat = unsafe{mem::zeroed()};
     let mut ret_ino = 0u32;
 
-    try!(to_stdresult(unsafe{lwext4::ext4_raw_inode_fill(
-                    c_path, &mut ret_ino, &mut inode.0)}));
+    to_stdresult(unsafe{lwext4::ext4_raw_inode_fill(
+                    c_path, &mut ret_ino, &mut inode.0)})?;
 
     Ok(inode as Stat)
 }
@@ -247,18 +247,18 @@ pub struct Stat(lwext4::ext4_inode);
 pub fn readlink(path: &str) -> Result<Box<str>,Error>
 {
     let mut alloc = StrAlloc::new();
-    let c_path = try!(alloc.nulterm(path)).as_ptr() as *const i8;
+    let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
 
     let mut sb = StringBuilder::new();
 
     let rc = unsafe {
-        let mut buf = sb.as_mut_ref(false);
+        let buf = sb.as_mut_ref(false);
         let len = buf.len();
         let mut rcnt = 0usize;
-        lwext4::ext4_readlink(c_path, buf.as_mut_ptr() as *mut i8, len, &mut rcnt)
+        lwext4::ext4_readlink(c_path, buf.as_mut_ptr() as *mut _, len, &mut rcnt)
     };
 
-    try!(to_stdresult(rc));
+    to_stdresult(rc)?;
 
     unsafe { sb.fix_length() };
 
@@ -277,33 +277,33 @@ fn expand_sb(path: &str) -> Result<StringBuilder,Error>
         // In order to stat this path element, we append it to the string
         // builder, stat that path, and then truncate it back off.
         let len = sb.len();
-        try!(sb.append("/"));
-        try!(sb.append(i));
-        try!(sb.append("\0"));
+        sb.append("/")?;
+        sb.append(i)?;
+        sb.append("\0")?;
 
-        let stat = try!(stat_cstr(sb.as_ref().as_ptr()));
+        let stat = stat_cstr(sb.as_ref().as_ptr())?;
 
         // Truncate the \0 that was added just to get a C string
         let without_nulterm = sb.len() - 1;
         sb.truncate(without_nulterm);
 
         if stat.inode_type() == InodeType::Symlink {
-            let link = try!(readlink(sb.as_ref()));
+            let link = readlink(sb.as_ref())?;
 
             if link.as_bytes()[0] == '/' as u8 {
                 sb.truncate(0);
             } else {
                 sb.truncate(len);
-                try!(sb.append("/"));
+                sb.append("/")?;
             }
-            try!(sb.append(link.as_ref()));
+            sb.append(link.as_ref())?;
         }
     }
 
     if sb.len() == 0 && path.len() > 0 {
         // Special case, we were given "/" or similar ("///", etc). These will
         // produce an empty stringbuilder but should expand to "/"
-        try!(sb.append("/"));
+        sb.append("/")?;
     }
 
     Ok(sb)
@@ -349,7 +349,7 @@ impl<'a> DirEntry<'a> {
     {
         let slice = unsafe{slice::from_raw_parts(&(*self.de).name[0],
                                           (*self.de).name_length as usize)};
-        let s = try!(str::from_utf8(slice).or(Err(ERR_UTF8)));
+        let s = str::from_utf8(slice).or(Err(ERR_UTF8))?;
         Ok(s)
     }
 }
@@ -562,10 +562,10 @@ impl fmt::Display for Stat {
             }
         }
 
-        try!(write!(f, "{}", t));
-        try!(write!(f, "{}", rwx(mode >> 6)));
-        try!(write!(f, "{}", rwx(mode >> 3)));
-        try!(write!(f, "{}", rwx(mode >> 0)));
+        write!(f, "{}", t)?;
+        write!(f, "{}", rwx(mode >> 6))?;
+        write!(f, "{}", rwx(mode >> 3))?;
+        write!(f, "{}", rwx(mode >> 0))?;
         Ok(())
     }
 }

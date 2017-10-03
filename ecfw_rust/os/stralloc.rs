@@ -110,7 +110,7 @@ impl<'a> StrAlloc<'a> {
     pub fn nulterm(&mut self, s: &str) -> Result<&str, Error>
     {
         let sb = s.as_bytes();
-        let buf = try!(self.alloc(sb.len() + 1));
+        let buf = self.alloc(sb.len() + 1)?;
 
         for i in 0..sb.len() {
             buf[i] = sb[i];

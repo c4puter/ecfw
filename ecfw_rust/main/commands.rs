@@ -18,7 +18,7 @@
  */
 
 use os;
-use drivers;
+use drivers::{ext4, gpt};
 use drivers::gpio::Gpio;
 use drivers::ftrans::FTrans;
 use devices;
@@ -199,8 +199,8 @@ fn cmd_panel(_args: &[&str]) -> StdResult
 
 fn cmd_temps(_args: &[&str]) -> StdResult
 {
-    let temp_logic = try!(devices::SENSOR_LOGIC.read());
-    let temp_ambient = try!(devices::SENSOR_AMBIENT.read());
+    let temp_logic = devices::SENSOR_LOGIC.read()?;
+    let temp_ambient = devices::SENSOR_AMBIENT.read()?;
 
     println!("Logic:   {}.{} degC", temp_logic/10, temp_logic%10);
     println!("Ambient: {}.{} degC", temp_ambient/10, temp_ambient%10);
@@ -231,9 +231,9 @@ fn cmd_i2c_probe(args: &[&str]) -> StdResult
     if args.len() < 2 {
         return Err(ERR_EXPECTED_ARGS);
     }
-    let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
+    let addr = argv_parsed(args, 1, "ADDR", u8::parseint)?;
 
-    let is_present = try!(devices::twi::TWI0.probe(addr));
+    let is_present = devices::twi::TWI0.probe(addr)?;
 
     if is_present {
         println!("address {} present", addr);
@@ -248,9 +248,9 @@ fn cmd_i2c_read(args: &[&str]) -> StdResult
     if args.len() < 4 {
         return Err(ERR_EXPECTED_ARGS);
     }
-    let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
-    let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
-    let n = try!(argv_parsed(args, 3, "N", u8::parseint));
+    let addr = argv_parsed(args, 1, "ADDR", u8::parseint)?;
+    let loc = argv_parsed(args, 2, "LOCATION", u8::parseint)?;
+    let n = argv_parsed(args, 3, "N", u8::parseint)?;
     if n > 16 {
         return Err(ERR_ARG_RANGE);
     }
@@ -258,8 +258,7 @@ fn cmd_i2c_read(args: &[&str]) -> StdResult
     let location_arr = [loc];
     let mut buffer = [0 as u8; 16];
 
-    try!(devices::twi::TWI0
-         .read(addr, &location_arr, &mut buffer[0..n as usize]));
+    devices::twi::TWI0.read(addr, &location_arr, &mut buffer[0..n as usize])?;
     println!("{:?}", &buffer[0..n as usize]);
     Ok(())
 }
@@ -269,8 +268,8 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
     if args.len() < 3 {
         return Err(ERR_EXPECTED_ARGS);
     }
-    let addr = try!(argv_parsed(args, 1, "ADDR", u8::parseint));
-    let loc = try!(argv_parsed(args, 2, "LOCATION", u8::parseint));
+    let addr = argv_parsed(args, 1, "ADDR", u8::parseint)?;
+    let loc = argv_parsed(args, 2, "LOCATION", u8::parseint)?;
 
     if args.len() > 19 {
         return Err(ERR_TOO_MANY_ARGS);
@@ -279,14 +278,13 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
     let mut buffer = [0 as u8; 16];
     let n = args.len() - 3;
     for i in 0..n {
-        let arg = try!(argv_parsed(args, i + 3, "BYTES", u8::parseint));
+        let arg = argv_parsed(args, i + 3, "BYTES", u8::parseint)?;
         buffer[i] = arg;
     }
 
     let location_arr = [loc];
 
-    try!(devices::twi::TWI0
-         .write(addr, &location_arr, &buffer[0..n as usize]));
+    devices::twi::TWI0.write(addr, &location_arr, &buffer[0..n as usize])?;
     Ok(())
 }
 
@@ -311,7 +309,7 @@ fn cmd_gpio_write(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
     let gpio_name = args[1];
-    let gpio_val = try!(argv_parsed(args, 2, "VALUE", i8::parseint));
+    let gpio_val = argv_parsed(args, 2, "VALUE", i8::parseint)?;
 
     match devices::pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
         Some(pin) => pin.set(gpio_val != 0),
@@ -361,7 +359,7 @@ fn cmd_clkload(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let load = try!(argv_parsed(args, 1, "PF", u32::parseint));
+    let load = argv_parsed(args, 1, "PF", u32::parseint)?;
 
     devices::CLOCK_SYNTH.loadcap(load)
 }
@@ -373,14 +371,17 @@ fn cmd_pwr_stat(args: &[&str]) -> StdResult
     }
     let supply_name = args[1];
     let _lock = devices::supplies::POWER_MUTEX.lock();
-    match devices::supplies::SUPPLY_TABLE.iter().find(|&supply| {*(supply.name()) == *supply_name}) {
-        Some(supply) => println!("supply {} status: {:?}", supply_name, try!(supply.status())),
-        None => println!("supply {} not found", supply_name),
+    let mut it = devices::supplies::SUPPLY_TABLE.iter();
+    match it.find(|&supply| {*(supply.name()) == *supply_name}) {
+        Some(supply) =>
+            println!("supply {} status: {:?}", supply_name, supply.status()?),
+        None =>
+            println!("supply {} not found", supply_name),
     }
     Ok(())
 }
 
-static mut BLOCKDEV: Option<drivers::ext4::SdBlockDev> = None;
+static mut BLOCKDEV: Option<ext4::SdBlockDev> = None;
 
 fn cmd_mount(_args: &[&str]) -> StdResult
 {
@@ -390,31 +391,31 @@ fn cmd_mount(_args: &[&str]) -> StdResult
 
     CARDEN.set(true);
     os::delay(1);
-    try!(devices::SD.lock().check());
+    devices::SD.lock().check()?;
 
-    let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
-    let mut entry = drivers::gpt::GptEntry::new();
+    let mut table = gpt::Gpt::new(&devices::SD);
+    let mut entry = gpt::GptEntry::new();
 
-    try!(gpt.read_header());
-    try!(gpt.read_boot(&mut entry));
+    table.read_header()?;
+    table.read_boot(&mut entry)?;
 
     if !entry.valid() {
         return Err(ERR_NO_BOOT_PART);
     }
 
     unsafe {
-        BLOCKDEV = Some(drivers::ext4::makedev(&devices::SD, &entry));
-        try!(drivers::ext4::register_device(BLOCKDEV.as_mut().unwrap(), "root"));
+        BLOCKDEV = Some(ext4::makedev(&devices::SD, &entry));
+        ext4::register_device(BLOCKDEV.as_mut().unwrap(), "root")?;
     }
 
-    try!(drivers::ext4::mount("root", "/", false));
+    ext4::mount("root", "/", false)?;
     Ok(())
 }
 
 fn cmd_umount(_args: &[&str]) -> StdResult
 {
-    try!(drivers::ext4::umount("/"));
-    try!(drivers::ext4::unregister_device("root"));
+    ext4::umount("/")?;
+    ext4::unregister_device("root")?;
 
     if !CARD.get() {
         return Err(ERR_NO_CARD)
@@ -425,7 +426,7 @@ fn cmd_umount(_args: &[&str]) -> StdResult
 
 fn cmd_sync(_args: &[&str]) -> StdResult
 {
-    drivers::ext4::sync("/")
+    ext4::sync("/")
 }
 
 fn cmd_sdinfo(_args: &[&str]) -> StdResult
@@ -451,10 +452,10 @@ fn cmd_readblock(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
+    let iblock = argv_parsed(args, 1, "BLOCK", u32::parseint)? as usize;
 
     let mut buf = [0u8; 512];
-    try!(devices::SD.lock().read_block(iblock, &mut buf));
+    devices::SD.lock().read_block(iblock, &mut buf)?;
 
     hexprint(&buf);
     Ok(())
@@ -466,29 +467,29 @@ fn cmd_writeblock(args: &[&str]) -> StdResult
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let iblock = try!(argv_parsed(args, 1, "BLOCK", u32::parseint)) as usize;
+    let iblock = argv_parsed(args, 1, "BLOCK", u32::parseint)? as usize;
 
     let mut buf = [0u8; 512];
     for i in 2..args.len() {
-        let data = try!(argv_parsed(args, i, "DATA", u8::parseint));
+        let data = argv_parsed(args, i, "DATA", u8::parseint)?;
         buf[i - 2] = data;
     }
 
-    try!(devices::SD.lock().write_block(iblock, &buf));
+    devices::SD.lock().write_block(iblock, &buf)?;
     Ok(())
 }
 
 fn cmd_partinfo(_args: &[&str]) -> StdResult
 {
-    let mut gpt = drivers::gpt::Gpt::new(&devices::SD);
-    let mut entry = drivers::gpt::GptEntry::new();
+    let mut table = gpt::Gpt::new(&devices::SD);
+    let mut entry = gpt::GptEntry::new();
 
-    try!(gpt.read_header());
+    table.read_header()?;
 
-    println!("Disk GUID: {}", gpt.guid());
+    println!("Disk GUID: {}", table.guid());
 
-    for i in 0..gpt.number_entries() {
-        try!(gpt.read_entry(i, &mut entry));
+    for i in 0..table.number_entries() {
+        table.read_entry(i, &mut entry)?;
         if !entry.valid() {
             continue;
         }
@@ -510,18 +511,18 @@ fn cmd_ls(args: &[&str]) -> StdResult
 
     // Use a stringbuilder to append each item to the path, for stat()
     let mut sb = StringBuilder::new();
-    try!(sb.append(path));
+    sb.append(path)?;
     let pab = path.as_bytes();
     if pab[pab.len() - 1] != '/' as u8 {
-        try!(sb.append("/"));
+        sb.append("/")?;
     }
     let only_path = sb.len();
 
-    let mut dir = try!(drivers::ext4::dir_open(path));
+    let mut dir = ext4::dir_open(path)?;
     for de in dir.iter() {
-        let name = try!(de.name());
-        try!(sb.append(name));
-        let stat = try!(drivers::ext4::stat(sb.as_ref()));
+        let name = de.name()?;
+        sb.append(name)?;
+        let stat = ext4::stat(sb.as_ref())?;
         sb.truncate(only_path);
 
         println!("{} {:8} {}", stat, stat.size(), name);
@@ -537,11 +538,10 @@ fn cmd_hd(args: &[&str]) -> StdResult
 
     let path = args[1];
 
-    let mut file = try!(drivers::ext4::fopen_expand(
-            path, drivers::ext4::OpenFlags::Read));
+    let mut file = ext4::fopen_expand(path, ext4::OpenFlags::Read)?;
     let mut buf = [0u8; 512];
 
-    let bytes = try!(file.read(&mut buf));
+    let bytes = file.read(&mut buf)?;
 
     hexprint(&buf[0..bytes]);
     Ok(())
@@ -554,7 +554,7 @@ fn cmd_spi_dump(args: &[&str]) -> StdResult
     }
 
     let path = args[1];
-    let mut file = drivers::ext4::fopen_expand(path, drivers::ext4::OpenFlags::Read)?;
+    let mut file = ext4::fopen_expand(path, ext4::OpenFlags::Read)?;
 
     let mut buf1 = vec::from_elem(0u8, 4096);
     let mut buf2 = vec::from_elem(0u8, 4096);
@@ -562,7 +562,7 @@ fn cmd_spi_dump(args: &[&str]) -> StdResult
     let mut wr1 = None;
 
     loop {
-        let n_read1 = try!(file.read(&mut buf1));
+        let n_read1 = file.read(&mut buf1)?;
 
         if let Some(wr) = wr1.take() {
             devices::SPI.end_write(wr);
@@ -574,7 +574,7 @@ fn cmd_spi_dump(args: &[&str]) -> StdResult
 
         let wr2 = devices::SPI.start_write(&buf1[0..n_read1])?;
 
-        let n_read2 = try!(file.read(&mut buf2));
+        let n_read2 = file.read(&mut buf2)?;
         devices::SPI.end_write(wr2);
 
         if n_read2 == 0 {
@@ -595,7 +595,7 @@ fn cmd_readlink(args: &[&str]) -> StdResult
 
     let path = args[1];
 
-    let link = try!(drivers::ext4::readlink(path));
+    let link = ext4::readlink(path)?;
 
     println!("{}", link);
     Ok(())
@@ -609,7 +609,7 @@ fn cmd_expand(args: &[&str]) -> StdResult
 
     let path = args[1];
 
-    let path = try!(drivers::ext4::expand(path));
+    let path = ext4::expand(path)?;
 
     println!("{}", path);
     Ok(())

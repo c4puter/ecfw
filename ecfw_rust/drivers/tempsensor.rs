@@ -36,7 +36,7 @@ impl<'a> TempSensor<'a> {
 
     pub fn read(&self) -> Result<TenthsDegC,Error> {
         let mut buf = [0u8; 2];
-        try!(self.twi.lock().read(&[TEMP_ADDR], &mut buf));
+        self.twi.lock().read(&[TEMP_ADDR], &mut buf)?;
 
         let raw = ((buf[0] as u32) << 8) | (buf[1] as u32);
         let right_aligned = raw >> 5;

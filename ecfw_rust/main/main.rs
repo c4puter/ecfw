@@ -53,7 +53,7 @@ fn esh_print_cb(_esh: &esh::Esh, c: char)
 
 pub fn esh_task() {
     debug!(DEBUG_ECBOOT, "start debug console");
-    let mut esh = esh::Esh::init().unwrap();
+    let esh = esh::Esh::init().unwrap();
     esh.register_command(command_dispatch);
     esh.register_print(esh_print_cb);
     esh.rx(b'\n');

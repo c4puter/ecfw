@@ -91,7 +91,7 @@ impl ParseInt for u64 {
             }
 
             if state == State::Number {
-                let parsed = try!(parsedigit(c, radix as u8));
+                let parsed = parsedigit(c, radix as u8)?;
                 let limit = (u64::max_value() - parsed as u64) / radix;
                 if accumulator > limit {
                     return Err(ERR_NRANGE)
@@ -115,8 +115,8 @@ impl ParseInt for i64 {
         };
 
         let absval = match firstchar {
-            '+' | '-' => try!(u64::parseint(s.split_at(1).1)),
-            _ => try!(u64::parseint(s))
+            '+' | '-' => u64::parseint(s.split_at(1).1)?,
+            _ => u64::parseint(s)?
         };
 
         if firstchar == '-' {
@@ -139,7 +139,7 @@ impl ParseInt for i64 {
 
 impl ParseInt for u32 {
     fn parseint(s: &str) -> Result<u32,Error> {
-        match try!(u64::parseint(s)) {
+        match u64::parseint(s)? {
             n if n <= (u32::max_value() as u64) => Ok(n as u32),
             _ => Err(ERR_NRANGE)
         }
@@ -147,7 +147,7 @@ impl ParseInt for u32 {
 }
 impl ParseInt for u16 {
     fn parseint(s: &str) -> Result<u16,Error> {
-        match try!(u64::parseint(s)) {
+        match u64::parseint(s)? {
             n if n <= (u16::max_value() as u64) => Ok(n as u16),
             _ => Err(ERR_NRANGE)
         }
@@ -155,7 +155,7 @@ impl ParseInt for u16 {
 }
 impl ParseInt for u8 {
     fn parseint(s: &str) -> Result<u8,Error> {
-        match try!(u64::parseint(s)) {
+        match u64::parseint(s)? {
             n if n <= (u8::max_value() as u64) => Ok(n as u8),
             _ => Err(ERR_NRANGE)
         }
@@ -164,7 +164,7 @@ impl ParseInt for u8 {
 
 impl ParseInt for i32 {
     fn parseint(s: &str) -> Result<i32,Error> {
-        match try!(i64::parseint(s)) {
+        match i64::parseint(s)? {
             n if n >= (i32::min_value() as i64) && n <= (i32::max_value() as i64) => Ok(n as i32),
             _ => Err(ERR_NRANGE)
         }
@@ -172,7 +172,7 @@ impl ParseInt for i32 {
 }
 impl ParseInt for i16 {
     fn parseint(s: &str) -> Result<i16,Error> {
-        match try!(i64::parseint(s)) {
+        match i64::parseint(s)? {
             n if n >= (i16::min_value() as i64) && n <= (i16::max_value() as i64) => Ok(n as i16),
             _ => Err(ERR_NRANGE)
         }
@@ -180,7 +180,7 @@ impl ParseInt for i16 {
 }
 impl ParseInt for i8 {
     fn parseint(s: &str) -> Result<i8,Error> {
-        match try!(i64::parseint(s)) {
+        match i64::parseint(s)? {
             n if n >= (i8::min_value() as i64) && n <= (i8::max_value() as i64) => Ok(n as i8),
             _ => Err(ERR_NRANGE)
         }

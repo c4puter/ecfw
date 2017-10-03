@@ -63,11 +63,11 @@ pub fn run_event()
 
 fn handle_one_event(evt: Event) -> StdResult
 {
-    try!(match evt {
-        Event::Boot => do_boot(),
-        Event::Shutdown => do_shutdown(),
-        Event::Reboot => do_reboot(),
-    });
+    match evt {
+        Event::Boot => do_boot()?,
+        Event::Shutdown => do_shutdown()?,
+        Event::Reboot => do_reboot()?,
+    }
 
     Ok(())
 }
@@ -220,7 +220,7 @@ fn do_boot() -> StdResult
     }
 
     POWER_R.set(false);
-    try!(devices::MATRIX.write().set_full_brightness());
+    devices::MATRIX.write().set_full_brightness()?;
     POWER_STATE.store(0, Ordering::SeqCst);
     unsafe {os::freertos::suspend_all();}
     SPEAKER.set(true);
@@ -256,15 +256,15 @@ fn do_shutdown() -> StdResult
     POWER_R.set(false);
     POWER_G.set(false);
     POWER_STATE.store(5, Ordering::SeqCst);
-    try!(devices::MATRIX.write().set_standby_brightness());
+    devices::MATRIX.write().set_standby_brightness()?;
     Ok(())
 }
 
 fn do_reboot() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "reboot");
-    try!(do_shutdown());
+    do_shutdown()?;
     os::delay(750);
-    try!(do_boot());
+    do_boot()?;
     Ok(())
 }

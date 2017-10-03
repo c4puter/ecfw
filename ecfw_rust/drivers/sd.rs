@@ -143,15 +143,15 @@ impl Sd {
     /// Read an arbitrary number of blocks into a pointer. Unsafe, intended for
     /// C interaction.
     pub unsafe fn read_blocks(&mut self, iblock: usize, nblocks: u16, dest: *mut u8) -> StdResult {
-        try!(to_stdresult(
-            asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, nblocks)));
+        to_stdresult(
+            asf_sd_mmc::sd_mmc_init_read_blocks(self.slot, iblock as u32, nblocks))?;
 
-        try!(to_stdresult(
+        to_stdresult(
             asf_sd_mmc::sd_mmc_start_read_blocks(
-                dest as *mut ctypes::c_void, nblocks)));
+                dest as *mut ctypes::c_void, nblocks))?;
 
-        try!(to_stdresult(
-            asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false)));
+        to_stdresult(
+            asf_sd_mmc::sd_mmc_wait_end_of_read_blocks(false))?;
 
         Ok(())
     }
@@ -159,15 +159,15 @@ impl Sd {
     /// Write an arbitrary number of blocks from a pointer. Unsafe, intended
     /// for C interaction.
     pub unsafe fn write_blocks(&mut self, iblock: usize, nblocks: u16, src: *const u8) -> StdResult {
-        try!(to_stdresult(
-            asf_sd_mmc::sd_mmc_init_write_blocks(self.slot, iblock as u32, nblocks)));
+        to_stdresult(
+            asf_sd_mmc::sd_mmc_init_write_blocks(self.slot, iblock as u32, nblocks))?;
 
-        try!(to_stdresult(
+        to_stdresult(
             asf_sd_mmc::sd_mmc_start_write_blocks(
-                src as *const ctypes::c_void, nblocks)));
+                src as *const ctypes::c_void, nblocks))?;
 
-        try!(to_stdresult(
-            asf_sd_mmc::sd_mmc_wait_end_of_write_blocks(false)));
+        to_stdresult(
+            asf_sd_mmc::sd_mmc_wait_end_of_write_blocks(false))?;
 
         Ok(())
     }

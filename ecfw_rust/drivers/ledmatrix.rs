@@ -98,35 +98,35 @@ impl<'a> LedMatrix<'a>
         //  - Blink/PWM sets
         //  - Dot correction
         //  0x01: RAM configuration 1
-        try!(self.switch_bank(&mut dev, RegBank::ControlReg));
-        try!(dev.write(&[CtrlReg::Config as u8], &[0x01]));
+        self.switch_bank(&mut dev, RegBank::ControlReg)?;
+        dev.write(&[CtrlReg::Config as u8], &[0x01])?;
 
         // Define control register
         //  - Current source
         //  - Display options
         //  - Display picture/play movie
-        try!(dev.write(&[CtrlReg::CurrentSource as u8],
-                       &[LedMatrix::current_val(STANDBY_BRIGHTNESS)]));
-        try!(dev.write(&[CtrlReg::DisplayOpt as u8], &[0xfb])); // Scan all segments
-        try!(dev.write(&[CtrlReg::Movie as u8], &[0x00])); // No movie
-        try!(dev.write(&[CtrlReg::Picture as u8], &[0x40])); // Display picture, frame 0
+        dev.write(&[CtrlReg::CurrentSource as u8],
+                  &[LedMatrix::current_val(STANDBY_BRIGHTNESS)])?;
+        dev.write(&[CtrlReg::DisplayOpt as u8], &[0xfb])?; // Scan all segments
+        dev.write(&[CtrlReg::Movie as u8], &[0x00])?; // No movie
+        dev.write(&[CtrlReg::Picture as u8], &[0x40])?; // Display picture, frame 0
         // Set #shdn bit to 1 for normal operation
-        try!(dev.write(&[CtrlReg::ShutdownOpenShort as u8], &[0x03])); // No init, no shutdown
+        dev.write(&[CtrlReg::ShutdownOpenShort as u8], &[0x03])?; // No init, no shutdown
         os::delay(1);
 
         // Initialize display data
-        try!(self.switch_bank(&mut dev, RegBank::BlinkPwm0));
+        self.switch_bank(&mut dev, RegBank::BlinkPwm0)?;
         for seg in 0x00..0x0c {
             // Blink bits
-            try!(dev.write(&[seg*2], &[0, 0]));
+            dev.write(&[seg*2], &[0, 0])?;
         }
         for addr in 0x18..0x9c {
             // PWM value
-            try!(dev.write(&[addr], &[0x80]));
+            dev.write(&[addr], &[0x80])?;
         }
 
         self.buffer_all(true);
-        try!(self.flush_with_lock(&mut dev));
+        self.flush_with_lock(&mut dev)?;
         Ok(())
     }
 
@@ -137,11 +137,11 @@ impl<'a> LedMatrix<'a>
 
     fn flush_with_lock(&mut self, mut dev: &mut os::MutexLock<twi::TwiDevice>) -> StdResult
     {
-        try!(self.switch_bank(&mut dev, RegBank::Frame0));
+        self.switch_bank(&mut dev, RegBank::Frame0)?;
 
         for seg in 0x00usize..0x0cusize {
-            try!(dev.write(&[(seg*2) as u8],
-                  &[self.buffer[seg*2], self.buffer[seg*2 + 1]]));
+            dev.write(&[(seg*2) as u8],
+                  &[self.buffer[seg*2], self.buffer[seg*2 + 1]])?;
         }
         Ok(())
     }
@@ -198,9 +198,9 @@ impl<'a> LedMatrix<'a>
         self.buffer_led(led, val);
 
         let mut dev = self.twi.lock();
-        try!(self.switch_bank(&mut dev, RegBank::Frame0));
+        self.switch_bank(&mut dev, RegBank::Frame0)?;
         let buffer = &mut self.buffer[addr..addr+2];
-        try!(dev.write(&[addr as u8], buffer));
+        dev.write(&[addr as u8], buffer)?;
 
         Ok(())
     }
@@ -221,9 +221,9 @@ impl<'a> LedMatrix<'a>
     pub fn set_brightness(&mut self, brightness: u8) -> StdResult
     {
         let mut dev = self.twi.lock();
-        try!(self.switch_bank(&mut dev, RegBank::ControlReg));
-        try!(dev.write(&[CtrlReg::CurrentSource as u8],
-                       &[LedMatrix::current_val(brightness)]));
+        self.switch_bank(&mut dev, RegBank::ControlReg)?;
+        dev.write(&[CtrlReg::CurrentSource as u8],
+                       &[LedMatrix::current_val(brightness)])?;
         Ok(())
     }
 

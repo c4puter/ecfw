@@ -131,11 +131,11 @@ impl FTrans {
     {
         let mut decode_buf = [0u8; 512];
 
-        let data_b64 = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
-        let n_bytes = try!(base64::decode(&mut decode_buf, data_b64.as_bytes()));
+        let data_b64 = iter.next().ok_or(ERR_EXPECTED_ARGS)?;
+        let n_bytes = base64::decode(&mut decode_buf, data_b64.as_bytes())?;
 
-        let rx_crc32_str = try!(iter.next().ok_or(ERR_EXPECTED_ARGS));
-        let rx_crc32 = try!(u32::parseint(rx_crc32_str));
+        let rx_crc32_str = iter.next().ok_or(ERR_EXPECTED_ARGS)?;
+        let rx_crc32 = u32::parseint(rx_crc32_str)?;
 
         let actual_crc32 = crc32(&decode_buf[0..n_bytes]);
 
@@ -149,7 +149,7 @@ impl FTrans {
     fn open_wrapped(&mut self, filename: &[u8]) -> StdResult
     {
         let strslice = str::from_utf8(filename).unwrap();
-        self.file = Some(try!(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)));
+        self.file = Some(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)?);
 
         println_async!("ack");
         Ok(())
@@ -159,7 +159,7 @@ impl FTrans {
     {
         match self.file {
             Some(ref mut file) => {
-                try!(file.write(data));
+                file.write(data)?;
                 println_async!("ack");
                 Ok(())
             },
@@ -204,7 +204,7 @@ impl FTrans {
 
         match self.file {
             Some(ref mut file) => {
-                let bytes_read = try!(file.read(&mut file_buf));
+                let bytes_read = file.read(&mut file_buf)?;
                 let b64_converted = base64::encode(
                     &mut b64_buf, &file_buf[0..bytes_read]).unwrap();
                 let crc = crc32(&file_buf[0..bytes_read]);
@@ -223,11 +223,11 @@ impl FTrans {
 
     fn truncate_wrapped(&mut self, sz_encoded: &[u8]) -> StdResult
     {
-        let sz = try!(bytes_to_u32(sz_encoded));
+        let sz = bytes_to_u32(sz_encoded)?;
 
         match self.file {
             Some(ref mut file) => {
-                try!(file.truncate(sz as usize));
+                file.truncate(sz as usize)?;
                 println_async!("ack");
                 Ok(())
             },
@@ -240,11 +240,11 @@ impl FTrans {
     fn seek_wrapped(&mut self, pos_encoded: &[u8], origin: ext4::Origin)
             -> StdResult
     {
-        let pos = try!(bytes_to_u32(pos_encoded));
+        let pos = bytes_to_u32(pos_encoded)?;
 
         match self.file {
             Some(ref mut file) => {
-                try!(file.seek(pos as usize, origin));
+                file.seek(pos as usize, origin)?;
                 println_async!("ack");
                 Ok(())
             },
