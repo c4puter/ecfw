@@ -23,7 +23,9 @@ use drivers::sd::Sd;
 use drivers::tempsensor::TempSensor;
 use drivers::clocksynth::ClockSynth;
 use drivers::spi::Spi;
+use drivers::fpga::Spartan6;
 use devices::twi;
+use devices::pins;
 
 pub static MATRIX: RwLock<LedMatrix> = RwLock::new(LedMatrix::new(&twi::U801));
 
@@ -36,3 +38,11 @@ pub static SENSOR_AMBIENT: TempSensor = TempSensor::new(&twi::LM75B_AMBIENT);
 pub static CLOCK_SYNTH: ClockSynth = ClockSynth::new(&twi::CDCE913, 20000000);
 
 pub static SPI: Spi = Spi::new();
+
+static FPGA_MUTEX: Mutex<()> = Mutex::new(());
+
+pub static FPGAS: [Spartan6; 3] = [
+    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE0, &pins::FPGA_INIT, &pins::FPGA_PROG0),
+    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE1, &pins::FPGA_INIT, &pins::FPGA_PROG1),
+    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE2, &pins::FPGA_INIT, &pins::FPGA_PROG2),
+];

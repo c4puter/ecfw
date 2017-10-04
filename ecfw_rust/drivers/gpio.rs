@@ -73,7 +73,7 @@ impl Gpio for SamGpio {
             bindgen_mcu::mcu_init_pin(
                 self.port + self.pin,
                 self.mode as u32,
-                self.default);
+                self.default ^ self.invert);
         }
     }
 
@@ -132,7 +132,8 @@ impl<'a> Gpio for PcfGpio<'a> {
             else { panic!("invalid pin number {}", self.pin); };
 
         let mut dev = self.dev.lock();
-        dev.read(&[], &mut data).unwrap();
+        //dev.read(&[], &mut data).unwrap();
+        if let Err(_) = dev.read(&[], &mut data) { return; }
 
         let mut data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 
@@ -159,7 +160,7 @@ impl<'a> Gpio for PcfGpio<'a> {
             else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
             else { panic!("invalid pin number {}", self.pin); };
 
-        self.dev.lock().read(&[], &mut data).unwrap();
+        while let Err(_) = self.dev.lock().read(&[], &mut data) {}
 
         let data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 

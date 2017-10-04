@@ -27,7 +27,6 @@ use devices::pins::*;
 use main::{reset, sysman};
 use messages::*;
 use core::fmt;
-use alloc::vec;
 
 pub struct Command<'a> {
     pub name: &'a str,
@@ -69,7 +68,7 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "partinfo",  f: cmd_partinfo,    descr: "dump GPT partition info" },
     Command{ name: "ls",        f: cmd_ls,          descr: "list PATH" },
     Command{ name: "hd",        f: cmd_hd,          descr: "hexdump the first block of PATH" },
-    Command{ name: "spi_dump",  f: cmd_spi_dump,    descr: "dump PATH to SPI" },
+    Command{ name: "bitstream", f: cmd_bitstream,   descr: "load fpga N with PATH" },
     Command{ name: "readlink",  f: cmd_readlink,    descr: "readlink" },
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
     Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer" },
@@ -547,44 +546,20 @@ fn cmd_hd(args: &[&str]) -> StdResult
     Ok(())
 }
 
-fn cmd_spi_dump(args: &[&str]) -> StdResult
+fn cmd_bitstream(args: &[&str]) -> StdResult
 {
-    if args.len() < 2 {
+    if args.len() < 3 {
         return Err(ERR_EXPECTED_ARGS);
     }
 
-    let path = args[1];
-    let mut file = ext4::fopen_expand(path, ext4::OpenFlags::Read)?;
+    let path = args[2];
+    let nfpga = argv_parsed(args, 1, "N", u32::parseint)? as usize;
 
-    let mut buf1 = vec::from_elem(0u8, 4096);
-    let mut buf2 = vec::from_elem(0u8, 4096);
-
-    let mut wr1 = None;
-
-    loop {
-        let n_read1 = file.read(&mut buf1)?;
-
-        if let Some(wr) = wr1.take() {
-            devices::SPI.end_write(wr);
-        }
-
-        if n_read1 == 0 {
-            break;
-        }
-
-        let wr2 = devices::SPI.start_write(&buf1[0..n_read1])?;
-
-        let n_read2 = file.read(&mut buf2)?;
-        devices::SPI.end_write(wr2);
-
-        if n_read2 == 0 {
-            break;
-        }
-
-        wr1 = Some(devices::SPI.start_write(&buf2[0..n_read2])?);
+    if nfpga >= devices::FPGAS.len() {
+        return Err(ERR_ARG_RANGE);
     }
 
-    Ok(())
+    devices::FPGAS[nfpga].load(path)
 }
 
 fn cmd_readlink(args: &[&str]) -> StdResult

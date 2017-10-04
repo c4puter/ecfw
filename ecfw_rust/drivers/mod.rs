@@ -25,6 +25,7 @@ pub mod tempsensor;
 pub mod clocksynth;
 pub mod twi;
 pub mod spi;
+pub mod fpga;
 pub mod gpt;
 pub mod power;
 pub mod ftrans;
