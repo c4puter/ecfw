@@ -65,7 +65,9 @@ pin_table!{
     FPGA_DONE0,         SamGpio, port => PIOA, pin =>  8, mode => Input,  default => false, invert => false;
     FPGA_DONE1,         SamGpio, port => PIOA, pin =>  7, mode => Input,  default => false, invert => false;
     FPGA_DONE2,         SamGpio, port => PIOA, pin =>  6, mode => Input,  default => false, invert => false;
-    FPGA_INIT,          SamGpio, port => PIOA, pin =>  5, mode => Pullup, default => false, invert => true;
+    FPGA_INIT0,         SamGpio, port => PIOA, pin =>  5, mode => Pullup, default => false, invert => true;
+    FPGA_INIT1,         SamGpio, port => PIOB, pin =>  1, mode => Pullup, default => false, invert => true;
+    FPGA_INIT2,         SamGpio, port => PIOB, pin =>  2, mode => Pullup, default => false, invert => true;
     PANELINT,           SamGpio, port => PIOC, pin => 17, mode => Pullup, default => false, invert => true;
     PCIM66EN,           SamGpio, port => PIOC, pin => 24, mode => Input,  default => false, invert => false;
     PCIPME,             SamGpio, port => PIOC, pin => 23, mode => Input,  default => false, invert => true;

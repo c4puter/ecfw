@@ -42,7 +42,7 @@ pub static SPI: Spi = Spi::new();
 static FPGA_MUTEX: Mutex<()> = Mutex::new(());
 
 pub static FPGAS: [Spartan6; 3] = [
-    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE0, &pins::FPGA_INIT, &pins::FPGA_PROG0),
-    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE1, &pins::FPGA_INIT, &pins::FPGA_PROG1),
-    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE2, &pins::FPGA_INIT, &pins::FPGA_PROG2),
+    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE0, &pins::FPGA_INIT0, &pins::FPGA_PROG0),
+    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE1, &pins::FPGA_INIT1, &pins::FPGA_PROG1),
+    Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE2, &pins::FPGA_INIT2, &pins::FPGA_PROG2),
 ];
