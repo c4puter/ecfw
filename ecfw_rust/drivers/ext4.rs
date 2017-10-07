@@ -115,7 +115,7 @@ pub fn register_device(bd: SdBlockDev<'static>, dev_name: &str) -> StdResult
     *lock = Some(bd);
 
     let mut alloc = StrAlloc::new();
-    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
+    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const _;
 
     debug!(DEBUG_FS, "register block device \"{}\"", dev_name);
 
@@ -135,7 +135,7 @@ pub fn unregister_device(dev_name: &str) -> StdResult
     }
 
     let mut alloc = StrAlloc::new();
-    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
+    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const _;
 
     debug!(DEBUG_FS, "unregister block device \"{}\"", dev_name);
 
@@ -158,8 +158,8 @@ pub fn mount(dev_name: &str, mount_point: &str, read_only: bool) -> StdResult
 {
     let journaled;
     let mut alloc = StrAlloc::new();
-    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
-    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const i8;
+    let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const _;
+    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const _;
 
     debug!(DEBUG_FS, "mount \"{}\" as \"{}\"", dev_name, mount_point);
     to_stdresult(unsafe{lwext4::ext4_mount(c_name, c_mp, read_only)})?;
@@ -188,7 +188,7 @@ pub fn mount(dev_name: &str, mount_point: &str, read_only: bool) -> StdResult
 pub fn umount(mount_point: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const i8;
+    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const _;
 
     debug!(DEBUG_FS, "flush cache on \"{}\"", mount_point);
     to_stdresult(unsafe{lwext4::ext4_cache_write_back(c_mp, false)})?;
@@ -206,7 +206,7 @@ pub fn umount(mount_point: &str) -> StdResult
 pub fn sync(mount_point: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const i8;
+    let c_mp = alloc.nulterm(mount_point)?.as_ptr() as *const _;
 
     debug!(DEBUG_FS, "flush cache on \"{}\"", mount_point);
     to_stdresult(unsafe{lwext4::ext4_cache_flush(c_mp)})
@@ -216,7 +216,7 @@ pub fn sync(mount_point: &str) -> StdResult
 pub fn dir_open(path: &str) -> Result<Dir,Error>
 {
     let mut alloc = StrAlloc::new();
-    let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
+    let c_path = alloc.nulterm(path)?.as_ptr() as *const _;
 
     let mut dir: Dir = unsafe{mem::zeroed()};
     to_stdresult(unsafe{lwext4::ext4_dir_open(&mut dir.0, c_path)})?;
@@ -248,7 +248,7 @@ pub fn fopen(path: &str, flags: OpenFlags) -> Result<File,Error>
 /// or can be terminated cheaply.
 fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File,Error>
 {
-    let c_path = path as *const i8;
+    let c_path = path as *const _;
     let mut file: File = unsafe{mem::zeroed()};
     to_stdresult(unsafe{lwext4::ext4_fopen2(&mut file.0, c_path, flags as _)})?;
 
@@ -278,7 +278,7 @@ pub fn stat(path: &str) -> Result<Stat,Error>
 /// or can be terminated cheaply.
 fn stat_cstr(path: *const u8) -> Result<Stat,Error>
 {
-    let c_path = path as *const i8;
+    let c_path = path as *const _;
     let mut inode: Stat = unsafe{mem::zeroed()};
     let mut ret_ino = 0u32;
 
@@ -295,7 +295,7 @@ pub struct Stat(lwext4::ext4_inode);
 pub fn readlink(path: &str) -> Result<String,Error>
 {
     let mut alloc = StrAlloc::new();
-    let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
+    let c_path = alloc.nulterm(path)?.as_ptr() as *const _;
 
     let mut buf = vec::from_elem(0u8, 1024);
 
@@ -326,7 +326,7 @@ pub fn readlink(path: &str) -> Result<String,Error>
 pub fn unlink(path: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
-    let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
+    let c_path = alloc.nulterm(path)?.as_ptr() as *const _;
 
     let rc = unsafe{lwext4::ext4_fremove(c_path)};
     to_stdresult(rc)
