@@ -197,8 +197,8 @@ pin_table!{
 
     ///////////////////////////////////
     // Uncommitted LEDs
-    UNC0_R,             LedGpio, addr => 0x95, matrix => &MATRIX;
-    UNC0_G,             LedGpio, addr => 0x85, matrix => &MATRIX;
+    STATE_FAIL_R,       LedGpio, addr => 0x95, matrix => &MATRIX;
+    STATE_FAIL_G,       LedGpio, addr => 0x85, matrix => &MATRIX;
     UNC1_R,             LedGpio, addr => 0x94, matrix => &MATRIX;
     UNC1_G,             LedGpio, addr => 0x84, matrix => &MATRIX;
     UNC2_R,             LedGpio, addr => 0x92, matrix => &MATRIX;

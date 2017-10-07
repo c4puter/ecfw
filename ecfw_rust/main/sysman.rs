@@ -24,6 +24,7 @@ use drivers::gpio::Gpio;
 use drivers::{ext4,gpt};
 use devices::pins::*;
 use devices::supplies::*;
+use main::reset;
 use messages::*;
 use core::sync::atomic::*;
 
@@ -39,6 +40,10 @@ pub enum Event {
 }
 
 static POWER_STATE: AtomicUsize = ATOMIC_USIZE_INIT;
+const STATE_RUN: usize = 0;
+const STATE_SUSP: usize = 3;
+const STATE_OFF: usize = 5;
+const STATE_SHUTDOWN_FAIL: usize = 100;
 
 queue_static_new!(EVENTS: [Event; 2]);
 
@@ -65,8 +70,8 @@ pub fn run_event()
 fn handle_one_event(evt: Event) -> StdResult
 {
     match evt {
-        Event::Boot => do_boot()?,
-        Event::Shutdown => do_shutdown()?,
+        Event::Boot => do_safe_boot()?,
+        Event::Shutdown => do_safe_shutdown()?,
         Event::Reboot => do_reboot()?,
     }
 
@@ -105,7 +110,7 @@ pub fn run_status()
     let mut lastwake = os::ticks_running();
     let mut cycle_count = 0;
 
-    POWER_STATE.store(5, Ordering::SeqCst);
+    POWER_STATE.store(STATE_OFF, Ordering::SeqCst);
 
     if FORCE_POWER.get() {
         post(Event::Boot);
@@ -135,7 +140,7 @@ pub fn run_status()
 
         // Handle power LED
         let state = POWER_STATE.load(Ordering::SeqCst);
-        POWER_LED.set(state == 0);
+        POWER_LED.set(state == STATE_RUN);
 
         // Handle power button
         if POWER_BTN.get() {
@@ -170,23 +175,28 @@ fn button_press(cycles: u32)
     if cycles <= POWER_BUTTON_START_CYCLES_MAX {
         debug!(DEBUG_PWRBTN, "handle short press, state {}", state);
 
-        if state == 0 {
+        if state == STATE_RUN {
             debug!(DEBUG_SYSMAN, "TODO: power event to CPU");
-        } else if state == 3 {
+        } else if state == STATE_SUSP {
             debug!(DEBUG_SYSMAN, "TODO: wake from S3");
-        } else if state == 5 {
+        } else if state == STATE_OFF {
             post(Event::Boot);
+        } else if state == STATE_SHUTDOWN_FAIL {
+            debug!(DEBUG_SYSMAN, "ignoring power button because previous shutdown failed");
+            debug!(DEBUG_SYSMAN, "power cycle or use debug interface");
         }
 
     } else if cycles >= POWER_BUTTON_STOP_CYCLES_MIN {
         debug!(DEBUG_PWRBTN, "handle long press, state {}", state);
 
-        if state == 0 {
+        if state == STATE_RUN {
             post(Event::Shutdown);
-        } else if state == 3 {
+        } else if state == STATE_SUSP {
             post(Event::Shutdown);
+        } else if state == STATE_SHUTDOWN_FAIL {
+            debug!(DEBUG_SYSMAN, "ignoring power button because previous shutdown failed");
+            debug!(DEBUG_SYSMAN, "power cycle or use debug interface");
         }
-
     }
 }
 
@@ -214,7 +224,7 @@ fn do_boot() -> StdResult
 
     POWER_R.set(false);
     devices::MATRIX.write().set_full_brightness()?;
-    POWER_STATE.store(0, Ordering::SeqCst);
+    POWER_STATE.store(STATE_RUN, Ordering::SeqCst);
 
     if let Err(e) = boot_mount_card() {
         if e == ERR_NO_CARD {
@@ -331,7 +341,7 @@ fn do_shutdown() -> StdResult
 
     POWER_R.set(false);
     POWER_G.set(false);
-    POWER_STATE.store(5, Ordering::SeqCst);
+    POWER_STATE.store(STATE_OFF, Ordering::SeqCst);
     devices::MATRIX.write().set_standby_brightness()?;
     Ok(())
 }
@@ -339,8 +349,76 @@ fn do_shutdown() -> StdResult
 fn do_reboot() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "reboot");
-    do_shutdown()?;
+    do_safe_shutdown()?;
     os::delay(750);
-    do_boot()?;
+    do_safe_boot()?;
     Ok(())
+}
+
+fn do_safe_boot() -> StdResult
+{
+    if let Err(e) = do_boot() {
+        STATE_FAIL_R.set(true);
+        if let Err(e2) = recover_boot() {
+            STATE_FAIL_R.set_blink();
+            panic!("error recovering from failed state change: {}", e2);
+        }
+        POWER_STATE.store(STATE_OFF, Ordering::SeqCst);
+        Err(e)
+    } else {
+        STATE_FAIL_R.set(false);
+        Ok(())
+    }
+}
+
+fn do_safe_shutdown() -> StdResult
+{
+    if let Err(e) = do_shutdown() {
+        STATE_FAIL_R.set(true);
+        if let Err(e2) = recover_shutdown() {
+            STATE_FAIL_R.set_blink();
+            panic!("error recovering from failed state change: {}", e2);
+        }
+        POWER_STATE.store(STATE_SHUTDOWN_FAIL, Ordering::SeqCst);
+        Err(e)
+    } else {
+        STATE_FAIL_R.set(false);
+        Ok(())
+    }
+}
+
+fn recover_boot() -> StdResult
+{
+    // Instead of tearing down in reverse of startup order, tear down in the
+    // order that gets us into the safest state possible if teardown fails
+
+    debug!(DEBUG_SYSMAN, "failed to boot, recovering");
+
+    debug!(DEBUG_SYSMAN, "quick supply shutdown");
+    POWER_R.set(true);
+    POWER_G.set(false);
+    reset::shutdown_supplies_cleanly();
+    debug!(DEBUG_SYSMAN, "reached S5");
+    POWER_R.set(false);
+
+    if let Err(_) = ext4::umount("/") {
+        debug!(DEBUG_SYSMAN, "card not mounted, ignore umount failure");
+    } else {
+        CARD_R.set(true);
+        ext4::unregister_device("root")?;
+        CARDEN.set(false);
+        CARD_R.set(false);
+        CARD_G.set(false);
+    }
+
+    devices::MATRIX.write().set_standby_brightness()?;
+
+    Ok(())
+}
+
+fn recover_shutdown() -> StdResult
+{
+    // Actually the same thing as recovering from a failed boot, as in both
+    // cases we just want to reach "OFF" state as directly as possible.
+    recover_boot()
 }

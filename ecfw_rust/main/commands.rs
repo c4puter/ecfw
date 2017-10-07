@@ -156,11 +156,11 @@ fn cmd_panel(_args: &[&str]) -> StdResult
         match v { true => "Y ", false => " N" }
     }
 
-    println!("P12V   {} {} | P3V3_STBY  {} {} | EC FMW {} {}       {} {} UNC0",
+    println!("P12V   {} {} | P3V3_STBY  {} {} | EC FMW {} {}       {} {} STATE FAIL",
              r_(P12V_PCI_R.get()), g_(P12V_PCI_G.get()),
              r_(P3V3_STBY_R.get()), g_(P3V3_STBY_G.get()),
              r_(ECFW_R.get()), g_(ECFW_G.get()),
-             r_(UNC0_R.get()), g_(UNC0_G.get()));
+             r_(STATE_FAIL_R.get()), g_(STATE_FAIL_G.get()));
     println!("P5V_A  {} {} | P3V3_AUX   {} {} | PWR SQ {} {}       {} {} UNC1",
              r_(P5V_PCI_A_R.get()), g_(P5V_PCI_A_G.get()),
              r_(P3V3_AUX_R.get()), g_(P3V3_AUX_G.get()),
