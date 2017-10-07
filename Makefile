@@ -26,6 +26,7 @@ OBJCOPY	= ${CROSS_COMPILE}objcopy
 OBJDUMP = ${CROSS_COMPILE}objdump
 SIZE    = ${CROSS_COMPILE}size
 RUSTC   = rustc
+RUSTDOC = rustdoc
 PYTHON  ?= python
 
 # }}}
@@ -147,7 +148,7 @@ CFLAGS = \
 	-I esh \
 
 RUSTFLAGS = \
-	-C opt-level=1 -Z no-landing-pads --target thumbv7em-none-eabi -g \
+	-Copt-level=1 -Zno-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
 
 BINDGENFLAGS = \
@@ -221,7 +222,7 @@ BINDGEN_CRATES = $(foreach i,${BINDGEN_SOURCES}, \
 # COMMAND TARGETS {{{
 ###############################################################################
 
-.PHONY: all all-with-asf clean genclean distclean debug program reset
+.PHONY: all all-with-asf doc clean genclean distclean debug program reset
 .SECONDARY: ${RUSTLIB_FILES}
 
 all: do-bindgen ${RUST_PLUGINS} ${ASF_UNF_DIR}
@@ -229,6 +230,9 @@ all: do-bindgen ${RUST_PLUGINS} ${ASF_UNF_DIR}
 
 all-with-asf: ecfw.hex ecfw.disasm
 	${PYTHON} scripts/size.py ecfw ${STACK_SIZE} ${HEAP_SIZE} ${TOTAL_FLASH} ${TOTAL_SRAM}
+
+doc:
+	${RUSTDOC} $(filter-out -C% -g,${RUSTFLAGS}) --crate-name=ecfw_rust ecfw_rust/lib.rs
 
 clean:
 	rm -f ${OBJECTS}

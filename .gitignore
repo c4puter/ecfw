@@ -15,3 +15,4 @@ do-bindgen
 bindgen_*.rs
 asf_*.rs
 lwext4*.rs
+doc
