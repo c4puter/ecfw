@@ -17,19 +17,32 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+//! Somewhat specialized Unicode conversion functions
+
 use messages::*;
 use core::char;
 
-/// Read UTF-16LE data into a UTF-8 buffer. Processes the entire length, but
-/// returns the number of consecutive nonzero bytes written.
+/// Read UTF-16LE data into a UTF-8 buffer.
+///
+/// Processes the entire length, but returns the number of consecutive nonzero
+/// bytes (the result that `strlen` would return if processing the result).
 ///
 /// Errors on invalid codepoints, including orphaned surrogates. Asserts that
-/// dest is long enough (must be at least src.len()*2).
+/// `dest` is long enough (must be at least `2 * src.len()`).
 ///
 /// Warning - this is not necessarily standard-compliant: it does not guarantee
 /// errors on invalid conditions, only when it can't figure out what to do.
 /// In particular, a single isolated high surrogate will be silently dropped
 /// (whereas a single isolated low surrogate will cause complaint).
+///
+/// # Arguments
+/// - `dest` - buffer to hold the transcoded data
+/// - `src` - slice of UTF-16LE
+///
+/// # Return
+/// - `Ok(n)` - number of consecutive nonzero bytes written
+/// - `Err(ERR_UTF16_ORPHAN)` - failed to decode orphaned surrogate
+/// - `Err(ERR_CODEPOINT)` - found invalid codepoint
 pub fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, Error>
 {
     assert!(dest.len() >= src.len() * 2);
@@ -70,7 +83,8 @@ pub fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, Erro
             first_zero = Some(idest);
         }
 
-        idest += write_one_utf8(dest, idest, codepoint);
+        // Safe: we've verified the codepoint
+        idest += unsafe{write_one_utf8(dest, idest, codepoint)};
     }
 
     match first_zero {
@@ -79,10 +93,21 @@ pub fn read_utf16le_into_utf8(dest: &mut [u8], src: &[u8]) -> Result<usize, Erro
     }
 }
 
-/// Write a single codepoint into a buffer, returning the number of bytes written
-pub fn write_one_utf8(dest: &mut [u8], idest: usize, codepoint: u32) -> usize
+/// Write a single codepoint as UTF-8 into a buffer.
+///
+/// This is unchecked, and thus unsafe. You must guarantee that `codepoint` is
+/// less than or equal to `0x10FFFF`.
+///
+/// # Arguments
+/// - `dest` - buffer to hold the encoded data
+/// - `idest` - offset into `dest` at which to begin writing
+/// - `codepoint` - the Unicode codepoint to write
+///
+/// # Return
+/// - Number of bytes added to `dest`
+pub unsafe fn write_one_utf8(dest: &mut [u8], idest: usize, codepoint: u32) -> usize
 {
-    let c = unsafe{char::from_u32_unchecked(codepoint)};
+    let c = char::from_u32_unchecked(codepoint);
     let destlen = dest.len();
     let s = c.encode_utf8(&mut dest[idest..destlen]);
     s.len()

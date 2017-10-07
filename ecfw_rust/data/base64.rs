@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+//! Conversion to and from base 64
+
 use messages::*;
 
 static BASE64_ENCODE_LUT: &[u8; 64] =
@@ -37,7 +39,15 @@ fn dec_one_symbol(src: u8) -> Result<u8,Error>
     }
 }
 
-/// Encode a block of data as base64. Return number of base64 characters written.
+/// Encode a block of data as base64.
+///
+/// # Arguments
+/// - `dest` - buffer to hold the result
+/// - `src` - slice of raw data to be encoded as base 64
+///
+/// # Return
+/// - `Ok(n)` - number of bytes written to `dest`
+/// - `Err(ERR_STRLEN)` - `dest` is too short
 pub fn encode(dest: &mut [u8], src: &[u8]) -> Result<usize,Error>
 {
     let mut written = 0usize;
@@ -78,7 +88,16 @@ pub fn encode(dest: &mut [u8], src: &[u8]) -> Result<usize,Error>
     Ok(written)
 }
 
-/// Decode a block of data from base64. Return number of bytes written.
+/// Decode a block of data from base64.
+///
+/// # Arguments
+/// - `dest` - buffer to hold the raw result
+/// - `src` - slice of data to be decoded from base 64
+///
+/// # Return
+/// - `Ok(n)` - number of bytes written to `dest`
+/// - `Err(ERR_BASE64)` - `src` contains invalid data
+/// - `Err(ERR_STRLEN)` - `dest` is too short
 pub fn decode(dest: &mut [u8], src: &[u8]) -> Result<usize,Error>
 {
     let mut written = 0usize;

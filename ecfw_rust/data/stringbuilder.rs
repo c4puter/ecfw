@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+// TODO: er, almost this entire thing could be done simpler in terms of Vec
+
 use messages::*;
 use core::str;
 use core::slice;
@@ -24,11 +26,12 @@ use core::mem;
 use alloc::boxed::Box;
 pub const MAXLEN: usize = 1024;
 
-/// Helper to build a string from pieces inside a Box.
+/// Helper to build a string from pieces.
 ///
-/// MAXLEN is chosen as exactly 1kB; several other possibly heap-
-/// allocated types in this system are also that size. This is done to reduce
-/// heap fragmentation.
+/// Always allocates its full maximum length, and cannot reallocate. The maximum
+/// length is chosen as exactly 1kB; several other possibly heap-allocated
+/// types in this system are also this size. This is done to reduce heap
+/// fragmentation.
 pub struct StringBuilder {
     inner: Box<[u8]>,
     len: usize,

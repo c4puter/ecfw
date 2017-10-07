@@ -19,7 +19,7 @@
 
 use messages::*;
 
-/// A str->int parser that handles radix specifiers.
+/// A string-to-int parser that handles radix specifiers.
 ///
 ///     extern crate parseint;
 ///     use parseint::ParseInt;
@@ -33,7 +33,7 @@ use messages::*;
 ///
 /// - `0b`, `0B`: binary
 /// - `0o`, `0O`, `0`: octal
-/// - `0d`, `0D`, ``: decimal
+/// - `0d`, `0D`: decimal (default)
 /// - `0x`, `0X`: hexadecimal
 
 pub trait ParseInt where Self: Sized {
