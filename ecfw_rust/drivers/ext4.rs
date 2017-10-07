@@ -41,8 +41,6 @@ pub struct SdBlockDev<'a> {
 unsafe impl <'a> Sync for SdBlockDev<'a> {}
 unsafe impl <'a> Send for SdBlockDev<'a> {}
 
-static BLOCKDEV: Mutex<Option<SdBlockDev<'static>>> = Mutex::new(None);
-
 const EIO: i32 = 5;
 
 /// Error struct containing a number of bytes accessed before error, as well as
@@ -80,6 +78,30 @@ impl IoError {
     }
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Block device registration - lifetime notes
+// lwext4 takes ownership of the pointer passed to it, but doesn't give a way
+// to get the pointer back when unregistering. This makes for less than
+// beautiful mapping to Rust lifetimes.
+//
+// This is resolved by only allowing one block device to be registered at a
+// time. The single block device (BLOCKDEV) has a mutex guarding it, but
+// be warned: this is only to guard the Option<> - if the Option is Some,
+// then the block device is also owned by lwext4 until unregistered.
+//
+// There are two better ways to handle this, neither of which I'm going to do:
+//
+// 1. Instead of a single static block device, have a static map of device
+//    names and structs. When unregistering a device, it can be found in the
+//    map and deleted. Not doing because it's wasteful.
+//
+// 2. Modify lwext4 to relinquish ownership and return the pointer when
+//    unregistering. Instead of using static device structs, use a Box, which
+//    is converted to a pointer for lwext4, then reboxed and dropped on
+//    unregister. This is cleanest but I can't be arsed to submit a PR.
+
+static BLOCKDEV: Mutex<Option<SdBlockDev<'static>>> = Mutex::new(None);
+
 /// Register a block device with a device name.
 pub fn register_device(bd: SdBlockDev<'static>, dev_name: &str) -> StdResult
 {
@@ -95,7 +117,11 @@ pub fn register_device(bd: SdBlockDev<'static>, dev_name: &str) -> StdResult
     let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "register block device \"{}\"", dev_name);
-    to_stdresult(unsafe{lwext4::ext4_device_register((*lock).as_mut().unwrap().to_ptr(), c_name)})
+
+    let devptr = lock.as_mut().unwrap().to_ptr();
+    let rc = unsafe{lwext4::ext4_device_register(devptr, c_name)};
+
+    to_stdresult(rc)
 }
 
 /// Unregister a block device.
@@ -273,10 +299,8 @@ pub fn readlink(path: &str) -> Result<Box<str>,Error>
     let mut sb = StringBuilder::new();
 
     let rc = unsafe {
-        let buf = sb.as_mut_ref(false);
-        let len = buf.len();
-        let mut rcnt = 0usize;
-        lwext4::ext4_readlink(c_path, buf.as_mut_ptr() as *mut _, len, &mut rcnt)
+        let buf = sb.as_mut_ref(false).as_mut_ptr();
+        lwext4::ext4_readlink(c_path, buf as *mut _, 0, ptr::null_mut())
     };
 
     to_stdresult(rc)?;
