@@ -106,7 +106,7 @@ pub fn init_task()
     debug!(DEBUG_ECBOOT, "initialize HSMCI (SD)");
     drivers::sd::init();
 
-    os::Task::new(sysman::run_event, "event", 500, 0);
+    os::Task::new(sysman::run_event, "event", 1000, 0);
     os::Task::new(sysman::run_status, "status", 500, 0);
     os::yield_task(); // Let above tasks emit status messages
 

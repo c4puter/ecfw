@@ -38,6 +38,11 @@ pub struct SdBlockDev<'a> {
     sd: &'a Mutex<Sd>,
 }
 
+unsafe impl <'a> Sync for SdBlockDev<'a> {}
+unsafe impl <'a> Send for SdBlockDev<'a> {}
+
+static BLOCKDEV: Mutex<Option<SdBlockDev<'static>>> = Mutex::new(None);
+
 const EIO: i32 = 5;
 
 /// Error struct containing a number of bytes accessed before error, as well as
@@ -76,18 +81,32 @@ impl IoError {
 }
 
 /// Register a block device with a device name.
-pub fn register_device(bd: &mut SdBlockDev, dev_name: &str) -> StdResult
+pub fn register_device(bd: SdBlockDev<'static>, dev_name: &str) -> StdResult
 {
+    let mut lock = BLOCKDEV.lock();
+
+    if lock.is_some() {
+        return Err(ERR_EEXIST);
+    }
+
+    *lock = Some(bd);
+
     let mut alloc = StrAlloc::new();
     let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
 
     debug!(DEBUG_FS, "register block device \"{}\"", dev_name);
-    to_stdresult(unsafe{lwext4::ext4_device_register(bd.to_ptr(), c_name)})
+    to_stdresult(unsafe{lwext4::ext4_device_register((*lock).as_mut().unwrap().to_ptr(), c_name)})
 }
 
 /// Unregister a block device.
 pub fn unregister_device(dev_name: &str) -> StdResult
 {
+    let mut lock = BLOCKDEV.lock();
+
+    if lock.is_none() {
+        return Err(ERR_ENOENT);
+    }
+
     let mut alloc = StrAlloc::new();
     let c_name = alloc.nulterm(dev_name)?.as_ptr() as *const i8;
 
@@ -95,6 +114,8 @@ pub fn unregister_device(dev_name: &str) -> StdResult
 
     // Ignore the result. For some reason this ALWAYS returns ENOENT.
     unsafe{lwext4::ext4_device_unregister(c_name)};
+
+    *lock = None;
     Ok(())
 }
 

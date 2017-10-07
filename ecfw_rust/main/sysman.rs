@@ -21,7 +21,7 @@ use os;
 use drivers;
 use devices;
 use drivers::gpio::Gpio;
-use drivers::ext4;
+use drivers::{ext4,gpt};
 use devices::pins::*;
 use devices::supplies::*;
 use messages::*;
@@ -223,11 +223,60 @@ fn do_boot() -> StdResult
     POWER_R.set(false);
     devices::MATRIX.write().set_full_brightness()?;
     POWER_STATE.store(0, Ordering::SeqCst);
+
+    if let Err(e) = boot_mount_card() {
+        if e == ERR_NO_CARD {
+            // XXX .set_blink(true);
+            CARD_R.set(true);
+        } else {
+            CARD_R.set(true);
+        }
+        return Err(e);
+    } else {
+        CARD_G.set(true);
+    }
+
     unsafe {os::freertos::suspend_all();}
     SPEAKER.set(true);
     os::susp_safe_delay(125);
     SPEAKER.set(false);
     unsafe {os::freertos::resume_all();}
+    Ok(())
+}
+
+fn boot_mount_card() -> StdResult
+{
+    if !CARD.get() {
+        return Err(ERR_NO_CARD);
+    }
+
+    CARDEN.set(true);
+    os::delay(1);
+    devices::SD.lock().check()?;
+
+    let mut table = gpt::Gpt::new(&devices::SD);
+    let mut entry = gpt::GptEntry::new();
+
+    table.read_header()?;
+    table.read_boot(&mut entry)?;
+
+    if !entry.valid() {
+        return Err(ERR_NO_BOOT_PART);
+    }
+
+    let bd = ext4::makedev(&devices::SD, &entry);
+
+    if let Err(e) = ext4::register_device(bd, "root") {
+        if e == ERR_EEXIST {
+            debug!(DEBUG_SYSMAN, "card already mounted, ignore mount failure");
+            return Ok(());
+        } else {
+            return Err(e);
+        }
+    }
+
+    ext4::mount("root", "/", false)?;
+
     Ok(())
 }
 

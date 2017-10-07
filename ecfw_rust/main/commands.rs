@@ -380,8 +380,6 @@ fn cmd_pwr_stat(args: &[&str]) -> StdResult
     Ok(())
 }
 
-static mut BLOCKDEV: Option<ext4::SdBlockDev> = None;
-
 fn cmd_mount(_args: &[&str]) -> StdResult
 {
     if !CARD.get() {
@@ -402,10 +400,8 @@ fn cmd_mount(_args: &[&str]) -> StdResult
         return Err(ERR_NO_BOOT_PART);
     }
 
-    unsafe {
-        BLOCKDEV = Some(ext4::makedev(&devices::SD, &entry));
-        ext4::register_device(BLOCKDEV.as_mut().unwrap(), "root")?;
-    }
+    let bd = ext4::makedev(&devices::SD, &entry);
+    ext4::register_device(bd, "root")?;
 
     ext4::mount("root", "/", false)?;
     Ok(())
