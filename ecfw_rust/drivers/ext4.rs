@@ -19,7 +19,6 @@
 
 extern crate lwext4;
 extern crate ctypes;
-use data::StringBuilder;
 use core::{ptr, mem, str, slice, ops, convert, fmt};
 use core::marker::PhantomData;
 use alloc::raw_vec::RawVec;
@@ -259,11 +258,11 @@ fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File,Error>
 /// Open a file, expanding symlinks in the path first.
 pub fn fopen_expand(path: &str, flags: OpenFlags) -> Result<File,Error>
 {
-    let mut expanded = expand_sb(path)?;
+    let mut expanded = expand(path)?;
 
     // Append \0 to get a C string
-    expanded.append("\0")?;
-    fopen_cstr(expanded.as_ref().as_ptr(), flags)
+    expanded.push('\0');
+    fopen_cstr(expanded.as_ptr(), flags)
 }
 
 /// Stat a file.
@@ -323,57 +322,47 @@ pub fn readlink(path: &str) -> Result<String,Error>
     }
 }
 
-/// Expand a path, following all symlinks, returning the stringbuilder so more
-/// can be appended. For internal use.
-fn expand_sb(path: &str) -> Result<StringBuilder,Error>
+/// Expand a path, following all symlinks.
+pub fn expand(path: &str) -> Result<String,Error>
 {
-    let mut sb = StringBuilder::new();
+    let mut s = String::with_capacity(1024);
 
     for i in path.split('/') {
         if i.len() == 0 {continue};
 
         // In order to stat this path element, we append it to the string
         // builder, stat that path, and then truncate it back off.
-        let len = sb.len();
-        sb.append("/")?;
-        sb.append(i)?;
-        sb.append("\0")?;
+        let len = s.len();
+        s.push('/');
+        s.push_str(i);
+        s.push('\0');
 
-        let stat = stat_cstr(sb.as_ref().as_ptr())?;
+        let stat = stat_cstr(s.as_ptr())?;
 
         // Truncate the \0 that was added just to get a C string
-        let without_nulterm = sb.len() - 1;
-        sb.truncate(without_nulterm);
+        let without_nulterm = s.len() - 1;
+        s.truncate(without_nulterm);
 
         if stat.inode_type() == InodeType::Symlink {
-            let link = readlink(sb.as_ref())?;
+            let link = readlink(&s)?;
 
             if link.as_bytes()[0] == '/' as u8 {
-                sb.truncate(0);
+                s.truncate(0);
             } else {
-                sb.truncate(len);
-                sb.append("/")?;
+                s.truncate(len);
+                s.push('/');
             }
-            sb.append(link.as_ref())?;
+            s.push_str(&link);
         }
     }
 
-    if sb.len() == 0 && path.len() > 0 {
+    if s.len() == 0 && path.len() > 0 {
         // Special case, we were given "/" or similar ("///", etc). These will
         // produce an empty stringbuilder but should expand to "/"
-        sb.append("/")?;
+        s.push('/');
     }
 
-    Ok(sb)
-}
-
-/// Expand a path, following all symlinks.
-pub fn expand(path: &str) -> Result<Box<str>,Error>
-{
-    match expand_sb(path) {
-        Ok(sb) => Ok(sb.into_box()),
-        Err(e) => Err(e),
-    }
+    Ok(s)
 }
 
 #[repr(C)]
