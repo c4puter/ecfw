@@ -19,17 +19,19 @@
 
 extern crate lwext4;
 extern crate ctypes;
+use data::StringBuilder;
 use core::{ptr, mem, str, slice, ops, convert, fmt};
 use core::marker::PhantomData;
 use alloc::raw_vec::RawVec;
+use alloc::vec;
 use alloc::boxed::Box;
+use alloc::string::String;
 use self::lwext4::ext4_blockdev_iface;
 pub use self::lwext4::ext4_blockdev;
 
 use drivers::sd::*;
 use drivers::gpt;
 use os::{Mutex, StrAlloc};
-use data::StringBuilder;
 use messages::*;
 
 #[repr(C)]
@@ -291,23 +293,34 @@ fn stat_cstr(path: *const u8) -> Result<Stat,Error>
 pub struct Stat(lwext4::ext4_inode);
 
 /// Read a link.
-pub fn readlink(path: &str) -> Result<Box<str>,Error>
+pub fn readlink(path: &str) -> Result<String,Error>
 {
     let mut alloc = StrAlloc::new();
     let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
 
-    let mut sb = StringBuilder::new();
+    let mut buf = vec::from_elem(0u8, 1024);
 
     let rc = unsafe {
-        let buf = sb.as_mut_ref(false).as_mut_ptr();
-        lwext4::ext4_readlink(c_path, buf as *mut _, 0, ptr::null_mut())
+        lwext4::ext4_readlink(
+            c_path,
+            buf.as_mut_slice().as_mut_ptr() as *mut _,
+            buf.len(),
+            ptr::null_mut())
     };
 
     to_stdresult(rc)?;
 
-    unsafe { sb.fix_length() };
+    for i in 0..buf.len() {
+        if buf[i] == 0 {
+            buf.truncate(i);
+            break;
+        }
+    }
 
-    Ok(sb.into_box())
+    match String::from_utf8(buf) {
+        Ok(s) => Ok(s),
+        Err(_) => Err(ERR_UTF8),
+    }
 }
 
 /// Expand a path, following all symlinks, returning the stringbuilder so more
