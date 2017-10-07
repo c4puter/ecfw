@@ -21,6 +21,7 @@ use os;
 use drivers;
 use devices;
 use drivers::gpio::Gpio;
+use drivers::ext4;
 use devices::pins::*;
 use devices::supplies::*;
 use messages::*;
@@ -234,6 +235,15 @@ fn do_shutdown() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "shutdown");
     POWER_R.set(true);
+
+    if let Err(_) = ext4::umount("/") {
+        debug!(DEBUG_SYSMAN, "card not mounted, ignore umount failure");
+    } else {
+        CARD_R.set(true);
+        ext4::unregister_device("root")?;
+        CARD_R.set(false);
+        CARD_G.set(false);
+    }
 
     unsafe {
         devices::CLOCK_SYNTH.disable_mck();
