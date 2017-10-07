@@ -22,11 +22,12 @@ use drivers::{ext4, gpt};
 use drivers::gpio::Gpio;
 use drivers::ftrans::FTrans;
 use devices;
-use data::{ParseInt, hexprint, StringBuilder};
+use data::{ParseInt, hexprint};
 use devices::pins::*;
 use main::{reset, sysman};
 use messages::*;
 use core::fmt;
+use alloc::string::String;
 
 pub struct Command<'a> {
     pub name: &'a str,
@@ -505,20 +506,20 @@ fn cmd_ls(args: &[&str]) -> StdResult
     let path = if args.len() == 2 { args[1] } else { "/" };
 
     // Use a stringbuilder to append each item to the path, for stat()
-    let mut sb = StringBuilder::new();
-    sb.append(path)?;
+    let mut s = String::with_capacity(1024);
+    s.push_str(path);
     let pab = path.as_bytes();
     if pab[pab.len() - 1] != '/' as u8 {
-        sb.append("/")?;
+        s.push_str("/");
     }
-    let only_path = sb.len();
+    let only_path = s.len();
 
     let mut dir = ext4::dir_open(path)?;
     for de in dir.iter() {
         let name = de.name()?;
-        sb.append(name)?;
-        let stat = ext4::stat(sb.as_ref())?;
-        sb.truncate(only_path);
+        s.push_str(name);
+        let stat = ext4::stat(&s)?;
+        s.truncate(only_path);
 
         println!("{} {:8} {}", stat, stat.size(), name);
     }
