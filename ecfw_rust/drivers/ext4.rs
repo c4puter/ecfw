@@ -647,7 +647,7 @@ static mut BLOCKDEV_IFACE: ext4_blockdev_iface = ext4_blockdev_iface {
 impl<'a> SdBlockDev<'a> {
     fn from_ptr(p: *mut ext4_blockdev) -> &'a mut SdBlockDev<'a>
     {
-        unsafe{ mem::transmute::<_, &mut SdBlockDev<'a>>(p) }
+        unsafe{ mem::transmute(p) }
     }
 
     fn to_ptr(&mut self) -> *mut ext4_blockdev
@@ -725,7 +725,7 @@ pub fn makedev<'a>(sd: &'a Mutex<Sd>, part: &gpt::GptEntry) -> SdBlockDev<'a>
 #[no_mangle]
 pub unsafe extern "C" fn ext4_user_malloc(sz: usize) -> *mut u8
 {
-    let rv = RawVec::<u8>::with_capacity(sz);
+    let rv = RawVec::with_capacity(sz);
     &mut ((*Box::into_raw(rv.into_box()))[0])
 }
 

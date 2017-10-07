@@ -14,7 +14,6 @@ use syntax::codemap::Span;
 use syntax::tokenstream::TokenTree;
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager, DummyResult};
 use syntax::ext::build::AstBuilder;
-use syntax::ptr::P;
 use rustc_plugin::Registry;
 use syntax::util::small_vector::SmallVector;
 use syntax::ast;
@@ -72,7 +71,7 @@ fn expand_repeat_expr(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree]) -> Box<MacR
 
     match parser.parse_expr() {
         Ok(expr) => {
-            let mut exprs = Vec::<P<ast::Expr>>::new();
+            let mut exprs = Vec::new();
             for _ in 0..times {
                 exprs.push(expr.clone());
             }
