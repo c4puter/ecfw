@@ -57,7 +57,7 @@ pub fn run_event()
     loop {
         let event = EVENTS.receive_wait_blocking();
         if let Err(e) = handle_one_event(event) {
-            panic!("Error on system event: {}", e);
+            debug!(DEBUG_SYSMAN, "error on system event: {}", e);
         }
     }
 }
@@ -126,8 +126,8 @@ pub fn run_status()
                     Err(_) => (false, true),
                 };
 
-                mat.buffer_led(pair.good.addr, good);
-                mat.buffer_led(pair.bad.addr, bad);
+                mat.buffer_led(pair.good.addr, good, false);
+                mat.buffer_led(pair.bad.addr, bad, false);
             }
 
             mat.flush().unwrap();
@@ -218,8 +218,7 @@ fn do_boot() -> StdResult
 
     if let Err(e) = boot_mount_card() {
         if e == ERR_NO_CARD {
-            // XXX .set_blink(true);
-            CARD_R.set(true);
+            CARD_R.set_blink();
         } else {
             CARD_R.set(true);
         }

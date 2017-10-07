@@ -75,6 +75,7 @@ pub struct LedMatrix<'a>
 {
     twi: &'a os::Mutex<twi::TwiDevice<'a>>,
     buffer: [u8; 24],
+    blinkbuf: [u8; 24],
 }
 
 impl<'a> LedMatrix<'a>
@@ -84,6 +85,7 @@ impl<'a> LedMatrix<'a>
         LedMatrix {
             twi: twi,
             buffer: [0u8; 24],
+            blinkbuf: [0u8; 24],
         }
     }
 
@@ -167,40 +169,34 @@ impl<'a> LedMatrix<'a>
         }
     }
 
-    pub fn buffer_led(&mut self, led: u8, val: bool)
+    pub fn buffer_led(&mut self, led: u8, val: bool, blink: bool)
     {
         let segment = (led & 0xf0) >> 4;
         let addr = (2 * segment) as usize;
-        let bit = 1 << (led & 0x0f);
 
         let buffer = &mut self.buffer[addr..addr+2];
+        let blinkbuf = &mut self.blinkbuf[addr..addr+2];
 
-        let mut register: u16 = (buffer[0] as u16) | ((buffer[1] as u16) << 8);
+        write_bit(buffer, (led & 0x0f) as _, val);
+        write_bit(blinkbuf, (led & 0x0f) as _, blink);
 
-        if val {
-            register |= bit;
-        } else {
-            register &= !bit;
-        }
-
-        // Ensure PWM selector bits are zero
-        register &= 0x07ff;
-
-        buffer[0] = (register & 0xff) as u8;
-        buffer[1] = ((register & 0xff00) >> 8) as u8;
+        buffer[1] &= 0x07;
+        blinkbuf[1] &= 0x07;
     }
 
-    pub fn set_led(&mut self, led: u8, val: bool) -> StdResult
+    pub fn set_led(&mut self, led: u8, val: bool, blink: bool) -> StdResult
     {
         let segment = (led & 0xf0) >> 4;
         let addr = (2 * segment) as usize;
 
-        self.buffer_led(led, val);
+        self.buffer_led(led, val, blink);
 
         let mut dev = self.twi.lock();
         self.switch_bank(&mut dev, RegBank::Frame0)?;
-        let buffer = &mut self.buffer[addr..addr+2];
-        dev.write(&[addr as u8], buffer)?;
+        dev.write(&[addr as u8], &mut self.buffer[addr..addr+2])?;
+
+        self.switch_bank(&mut dev, RegBank::BlinkPwm0)?;
+        dev.write(&[addr as u8], &mut self.blinkbuf[addr..addr+2])?;
 
         Ok(())
     }
@@ -246,6 +242,15 @@ impl<'a> LedMatrix<'a>
     }
 }
 
+fn write_bit(buffer: &mut [u8], bit: usize, val: bool)
+{
+    if val {
+        buffer[bit / 8] |= 1 << (bit % 8);
+    } else {
+        buffer[bit / 8] &= !(1 << (bit % 8));
+    }
+}
+
 pub struct LedGpio<'a>
 {
     pub addr: u8,
@@ -253,12 +258,19 @@ pub struct LedGpio<'a>
     pub name: &'static str,
 }
 
+impl<'a> LedGpio<'a>
+{
+    pub fn set_blink(&self) {
+        self.matrix.write().set_led(self.addr, true, true).unwrap();
+    }
+}
+
 impl<'a> gpio::Gpio for LedGpio<'a>
 {
     fn init(&self) {}
 
     fn set(&self, v: bool) {
-        self.matrix.write().set_led(self.addr, v).unwrap();
+        self.matrix.write().set_led(self.addr, v, false).unwrap();
     }
 
     fn get(&self) -> bool {
