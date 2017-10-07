@@ -22,13 +22,13 @@ use core::sync::atomic::*;
 use core::cell::UnsafeCell;
 use core::ops::*;
 
-pub struct RwLock<T: Sized + Sync> {
+pub struct RwLock<T: Sized> {
     data: UnsafeCell<T>,
     readers: AtomicUsize,
     writers: AtomicUsize,
 }
 
-impl<T> RwLock<T> where T: Sized + Sync {
+impl<T> RwLock<T> {
     pub const fn new(data: T) -> RwLock<T> {
         RwLock {
             data: UnsafeCell::new(data),
@@ -53,7 +53,6 @@ impl<T> RwLock<T> where T: Sized + Sync {
         }
 
         Some(RwLockWriter::<T>{
-            data: unsafe{ self.data.get().as_mut().unwrap() },
             lock: self })
     }
 
@@ -67,7 +66,6 @@ impl<T> RwLock<T> where T: Sized + Sync {
         }
 
         Some(RwLockReader::<T>{
-            data: unsafe{ self.data.get().as_ref().unwrap() },
             lock: self })
     }
 
@@ -136,47 +134,46 @@ impl<T> RwLock<T> where T: Sized + Sync {
     }
 }
 
-unsafe impl<T> Sync for RwLock<T> where T: Sync {}
+unsafe impl<T: Sized + Send + Sync> Send for RwLock<T> {}
+unsafe impl<T: Sized + Send + Sync> Sync for RwLock<T> {}
 
-pub struct RwLockWriter<'a, T: Sized + Sync + 'a> {
-    pub data: &'a mut T,
-    pub lock: &'a RwLock<T>,
+pub struct RwLockWriter<'a, T: Sized + 'a> {
+    lock: &'a RwLock<T>,
 }
 
-impl<'a, T> Deref for RwLockWriter<'a, T> where T: Sized + Sync + 'a {
+impl<'rwlock, T: Sized> Deref for RwLockWriter<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        self.data
+        unsafe {self.lock.data.get().as_ref()}.unwrap()
     }
 }
 
-impl<'a, T> DerefMut for RwLockWriter<'a, T> where T: Sized + Sync + 'a {
+impl<'rwlock, T: Sized> DerefMut for RwLockWriter<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
-        self.data
+        unsafe {self.lock.data.get().as_mut()}.unwrap()
     }
 }
 
-impl<'a, T> Drop for RwLockWriter<'a, T> where T: Sized + Sync + 'a {
+impl<'a, T: Sized> Drop for RwLockWriter<'a, T> {
     fn drop(&mut self) {
         self.lock.drop_writer();
     }
 }
 
-pub struct RwLockReader<'a, T: Sized + Sync + 'a> {
-    pub data: &'a T,
-    pub lock: &'a RwLock<T>,
+pub struct RwLockReader<'a, T: Sized + 'a> {
+    lock: &'a RwLock<T>,
 }
 
-impl<'a, T> Deref for RwLockReader<'a, T> where T: Sized + Sync + 'a {
+impl<'a, T: Sized> Deref for RwLockReader<'a, T> {
     type Target = T;
 
     fn deref(&self) -> &T {
-        self.data
+        unsafe {self.lock.data.get().as_ref()}.unwrap()
     }
 }
 
-impl<'a, T> Drop for RwLockReader<'a, T> where T: Sized + Sync + 'a {
+impl<'a, T: Sized> Drop for RwLockReader<'a, T> {
     fn drop(&mut self) {
         self.lock.drop_reader();
     }
