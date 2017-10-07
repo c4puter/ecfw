@@ -231,9 +231,11 @@ fn do_boot() -> StdResult
         } else {
             CARD_R.set(true);
         }
+        CARD_G.set(false);
         return Err(e);
     } else {
         CARD_G.set(true);
+        CARD_R.set(false);
     }
 
     unsafe {os::freertos::suspend_all();}
