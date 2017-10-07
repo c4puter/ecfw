@@ -21,7 +21,6 @@ use drivers::twi::TwiDevice;
 use messages::*;
 use os::Mutex;
 use os;
-use rustsys::ec_io;
 use bindgen_mcu;
 
 pub struct ClockSynth<'a> {
