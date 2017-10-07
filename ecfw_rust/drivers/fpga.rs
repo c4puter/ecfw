@@ -73,12 +73,11 @@ impl <'a> Spartan6<'a> {
         self.prog_pin.set(true);
         freertos::delay(1);
         self.prog_pin.set(false);
-        freertos::delay(1);
-        //wait_for_pin(self.init_pin, false, 100)?;
+        wait_for_pin(self.init_pin, false, 100)?;
 
         self.actual_load(filename)?;
 
-        //wait_for_pin(self.done_pin, true, 500)?;
+        wait_for_pin(self.done_pin, true, 500)?;
 
         Ok(())
     }

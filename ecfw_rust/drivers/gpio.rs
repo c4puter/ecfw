@@ -132,8 +132,7 @@ impl<'a> Gpio for PcfGpio<'a> {
             else { panic!("invalid pin number {}", self.pin); };
 
         let mut dev = self.dev.lock();
-        //dev.read(&[], &mut data).unwrap();
-        if let Err(_) = dev.read(&[], &mut data) { return; }
+        dev.read(&[], &mut data).unwrap();
 
         let mut data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 
@@ -160,7 +159,7 @@ impl<'a> Gpio for PcfGpio<'a> {
             else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
             else { panic!("invalid pin number {}", self.pin); };
 
-        while let Err(_) = self.dev.lock().read(&[], &mut data) {}
+        self.dev.lock().read(&[], &mut data).unwrap();
 
         let data_u16 = (data[1] as u16) | ((data[0] as u16) << 8);
 

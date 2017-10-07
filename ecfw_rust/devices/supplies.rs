@@ -75,7 +75,6 @@ supply_table!{
 pub fn transition_s3_from_s5() -> StdResult {
     BUCK_5VB.up()?;
     BUCK_5VA.up()?;
-    SW3.up()?;
 
     BUCK_5VB.wait_status(SupplyStatus::Up)?;
     BUCK_1V5.up()?;

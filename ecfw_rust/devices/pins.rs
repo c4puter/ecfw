@@ -68,13 +68,13 @@ pin_table!{
     FPGA_INIT0,         SamGpio, port => PIOA, pin =>  5, mode => Pullup, default => false, invert => true;
     FPGA_INIT1,         SamGpio, port => PIOB, pin =>  1, mode => Pullup, default => false, invert => true;
     FPGA_INIT2,         SamGpio, port => PIOB, pin =>  2, mode => Pullup, default => false, invert => true;
+    FPGA_PROG0,         SamGpio, port => PIOA, pin => 11, mode => Output, default => true, invert => true;
+    FPGA_PROG1,         SamGpio, port => PIOA, pin =>  9, mode => Output, default => true, invert => true;
+    FPGA_PROG2,         SamGpio, port => PIOA, pin => 10, mode => Output, default => true, invert => true;
     PANELINT,           SamGpio, port => PIOC, pin => 17, mode => Pullup, default => false, invert => true;
     PCIM66EN,           SamGpio, port => PIOC, pin => 24, mode => Input,  default => false, invert => false;
     PCIPME,             SamGpio, port => PIOC, pin => 23, mode => Input,  default => false, invert => true;
     PCIRST,             SamGpio, port => PIOC, pin => 22, mode => Output, default => false, invert => true;
-    FPGA_PROG0,         SamGpio, port => PIOA, pin => 11, mode => Output, default => false, invert => true;
-    FPGA_PROG1,         SamGpio, port => PIOA, pin =>  9, mode => Output, default => false, invert => true;
-    FPGA_PROG2,         SamGpio, port => PIOA, pin => 10, mode => Output, default => false, invert => true;
     PRSNT1_0,           SamGpio, port => PIOC, pin => 21, mode => Input,  default => false, invert => true;
     PRSNT1_1,           SamGpio, port => PIOC, pin => 16, mode => Input,  default => false, invert => true;
     PRSNT1_2,           SamGpio, port => PIOA, pin =>  2, mode => Input,  default => false, invert => true;
