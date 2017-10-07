@@ -17,8 +17,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-// TODO: er, almost this entire thing could be done simpler in terms of Vec
-
 use messages::*;
 use core::str;
 use core::slice;
