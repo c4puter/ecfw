@@ -19,11 +19,12 @@
 
 extern crate lwext4_crc32;
 extern crate ctypes;
-use data::{StringBuilder,base64,ParseInt};
+use data::{base64,ParseInt};
 use drivers::ext4;
 use rustsys::ec_io;
 use core::iter::Iterator;
 use core::str;
+use alloc::string::String;
 use messages::*;
 
 pub struct FTrans {
@@ -38,8 +39,7 @@ impl FTrans {
     /// Open a file transfer session. Quits when either ^C or ^D is received.
     pub fn run(&mut self) {
         ec_io::flush_output();
-        let mut sb = StringBuilder::new();
-        let mut overflowed = false;
+        let mut s = String::with_capacity(1024);
         let mut invalid = false;
 
         loop {
@@ -48,20 +48,17 @@ impl FTrans {
             match c {
                 3 | 4 => { /* ^C or ^D */ break; },
                 0x20 ... 0x7e => {
-                    overflowed = sb.append_char(c as char).is_err();
+                    s.push(c as char);
                 },
                 b'\r' => {
-                    if overflowed {
-                        self.handle_overflow();
-                    } else if invalid {
+                    if invalid {
                         self.handle_invalid();
                     } else {
-                        if let Err(e) = self.process_cmd(sb.as_ref()) {
+                        if let Err(e) = self.process_cmd(&s) {
                             self.handle_error(e);
                         }
                     }
-                    sb.truncate(0);
-                    overflowed = false;
+                    s.truncate(0);
                     invalid = false;
                 },
                 _ => { invalid = true; }
@@ -252,10 +249,6 @@ impl FTrans {
                 Err(ERR_FILE_NOT_OPEN)
             }
         }
-    }
-
-    fn handle_overflow(&self) {
-        println_async!("error overflow");
     }
 
     fn handle_invalid(&self) {
