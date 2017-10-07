@@ -21,10 +21,11 @@ extern "C" {
     fn pvPortMalloc(sz: usize) -> *mut u8;
     fn vPortFree(pv: *mut u8);
     fn memset(p: *mut u8, val: i32, size: usize) -> *mut u8;
+    fn memcpy(dest: *mut u8, src: *const u8, size: usize) -> *mut u8;
 }
 
 #[no_mangle]
-pub extern fn __rust_alloc(size: usize, align: usize, _err: *mut u8) -> *mut u8
+pub unsafe extern fn __rust_alloc(size: usize, align: usize, _err: *mut u8) -> *mut u8
 {
     if align > 8 {
         panic!("alloc requested alignment greater than 8 ({})", align);
@@ -36,22 +37,51 @@ pub extern fn __rust_alloc(size: usize, align: usize, _err: *mut u8) -> *mut u8
     // unaligned. Gah.
     let size_aligned = size + 7 & !7;
 
-    let p = unsafe { pvPortMalloc(size_aligned) };
+    let p = pvPortMalloc(size_aligned);
     debug!(DEBUG_ALLOC, "allocate {:4} bytes at 0x{:08x} (align {}, actual 8)",
         size, (p as usize), align);
     p
 }
 
 #[no_mangle]
-pub extern fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8) -> *mut u8 {
+pub unsafe extern fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8) -> *mut u8 {
     let p = __rust_alloc(size, align, err);
-    unsafe { memset(p, 0, size) }
+    memset(p, 0, size)
 }
 
 #[no_mangle]
-pub extern fn __rust_dealloc(ptr: *mut u8, _old_size: usize, _align: usize) {
+pub unsafe extern fn __rust_dealloc(ptr: *mut u8, _old_size: usize, _align: usize) {
     debug!(DEBUG_ALLOC, "free 0x{:08x}", (ptr as usize));
-    unsafe { vPortFree(ptr) };
+    vPortFree(ptr);
+}
+
+#[no_mangle]
+pub unsafe fn __rust_realloc(
+        ptr: *mut u8,
+        old_size: usize, old_align: usize,
+        new_size: usize, new_align: usize, err: *mut u8) -> *mut u8
+{
+    if old_align != new_align {
+        panic!("realloc requested change in alignment ({} to {})",
+               old_align, new_align);
+    }
+
+    if new_size < old_size {
+        debug!(DEBUG_ALLOC, "realloc 0x{:08x} to lower size - doing nothing",
+               (ptr as usize));
+        return ptr;
+    }
+
+    debug!(DEBUG_ALLOC, "realloc 0x{:08x} from {} to {}",
+           (ptr as usize), old_size, new_size);
+
+    let new_ptr = __rust_alloc(new_size, new_align, err);
+
+    memcpy(new_ptr, ptr, old_size);
+
+    __rust_dealloc(ptr, old_size, old_align);
+
+    new_ptr
 }
 
 #[no_mangle]
