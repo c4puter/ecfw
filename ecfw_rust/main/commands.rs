@@ -71,6 +71,7 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "hd",        f: cmd_hd,          descr: "hexdump the first block of PATH" },
     Command{ name: "bitstream", f: cmd_bitstream,   descr: "load fpga N with PATH" },
     Command{ name: "readlink",  f: cmd_readlink,    descr: "readlink" },
+    Command{ name: "rm",        f: cmd_rm,          descr: "delete PATH" },
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
     Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer" },
 ];
@@ -571,6 +572,17 @@ fn cmd_readlink(args: &[&str]) -> StdResult
 
     println!("{}", link);
     Ok(())
+}
+
+fn cmd_rm(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let path = args[1];
+
+    ext4::unlink(path)
 }
 
 fn cmd_expand(args: &[&str]) -> StdResult

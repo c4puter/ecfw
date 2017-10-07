@@ -322,6 +322,16 @@ pub fn readlink(path: &str) -> Result<String,Error>
     }
 }
 
+/// Unlink a path
+pub fn unlink(path: &str) -> StdResult
+{
+    let mut alloc = StrAlloc::new();
+    let c_path = alloc.nulterm(path)?.as_ptr() as *const i8;
+
+    let rc = unsafe{lwext4::ext4_fremove(c_path)};
+    to_stdresult(rc)
+}
+
 /// Expand a path, following all symlinks.
 pub fn expand(path: &str) -> Result<String,Error>
 {
