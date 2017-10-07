@@ -210,15 +210,7 @@ fn do_boot() -> StdResult
         debug!(DEBUG_SYSMAN, "reached S0");
     }
 
-    debug!(DEBUG_SYSMAN, "initialize clock synthesizer");
-    devices::CLOCK_SYNTH.y1div(25)?;
-    devices::CLOCK_SYNTH.y2div(3)?;
-    devices::CLOCK_SYNTH.y3div(2)?;
-    devices::CLOCK_SYNTH.ratio(75, 8)?;
-    devices::CLOCK_SYNTH.usepll(true)?;
-    unsafe {
-        devices::CLOCK_SYNTH.enable_mck();
-    }
+    boot_init_clock()?;
 
     POWER_R.set(false);
     devices::MATRIX.write().set_full_brightness()?;
@@ -278,6 +270,30 @@ fn boot_mount_card() -> StdResult
     }
 
     ext4::mount("root", "/", false)?;
+
+    Ok(())
+}
+
+fn boot_init_clock() -> StdResult
+{
+    debug!(DEBUG_SYSMAN, "initialize clock synthesizer");
+    devices::CLOCK_SYNTH.y1div(25)?;
+    devices::CLOCK_SYNTH.y2div(3)?;
+
+    if LOW_SPEED.get() {
+        debug!(DEBUG_SYSMAN, "LOW SPEED set");
+        devices::CLOCK_SYNTH.y3div(20)?;
+        debug!(DEBUG_SYSMAN, "EC ref: 7.5 MHz, bridge ref: 62.5 MHz, CPU: 9.375 MHz");
+    } else {
+        devices::CLOCK_SYNTH.y3div(2)?;
+        debug!(DEBUG_SYSMAN, "EC ref: 7.5 MHz, bridge ref: 62.5 MHz, CPU: 93.75 MHz");
+    }
+
+    devices::CLOCK_SYNTH.ratio(75, 8)?;
+    devices::CLOCK_SYNTH.usepll(true)?;
+    unsafe {
+        devices::CLOCK_SYNTH.enable_mck();
+    }
 
     Ok(())
 }
