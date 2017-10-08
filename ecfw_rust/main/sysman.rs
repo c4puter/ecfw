@@ -206,6 +206,8 @@ fn do_boot() -> StdResult
     POWER_R.set(true);
     POWER_G.set(true);
 
+    reset_fpgas();
+
     if let Err(e) = transition_s3_from_s5() {
         POWER_G.set(false);
         return Err(e);
@@ -238,6 +240,8 @@ fn do_boot() -> StdResult
         CARD_G.set(true);
         CARD_R.set(false);
     }
+
+    boot_load_fpgas()?;
 
     unsafe {os::freertos::suspend_all();}
     SPEAKER.set(true);
@@ -307,10 +311,43 @@ fn boot_init_clock() -> StdResult
     Ok(())
 }
 
+fn reset_fpgas()
+{
+    FPGA_PROG0.set(true);
+    FPGA_PROG1.set(true);
+    FPGA_PROG2.set(true);
+    BIT_BRIDGE_G.set(false);
+    BIT_CPU0_G.set(false);
+    BIT_CPU1_G.set(false);
+    BIT_R.set(false);
+}
+
+fn boot_load_fpgas() -> StdResult
+{
+    boot_load_fpga(0, "/bridge.bit", &BIT_BRIDGE_G)?;
+    // boot_load_fpga(1, "/cpu0.bit", &BIT_CPU0_G)?;
+    // boot_load_fpga(2, "/cpu1.bit", &BIT_CPU1_G)?;
+    Ok(())
+}
+
+fn boot_load_fpga(n: usize, path: &str, led: &Gpio) -> StdResult
+{
+    debug!(DEBUG_SYSMAN, "load bitstream {} to FPGA {}", path, n);
+    if let Err(e) = devices::FPGAS[n].load(path) {
+        BIT_R.set(true);
+        Err(e)
+    } else {
+        led.set(true);
+        Ok(())
+    }
+}
+
 fn do_shutdown() -> StdResult
 {
     debug!(DEBUG_SYSMAN, "shutdown");
     POWER_R.set(true);
+
+    reset_fpgas();
 
     if let Err(_) = ext4::umount("/") {
         debug!(DEBUG_SYSMAN, "card not mounted, ignore umount failure");
