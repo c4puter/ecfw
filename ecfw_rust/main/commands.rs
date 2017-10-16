@@ -74,6 +74,9 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "rm",        f: cmd_rm,          descr: "delete PATH" },
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
     Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer" },
+
+    Command{ name: "peek",      f: cmd_peek,        descr: "read 32 bits at ADDR" },
+    Command{ name: "poke",      f: cmd_poke,        descr: "write to ADDR, 32 bit DATA" },
 ];
 
 fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
@@ -603,5 +606,35 @@ fn cmd_ftrans(_args: &[&str]) -> StdResult
 {
     let mut ftrans = FTrans::new();
     ftrans.run();
+    Ok(())
+}
+
+fn cmd_peek(args: &[&str]) -> StdResult
+{
+    if args.len() < 2 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let addr = argv_parsed(args, 1, "ADDR", u64::parseint)?;
+    let mut buf = [0u32];
+
+    devices::NORTHBRIDGE.peek(&mut buf, addr)?;
+
+    println!("{:08X}", buf[0]);
+
+    Ok(())
+}
+
+fn cmd_poke(args: &[&str]) -> StdResult
+{
+    if args.len() < 3 {
+        return Err(ERR_EXPECTED_ARGS);
+    }
+
+    let addr = argv_parsed(args, 1, "ADDR", u64::parseint)?;
+    let data = argv_parsed(args, 1, "DATA", u32::parseint)?;
+
+    devices::NORTHBRIDGE.poke(addr, &[data])?;
+
     Ok(())
 }

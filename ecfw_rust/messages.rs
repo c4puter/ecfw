@@ -114,6 +114,7 @@ error_table! {
     ERR_TWI_TXNACK:             "TWI: transmit NACK";
 
     ///////////////////////////////////////////////////////////////////
-    // Clock synthesizer
+    // Oddly specific
     ERR_PLL_RANGE:              "PLL frequency out of range";
+    ERR_FPGA_BEFORE_BITSTREAM:  "comm with FPGA before loading bitstream";
 }

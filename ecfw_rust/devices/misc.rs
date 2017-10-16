@@ -24,6 +24,7 @@ use drivers::tempsensor::TempSensor;
 use drivers::clocksynth::ClockSynth;
 use drivers::spi::Spi;
 use drivers::fpga::Spartan6;
+use drivers::northbridge::Northbridge;
 use devices::twi;
 use devices::pins;
 
@@ -46,3 +47,5 @@ pub static FPGAS: [Spartan6; 3] = [
     Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE1, &pins::FPGA_INIT1, &pins::FPGA_PROG1),
     Spartan6::new(&FPGA_MUTEX, &SPI, &pins::FPGA_DONE2, &pins::FPGA_INIT2, &pins::FPGA_PROG2),
 ];
+
+pub static NORTHBRIDGE: Northbridge = Northbridge::new();

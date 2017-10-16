@@ -226,3 +226,178 @@ void vApplicationGetTimerTaskMemory( StaticTask_t **ppxTimerTaskTCBBuffer,
 
     *pulTimerTaskStackSize = configTIMER_TASK_STACK_DEPTH;
 }
+
+#define NB_PIO PIOC
+uint32_t const clk_bm   = 1u << 14;
+uint32_t const nrd_bm   = 1u << 11;
+uint32_t const start_bm = 1u << 8;
+uint32_t const nwait_bm = 1u << 13;
+
+/* Similar functions are declared in pio.h, but defined in pio.c, and without
+ * LTO we end up with actual function calls. Too slow for this.
+ */
+
+#define get_output_write_status(p)      ((p)->PIO_OWSR)
+#define enable_output_write(p, mask)    ((p)->PIO_OWER = (mask))
+#define disable_output_write(p, mask)   ((p)->PIO_OWDR = (mask))
+#define write_pins(p, mask)             ((p)->PIO_ODSR = (mask)) // masked
+#define set_pins(p, mask)               ((p)->PIO_SODR = (mask))
+#define clear_pins(p, mask)             ((p)->PIO_CODR = (mask))
+#define get_pins(p, mask)               ((p)->PIO_PDSR & (mask))
+#define pins_output(p, mask)            ((p)->PIO_OER = (mask))
+#define pins_input(p, mask)             ((p)->PIO_ODR = (mask))
+
+static void nb_send_addr(uint64_t dest_addr)
+{
+    uint8_t const addr0 = (dest_addr & 0x00000000FF) >> 0;
+    uint8_t const addr1 = (dest_addr & 0x000000FF00) >> 8;
+    uint8_t const addr2 = (dest_addr & 0x0000FF0000) >> 16;
+    uint8_t const addr3 = (dest_addr & 0x00FF000000) >> 24;
+    uint8_t const addr4 = (dest_addr & 0x0F00000000) >> 32;
+
+    set_pins(NB_PIO, nrd_bm | start_bm);
+    pins_output(NB_PIO, 0xff);
+
+    while (!get_pins(NB_PIO, nwait_bm));
+
+    __disable_irq();
+
+    uint8_t owsr = get_output_write_status(NB_PIO);
+    disable_output_write(NB_PIO, 0xffffffff);
+    enable_output_write(NB_PIO, clk_bm | 0xff | start_bm);
+
+    write_pins(NB_PIO, addr0 | start_bm);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, addr1);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, addr2);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, addr3);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, addr4);
+    set_pins(NB_PIO, clk_bm);
+
+    disable_output_write(NB_PIO, 0xffffffff);
+    enable_output_write(NB_PIO, owsr);
+
+    __enable_irq();
+}
+
+static void nb_send_data(uint32_t data)
+{
+    uint8_t const data0 = (data & 0x000000FF) >> 0;
+    uint8_t const data1 = (data & 0x0000FF00) >> 8;
+    uint8_t const data2 = (data & 0x00FF0000) >> 16;
+    uint8_t const data3 = (data & 0xFF000000) >> 24;
+
+    set_pins(NB_PIO, nrd_bm);
+    pins_output(NB_PIO, 0xff);
+
+    __disable_irq();
+
+    uint8_t owsr = get_output_write_status(NB_PIO);
+    disable_output_write(NB_PIO, 0xffffffff);
+    enable_output_write(NB_PIO, clk_bm | 0xff);
+
+    write_pins(NB_PIO, data0);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, data1);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, data2);
+    set_pins(NB_PIO, clk_bm);
+
+    write_pins(NB_PIO, data3);
+    set_pins(NB_PIO, clk_bm);
+
+    disable_output_write(NB_PIO, 0xffffffff);
+    enable_output_write(NB_PIO, owsr);
+
+    __enable_irq();
+
+    while (!get_pins(NB_PIO, nwait_bm));
+}
+
+static uint32_t nb_get_data(void)
+{
+    pins_input(NB_PIO, 0xff);
+    clear_pins(NB_PIO, nrd_bm);
+
+    clear_pins(NB_PIO, clk_bm);
+    set_pins(NB_PIO, clk_bm);
+    while (!get_pins(NB_PIO, nwait_bm));
+
+    uint32_t const data0 = get_pins(NB_PIO, 0xff);
+    clear_pins(NB_PIO, clk_bm);
+    set_pins(NB_PIO, clk_bm);
+
+    uint32_t const data1 = get_pins(NB_PIO, 0xff);
+    clear_pins(NB_PIO, clk_bm);
+    set_pins(NB_PIO, clk_bm);
+
+    uint32_t const data2 = get_pins(NB_PIO, 0xff);
+    clear_pins(NB_PIO, clk_bm);
+    set_pins(NB_PIO, clk_bm);
+
+    uint32_t const data3 = get_pins(NB_PIO, 0xff);
+
+    return (data0 << 0) | (data1 << 8) | (data2 << 16) | (data3 << 24);
+}
+
+static void nb_finish_read(void)
+{
+    set_pins(NB_PIO, nrd_bm);
+    pins_output(NB_PIO, 0xff);
+    while (!get_pins(NB_PIO, nwait_bm));
+}
+
+/**
+ * Write a block of data into the northbridge. Data must comprise 32-bit words
+ * and the destination is word-addressed. Length is the number of words to
+ * write.
+ */
+void northbridge_poke(uint64_t dest_addr, uint32_t const *src, uint32_t n)
+{
+    for (uint32_t i = 0; i < n; ++i) {
+        uint64_t const dest_addr_i = dest_addr + i;
+
+        if (i == 0 || (dest_addr_i & 0xFF) == 0) {
+            // Northbridge interface has autoincrement over the last octet of
+            // the address. If we would overflow this autoincrement, we must
+            // retransmit the address.
+            nb_send_addr(dest_addr_i);
+        }
+
+        nb_send_data(src[i]);
+    }
+}
+
+/**
+ * Read a block of data from the northbridge. Data must comprise 32-bit words
+ * and the source is word-addressed. Length is the number of words to read.
+ */
+void northbridge_peek(uint32_t *dest, uint64_t src_addr, uint32_t n)
+{
+    for (uint32_t i = 0; i < n; ++i) {
+        uint64_t const src_addr_i = src_addr + i;
+
+        if (i == 0 || (src_addr_i & 0xFF) == 0) {
+            // Northbridge interface has autoincrement over the last octet of
+            // the address. If we would overflow this autoincrement, we must
+            // retransmit the address.
+            if (i != 0) {
+                nb_finish_read();
+            }
+            nb_send_addr(src_addr_i);
+        }
+
+        dest[i] = nb_get_data();
+    }
+
+    nb_finish_read();
+}

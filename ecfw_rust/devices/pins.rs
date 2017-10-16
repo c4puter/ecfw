@@ -94,6 +94,21 @@ pin_table!{
     USB_VBSENSE,        SamGpio, port => PIOA, pin =>  0, mode => Input,  default => false, invert => false;
     VREFEN,             SamGpio, port => PIOB, pin =>  0, mode => Output, default => false, invert => false;
 
+    // Northbridge interface
+    // Beware! In mcu.c these are hard-coded in a bitbanging routine.
+    NB_D0,              SamGpio, port => PIOC, pin =>  0, mode => Input,  default => false, invert => false;
+    NB_D1,              SamGpio, port => PIOC, pin =>  1, mode => Input,  default => false, invert => false;
+    NB_D2,              SamGpio, port => PIOC, pin =>  2, mode => Input,  default => false, invert => false;
+    NB_D3,              SamGpio, port => PIOC, pin =>  3, mode => Input,  default => false, invert => false;
+    NB_D4,              SamGpio, port => PIOC, pin =>  4, mode => Input,  default => false, invert => false;
+    NB_D5,              SamGpio, port => PIOC, pin =>  5, mode => Input,  default => false, invert => false;
+    NB_D6,              SamGpio, port => PIOC, pin =>  6, mode => Input,  default => false, invert => false;
+    NB_D7,              SamGpio, port => PIOC, pin =>  7, mode => Input,  default => false, invert => false;
+    NB_CLK,             SamGpio, port => PIOC, pin => 14, mode => Output, default => false, invert => false;
+    NB_NRD,             SamGpio, port => PIOC, pin => 11, mode => Output, default => false, invert => false;
+    NB_START,           SamGpio, port => PIOC, pin =>  8, mode => Output, default => false, invert => false;
+    NB_NWAIT,           SamGpio, port => PIOC, pin => 13, mode => Input,  default => false, invert => false;
+
     // SD card interface
     MCDA0,              SamGpio, port => PIOA, pin => 30, mode => PerC,   default => false, invert => false;
     MCDA1,              SamGpio, port => PIOA, pin => 31, mode => PerC,   default => false, invert => false;

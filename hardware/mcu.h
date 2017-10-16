@@ -44,4 +44,14 @@ bool mcu_spi_write(uint8_t b);
 // return SPI PDC (DMA controller) base address
 uint32_t mcu_spi_pdc_base(void);
 
+// Write a block of data into the northbridge. Data must comprise 32-bit words
+// and the destination is word-addresed. Length is the number of words to write.
+// Not threadsafe - a driver wrapping this should guard itself with a mutex.
+void northbridge_poke(uint64_t dest_addr, uint32_t const *src, uint32_t n);
+
+// Read a block of data from the northbridge. Data must comprise 32-bit words
+// and the source is word-addressed. Length is the number of words to read.
+// Not threadsafe - a driver wrapping this should guard itself with a mutex.
+void northbridge_peek(uint32_t *dest, uint64_t source_addr, uint32_t n);
+
 #endif // MCU_H
