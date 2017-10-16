@@ -37,6 +37,7 @@ function bmp_load() {
         --quiet \
         -ex "target extended-remote $BMP_PATH" \
         -ex "monitor swdp_scan" \
+        -ex "source scripts/range.py" \
         "$@"
 }
 
@@ -62,6 +63,6 @@ case $2 in
     debug)
         bmp_load --ex "attach 1" \
                  --ex "set mem inaccessible-by-default off" \
-                 --ex "layout split"
+                 --ex "source gdbinit"
         ;;
 esac

@@ -16,3 +16,4 @@ bindgen_*.rs
 asf_*.rs
 lwext4*.rs
 doc
+.gdb_history

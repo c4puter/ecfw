@@ -1,0 +1,57 @@
+#!/bin/bash
+SESSION=$USER-$RANDOM
+
+#           MEMORY(0)
+#   SOURCE(1)       ASSEMBLY(2)
+#   STACK(3)        REGISTERS(4)
+#           COMMAND(5)
+
+tmux -2 new-session -d -s $SESSION
+
+tmux new-window -t $SESSION:1 -n 'gdb'
+tmux split-window -v
+tmux split-window -v
+tmux split-window -v
+
+tmux select-pane -t 1
+tmux split-window -h
+tmux select-pane -t 3
+tmux split-window -h
+
+tmux select-pane -t 0
+tmux send-keys "tty | tee /tmp/dbg-$SESSION-expressions; cat" C-m
+
+tmux select-pane -t 1
+tmux send-keys "tty | tee /tmp/dbg-$SESSION-source; cat" C-m
+
+tmux select-pane -t 2
+tmux send-keys "tty | tee /tmp/dbg-$SESSION-assembly; cat" C-m
+
+tmux select-pane -t 3
+tmux send-keys "tty | tee /tmp/dbg-$SESSION-stack; cat" C-m
+
+tmux select-pane -t 4
+tmux send-keys "tty | tee /tmp/dbg-$SESSION-registers; cat" C-m
+
+tmux select-pane -t 5
+tmux resize-pane -U 10
+tmux send-keys "./scripts/control ecfw debug && tmux kill-session -t $SESSION" C-m
+sleep 1
+tmux send-keys "dashboard -layout !history" C-m
+tmux send-keys "dashboard -output /dev/null" C-m
+tmux send-keys 'dashboard -style syntax_highlighting "lovelace"' C-m
+tmux send-keys "dashboard expressions -output $(cat /tmp/dbg-$SESSION-expressions)" C-m
+tmux send-keys "dashboard source -output $(cat /tmp/dbg-$SESSION-source)" C-m
+tmux send-keys "dashboard assembly -output $(cat /tmp/dbg-$SESSION-assembly)" C-m
+tmux send-keys "dashboard stack -output $(cat /tmp/dbg-$SESSION-stack)" C-m
+tmux send-keys "dashboard registers -output $(cat /tmp/dbg-$SESSION-registers)" C-m
+tmux send-keys "dashboard assembly -style context 6" C-m
+tmux send-keys "shell clear" C-m
+
+rm /tmp/dbg-$SESSION-expressions
+rm /tmp/dbg-$SESSION-source
+rm /tmp/dbg-$SESSION-assembly
+rm /tmp/dbg-$SESSION-stack
+rm /tmp/dbg-$SESSION-registers
+
+tmux -2 attach-session -t $SESSION
