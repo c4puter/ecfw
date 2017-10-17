@@ -25,6 +25,7 @@ use rustsys::ec_io;
 use core::iter::Iterator;
 use core::str;
 use alloc::string::String;
+use alloc::vec;
 use messages::*;
 
 pub struct FTrans {
@@ -39,7 +40,7 @@ impl FTrans {
     /// Open a file transfer session. Quits when either ^C or ^D is received.
     pub fn run(&mut self) {
         ec_io::flush_output();
-        let mut s = String::with_capacity(1024);
+        let mut s = String::with_capacity(8192);
         let mut invalid = false;
 
         loop {
@@ -126,7 +127,7 @@ impl FTrans {
                 I: Iterator<Item=&'a str>,
                 F: Fn(&mut Self, &[u8]) -> StdResult
     {
-        let mut decode_buf = [0u8; 512];
+        let mut decode_buf = vec::from_elem(0u8, 4096);
 
         let data_b64 = iter.next().ok_or(ERR_EXPECTED_ARGS)?;
         let n_bytes = base64::decode(&mut decode_buf, data_b64.as_bytes())?;
