@@ -23,11 +23,17 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+void mcu_init_early(void);
 void mcu_init(void);
 void write_stack_canaries(void);
 uint32_t get_stack_unused(void);
 
 void mcu_use_external_clock(bool ext);
+
+void mcu_start_usb(void);
+void mcu_stop_usb(void);
+bool mcu_usb_putchar(char c);  // true on error
+int mcu_usb_getchar(void);  // -1 on error
 
 unsigned int mcu_get_peripheral_hz(void);
 bool mcu_get_pin_level(unsigned int pin);

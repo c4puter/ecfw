@@ -67,9 +67,29 @@ pub fn esh_task() {
     }
 }
 
+#[no_mangle]
+pub static mut UNUSED: usize = 0;
+
 pub fn init_task()
 {
+    unsafe {
+        bindgen_mcu::mcu_init();
+        ec_io::init();
+        bindgen_mcu::mcu_start_usb();
+    }
+    println!("");
+    debug!(DEBUG_ECBOOT, "==================================================");
+    debug!(DEBUG_ECBOOT, "# Booting EC firmware");
+    match option_env!("BUILD_ID") {
+        Some(s) => debug!(DEBUG_ECBOOT, "# Build ID: {}", s),
+        None    => debug!(DEBUG_ECBOOT, "# No build ID"),
+    };
+    debug!(DEBUG_ECBOOT, "==================================================");
+    debug!(DEBUG_ECBOOT, "");
+    debug!(DEBUG_ECBOOT, "initialized EC core and USART");
+
     let unused = unsafe{bindgen_mcu::get_stack_unused()};
+    unsafe { UNUSED = unused as usize };
     debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
     ec_io::flush_output();
@@ -120,26 +140,11 @@ pub fn init_task()
 #[allow(unreachable_code)]
 pub extern "C" fn main() -> i32 {
     unsafe {
-        bindgen_mcu::mcu_init();
         bindgen_mcu::write_stack_canaries();
+        bindgen_mcu::mcu_init_early();
     }
 
-    ec_io::init();
-    println_async!("");
-    debug_async!(DEBUG_ECBOOT, "==================================================");
-    debug_async!(DEBUG_ECBOOT, "# Booting EC firmware");
-    match option_env!("BUILD_ID") {
-        Some(s) => debug_async!(DEBUG_ECBOOT, "# Build ID: {}", s),
-        None    => debug_async!(DEBUG_ECBOOT, "# No build ID"),
-    };
-    debug_async!(DEBUG_ECBOOT, "==================================================");
-    debug_async!(DEBUG_ECBOOT, "");
-    debug_async!(DEBUG_ECBOOT, "initialized EC core and USART");
-
-    os::Task::new(init_task, "init", 10000, 0);
-
-    ec_io::flush_output();
-    debug_async!(DEBUG_ECBOOT, "start scheduler and hand off to init task...");
+    os::Task::new(init_task, "init", 20000, 0);
     os::freertos::run();
 
     loop {}

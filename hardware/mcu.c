@@ -22,15 +22,25 @@
 #include <asf/services/ioport/ioport.h>
 #include <asf/services/clock/sysclk.h>
 #include <asf/drivers/spi/spi.h>
+#include <asf/services/usb/udc/udc.h>
+#include <asf/services/usb/class/cdc/device/udi_cdc.h>
+#include <asf/services/usb/class/cdc/usb_protocol_cdc.h>
+
 #include <FreeRTOS.h>
 #include "mcu.h"
 
 #define RS232_TX IOPORT_CREATE_PIN(PIOA, 22)
 
-void mcu_init(void)
+void mcu_init_early(void)
 {
     WDT->WDT_MR = WDT_MR_WDDIS;
     sysclk_init();
+}
+
+void mcu_init(void)
+{
+    //irq_initialize_vectors();
+    //cpu_irq_enable();
 
     ioport_init();
 
@@ -42,6 +52,59 @@ void mcu_init(void)
     sysclk_enable_peripheral_clock(ID_USART1);
 }
 
+void main_sof_action(void) { }
+void main_resume_action(void) { }
+void main_suspend_action(void) { }
+volatile bool G_CDC_ENABLED = false;
+volatile bool G_CDC_CONFIGURED = false;
+
+bool callback_cdc_enable(uint8_t port) {
+    (void) port;
+    G_CDC_ENABLED = true;
+    return true;
+}
+void callback_cdc_disable(uint8_t port) {
+    (void) port;
+}
+void callback_cdc_set_coding_ext(uint8_t port, usb_cdc_line_coding_t *cfg)
+{
+    (void) port;
+    (void) cfg;
+    G_CDC_CONFIGURED = true;
+}
+void callback_cdc_set_dtr(uint8_t port, bool enable)
+{
+    (void) port;
+    (void) enable;
+    G_CDC_CONFIGURED = true;
+}
+
+void mcu_start_usb(void)
+{
+    udc_start();
+}
+
+void mcu_stop_usb(void)
+{
+    udc_stop();
+}
+
+bool mcu_usb_putchar(char c)
+{
+    if (G_CDC_ENABLED) {
+        udi_cdc_putc(c);
+    }
+    return false;
+}
+
+int mcu_usb_getchar(void)
+{
+    if (G_CDC_CONFIGURED) {
+        return (int) (unsigned char) udi_cdc_getc();
+    } else {
+        return -1;
+    }
+}
 
 extern uint32_t _sstack;
 extern uint32_t _estack;
@@ -79,7 +142,7 @@ void mcu_use_external_clock(bool ext)
         pll_enable(&pllcfg, 1);
         pll_wait_for_lock(1);
         pmc_switch_mck_to_pllbck(CONFIG_SYSCLK_PRES);
-        pll_disable(0);
+        //pll_disable(0);
     } else {
         pll_enable_source(CONFIG_PLL0_SOURCE);
         pll_config_defaults(&pllcfg, 0);

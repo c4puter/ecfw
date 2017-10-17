@@ -60,7 +60,13 @@ OBJECTS = \
 	${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.o \
 	${ASF_UNF_DIR}/asf/services/clock/sam4s/sysclk.o \
 	${ASF_UNF_DIR}/asf/services/delay/sam/cycle_counter.o \
+	${ASF_UNF_DIR}/asf/drivers/udp/udp_device.o \
+	${ASF_UNF_DIR}/asf/services/usb/udc/udc.o \
 	${ASF_UNF_DIR}/asf/utils/interrupt/interrupt_sam_nvic.o \
+	${ASF_UNF_DIR}/asf/services/usb/class/cdc/device/udi_cdc.o \
+	${ASF_UNF_DIR}/asf/services/usb/class/cdc/device/udi_cdc_desc.o \
+	${ASF_UNF_DIR}/asf/services/sleepmgr/sam/sleepmgr.o \
+	${ASF_UNF_DIR}/asf/drivers/pmc/sleep.o \
 	lwext4/src/ext4_balloc.o \
 	lwext4/src/ext4_bcache.o \
 	lwext4/src/ext4_bitmap.o \
@@ -120,14 +126,15 @@ ASF_UNF_DIR = resources/asf-unf
 # BUILD FLAGS {{{
 ###############################################################################
 
-STACK_SIZE=0x800
-HEAP_SIZE=0x1b200
+STACK_SIZE=0x200
+HEAP_SIZE=0x1bae0
 TOTAL_FLASH=0x100000
 TOTAL_SRAM=0x20000
 
 CFLAGS = \
-	-Os -g -pipe -std=c99 -Wall -Wextra -Wno-int-conversion \
-	-D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
+	-O2 -g -pipe -std=c99 -Wall -Wextra -Wno-int-conversion \
+	-fno-strict-aliasing -Wno-expansion-to-defined \
+	-DSAM4S -D__SAM4S16C__ -DARM_MATH_CM4=true -DBOARD=USER_BOARD \
 	-D__HEAP_SIZE__=${HEAP_SIZE} \
 	-DCONFIG_UNALIGNED_ACCESS=1 \
 	-DCONFIG_DEBUG_PRINTF=0 \
@@ -148,7 +155,7 @@ CFLAGS = \
 	-I esh \
 
 RUSTFLAGS = \
-	-Copt-level=1 -Zno-landing-pads --target thumbv7em-none-eabi -g \
+	-Copt-level=2 -Zno-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
 
 BINDGENFLAGS = \

@@ -25,7 +25,7 @@ use rustsys::ec_io;
 use core::iter::Iterator;
 use core::str;
 use alloc::string::String;
-use alloc::vec;
+use alloc::raw_vec::RawVec;
 use messages::*;
 
 pub struct FTrans {
@@ -127,7 +127,7 @@ impl FTrans {
                 I: Iterator<Item=&'a str>,
                 F: Fn(&mut Self, &[u8]) -> StdResult
     {
-        let mut decode_buf = vec::from_elem(0u8, 4096);
+        let mut decode_buf = unsafe{RawVec::with_capacity(4096).into_box()};
 
         let data_b64 = iter.next().ok_or(ERR_EXPECTED_ARGS)?;
         let n_bytes = base64::decode(&mut decode_buf, data_b64.as_bytes())?;
@@ -135,13 +135,14 @@ impl FTrans {
         let rx_crc32_str = iter.next().ok_or(ERR_EXPECTED_ARGS)?;
         let rx_crc32 = u32::parseint(rx_crc32_str)?;
 
+        /*
         let actual_crc32 = crc32(&decode_buf[0..n_bytes]);
 
         if actual_crc32 != rx_crc32 {
             Err(ERR_CKSUM)
-        } else {
+        } else { */
             f(self, &decode_buf[0..n_bytes])
-        }
+        //}
     }
 
     fn open_wrapped(&mut self, filename: &[u8]) -> StdResult

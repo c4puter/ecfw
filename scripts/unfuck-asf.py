@@ -47,7 +47,7 @@ INC_IGNORES = [
     "uc3l", "sam4e", "sams70", "uc3a3_a4", "uc3b0_b1", "sam4cp",
     "uc3a0_a1", "sam3s", "uc3c", "samv70", "uc3d", "sam4s",
     "sam4cm", "sam3n", "sam4c", "sam4n", "mega", "sam3s8",
-    "sam4cm32", "sam0", "unit_tests", "uc3"
+    "sam4cm32", "sam0", "unit_tests", "uc3", "saml", "samd"
     ]
 
 def get_include_path(subdir):

@@ -44,7 +44,8 @@ fn putc_task(q: &'static os::Queue<'static, u8>)
     loop {
         let c = q.receive_wait_blocking();
         unsafe {
-            asf_usart::usart_putchar(USART_DBG, c as u32);
+            //asf_usart::usart_putchar(USART_DBG, c as u32);
+            bindgen_mcu::mcu_usb_putchar(c as i8);
         }
     }
 }
@@ -54,16 +55,24 @@ pub fn putc(c: u8) {
 }
 
 pub fn putc_async(c: u8) {
-    unsafe{asf_usart::usart_putchar(USART_DBG, c as u32)};
+    //unsafe{asf_usart::usart_putchar(USART_DBG, c as u32)};
+    unsafe{bindgen_mcu::mcu_usb_putchar(c as i8)};
 }
 
 pub fn getc_async() -> u8 {
-    STDIN_QUEUE.receive_wait()
+    loop {
+        let c = unsafe{bindgen_mcu::mcu_usb_getchar()};
+        if c > 0 && c <= 255 {
+            return c as u8;
+        }
+    }
+    //STDIN_QUEUE.receive_wait()
 }
 
 pub fn flush_output() {
     STDOUT_QUEUE.flush();
 }
+
 
 #[no_mangle]
 #[allow(unreachable_code,non_snake_case)]
@@ -80,6 +89,20 @@ pub extern "C" fn USART1_Handler() {
         }
     }
 }
+
+#[no_mangle]
+#[allow(unreachable_code,non_snake_case)]
+pub extern "C" fn callback_cdc_rx_notify(_: u8) { }
+/*
+    let c = unsafe{bindgen_mcu::mcu_usb_getchar()};
+    if c > 0 && c <= 255 {
+        let rxbyte = c as u8;
+        if !STDIN_QUEUE.send_no_wait(rxbyte) {
+            println_async(format_args!("\n\nUSART BUFFER OVERFLOW\n"));
+        }
+    }
+}
+*/
 
 impl<'a> fmt::Write for UartWriter {
     fn write_str(&mut self, s: &str) -> fmt::Result {
