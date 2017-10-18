@@ -17,10 +17,10 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-use rustsys::ec_io;
 use os;
 use drivers;
 use drivers::power::Supply;
+use drivers::com::Com;
 use devices;
 extern crate asf_rstc;
 
@@ -40,7 +40,7 @@ pub fn hard_reset()
 
         // Unsafe: shuts down the task scheduler
         debug!(DEBUG_RESET, "suspend tasks");
-        ec_io::flush_output();
+        devices::COMUSART.flush_output();
         unsafe {os::freertos::suspend_all()};
     }
 
@@ -81,11 +81,11 @@ pub fn shutdown_supplies_cleanly()
     for supply in SUPPLIES_IN_ORDER {
         match supply.down() {
             Ok(_) => (),
-            Err(e) => {println_async!("WARNING: {:?}", e);}
+            Err(e) => {print_async!("WARNING: {:?}\n", e);}
         }
         match supply.wait_status(drivers::power::SupplyStatus::Down) {
             Ok(_) => (),
-            Err(e) => {println_async!("WARNING: {:?}", e);}
+            Err(e) => {print_async!("WARNING: {:?}\n", e);}
         }
     }
 }

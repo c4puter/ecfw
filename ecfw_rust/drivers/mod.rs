@@ -30,3 +30,6 @@ pub mod northbridge;
 pub mod gpt;
 pub mod power;
 pub mod ftrans;
+#[macro_use] pub mod com;
+pub mod com_usart;
+pub mod com_cdc;

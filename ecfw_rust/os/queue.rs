@@ -21,6 +21,7 @@
 Lock-free threadsafe queue.
 */
 
+extern crate bindgen_mcu;
 use os;
 use core::sync::atomic::*;
 use core::cell::*;
@@ -139,7 +140,11 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
 
         let receiver = self.receiver.load(Ordering::SeqCst);
         if receiver != 0 {
-            os::freertos::notify_give(receiver as os::freertos::TaskHandle);
+            if unsafe{bindgen_mcu::mcu_vector_active()} {
+                os::freertos::notify_give_from_isr(receiver as _);
+            } else {
+                os::freertos::notify_give(receiver as _);
+            }
         }
 
         return true;

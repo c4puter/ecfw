@@ -28,6 +28,8 @@ void mcu_init(void);
 void write_stack_canaries(void);
 uint32_t get_stack_unused(void);
 
+bool mcu_vector_active(void);
+
 void mcu_use_external_clock(bool ext);
 
 void mcu_start_usb(void);

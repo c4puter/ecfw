@@ -14,16 +14,15 @@ bool callback_cdc_enable(uint8_t);
 void callback_cdc_disable(uint8_t);
 void callback_cdc_set_coding_ext(uint8_t, usb_cdc_line_coding_t *);
 void callback_cdc_set_dtr(uint8_t, bool);
-void callback_cdc_rx_notify(uint8_t);
 
 #define  USB_DEVICE_VENDOR_ID             0x1209
-#define  USB_DEVICE_PRODUCT_ID            0x4757
+#define  USB_DEVICE_PRODUCT_ID            0x4750
 #define  USB_DEVICE_MAJOR_VERSION         1
 #define  USB_DEVICE_MINOR_VERSION         0
 #define  USB_DEVICE_POWER                 20 // mA
 #define  USB_DEVICE_ATTR                  (USB_CONFIG_ATTR_SELF_POWERED)
-#define  USB_DEVICE_MANUFACTURE_NAME      "WCP52"
-#define  USB_DEVICE_PRODUCT_NAME          "GPhA 1"
+#define  USB_DEVICE_MANUFACTURE_NAME      "c4757p"
+#define  USB_DEVICE_PRODUCT_NAME          "C4-0"
 // #define  USB_DEVICE_SERIAL_NAME           "12...EF"
 
 // USB callbacks
@@ -40,7 +39,7 @@ void callback_cdc_rx_notify(uint8_t);
 // CDC callbacks
 #define  UDI_CDC_ENABLE_EXT(port)         callback_cdc_enable(port)
 #define  UDI_CDC_DISABLE_EXT(port)        callback_cdc_disable(port)
-#define  UDI_CDC_RX_NOTIFY(port)          callback_cdc_rx_notify(port)
+#define  UDI_CDC_RX_NOTIFY(port)
 #define  UDI_CDC_TX_EMPTY_NOTIFY(port)
 #define  UDI_CDC_SET_CODING_EXT(port,cfg) callback_cdc_set_coding_ext(port,cfg)
 #define  UDI_CDC_SET_DTR_EXT(port,set)    callback_cdc_set_dtr(port,set)

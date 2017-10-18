@@ -17,8 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-#[macro_use] pub mod ec_io;
 #[macro_use] pub mod debug;
+#[macro_use] pub mod print_macs;
 pub mod alloc_system;
 pub mod panicking;
 pub mod rust_support;

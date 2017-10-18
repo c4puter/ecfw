@@ -126,8 +126,8 @@ ASF_UNF_DIR = resources/asf-unf
 # BUILD FLAGS {{{
 ###############################################################################
 
-STACK_SIZE=0x200
-HEAP_SIZE=0x1bae0
+STACK_SIZE=0x400
+HEAP_SIZE=0x1a000
 TOTAL_FLASH=0x100000
 TOTAL_SRAM=0x20000
 

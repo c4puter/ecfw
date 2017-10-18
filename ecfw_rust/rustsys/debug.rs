@@ -65,7 +65,8 @@ macro_rules! debug_async {
     ) => {
         if $crate::messages::$name.enabled() {
             print_async!("{:8}: ", $crate::messages::$name.prefix);
-            println_async!( $($values),* );
+            print_async!( $($values),* );
+            print_async!("\n");
         }
     }
 }

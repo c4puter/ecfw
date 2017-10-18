@@ -207,6 +207,13 @@ pub fn notify_give(task: TaskHandle) {
     }
 }
 
+pub fn notify_give_from_isr(task: TaskHandle) {
+    unsafe {
+        xTaskGenericNotifyFromISR(task, 0, NotifyAction::Increment,
+                                  ptr::null_mut(), ptr::null_mut());
+    }
+}
+
 /// Counter behavior for notify_take
 pub enum CounterAction {
     Clear,

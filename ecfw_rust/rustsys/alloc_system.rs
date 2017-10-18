@@ -25,6 +25,18 @@ extern "C" {
 }
 
 #[no_mangle]
+pub extern "C" fn trace_malloc(p: *const u8, sz: usize)
+{
+    debug!(DEBUG_ALLOC, "allocated {:4} bytes at 0x{:08x}", sz, (p as usize));
+}
+
+#[no_mangle]
+pub extern "C" fn trace_free(p: *const u8, sz: usize)
+{
+    debug!(DEBUG_ALLOC, "freed {:4} bytes at 0x{:08x}", sz, (p as usize));
+}
+
+#[no_mangle]
 pub unsafe extern fn __rust_alloc(size: usize, align: usize, _err: *mut u8) -> *mut u8
 {
     if align > 8 {
@@ -38,8 +50,6 @@ pub unsafe extern fn __rust_alloc(size: usize, align: usize, _err: *mut u8) -> *
     let size_aligned = size + 7 & !7;
 
     let p = pvPortMalloc(size_aligned);
-    debug!(DEBUG_ALLOC, "allocate {:4} bytes at 0x{:08x} (align {}, actual 8)",
-        size, (p as usize), align);
     p
 }
 
@@ -51,7 +61,6 @@ pub unsafe extern fn __rust_alloc_zeroed(size: usize, align: usize, err: *mut u8
 
 #[no_mangle]
 pub unsafe extern fn __rust_dealloc(ptr: *mut u8, _old_size: usize, _align: usize) {
-    debug!(DEBUG_ALLOC, "free 0x{:08x}", (ptr as usize));
     vPortFree(ptr);
 }
 

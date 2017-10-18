@@ -100,7 +100,11 @@ bool mcu_usb_putchar(char c)
 int mcu_usb_getchar(void)
 {
     if (G_CDC_CONFIGURED) {
-        return (int) (unsigned char) udi_cdc_getc();
+        if (udi_cdc_is_rx_ready()) {
+            return (int) (unsigned char) udi_cdc_getc();
+        } else {
+            return -1;
+        }
     } else {
         return -1;
     }
@@ -127,6 +131,11 @@ uint32_t get_stack_unused(void)
     }
 
     return (uint32_t)i - (uint32_t)&_sstack;
+}
+
+bool mcu_vector_active(void)
+{
+    return (SCB->ICSR & SCB_ICSR_VECTACTIVE_Msk) != 0;
 }
 
 void mcu_use_external_clock(bool ext)

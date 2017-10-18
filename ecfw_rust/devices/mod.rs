@@ -17,7 +17,7 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
-mod misc;
+#[macro_use] mod misc;
 pub use self::misc::*;
 
 pub mod twi;

@@ -21,7 +21,8 @@ extern crate lwext4_crc32;
 extern crate ctypes;
 use data::{base64,ParseInt};
 use drivers::ext4;
-use rustsys::ec_io;
+use drivers::com::Com;
+use devices;
 use core::iter::Iterator;
 use core::str;
 use alloc::string::String;
@@ -39,12 +40,12 @@ impl FTrans {
 
     /// Open a file transfer session. Quits when either ^C or ^D is received.
     pub fn run(&mut self) {
-        ec_io::flush_output();
+        devices::COMUSART.flush_output();
         let mut s = String::with_capacity(8192);
         let mut invalid = false;
 
         loop {
-            let c = ec_io::getc_async();
+            let c = devices::COMUSART.getc_blocking(true);
 
             match c {
                 3 | 4 => { /* ^C or ^D */ break; },
@@ -150,7 +151,7 @@ impl FTrans {
         let strslice = str::from_utf8(filename).unwrap();
         self.file = Some(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)?);
 
-        println_async!("ack");
+        print_async!("ack\n");
         Ok(())
     }
 
@@ -159,7 +160,7 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 file.write(data)?;
-                println_async!("ack");
+                print_async!("ack\n");
                 Ok(())
             },
             None => {
@@ -176,9 +177,9 @@ impl FTrans {
         self.file = None;
 
         if was_open {
-            println_async!("ack");
+            print_async!("ack\n");
         } else {
-            println_async!("warn was_not_open");
+            print_async!("warn was_not_open\n");
         }
 
         Ok(())
@@ -190,7 +191,7 @@ impl FTrans {
         if let Err(e) = ext4::sync("/") {
             Err(e)
         } else {
-            println_async!("ack");
+            print_async!("ack\n");
             Ok(())
         }
     }
@@ -212,7 +213,7 @@ impl FTrans {
                 for i in &b64_buf[0..b64_converted] {
                     print_async!("{}", *i as char);
                 }
-                println_async!(" {}", crc);
+                print_async!(" {}\n", crc);
 
                 Ok(())
             },
@@ -227,7 +228,7 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 file.truncate(sz as usize)?;
-                println_async!("ack");
+                print_async!("ack\n");
                 Ok(())
             },
             None => {
@@ -244,7 +245,7 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 file.seek(pos as usize, origin)?;
-                println_async!("ack");
+                print_async!("ack\n");
                 Ok(())
             },
             None => {
@@ -254,11 +255,11 @@ impl FTrans {
     }
 
     fn handle_invalid(&self) {
-        println_async!("error invalid_byte_or_command");
+        print_async!("error invalid_byte_or_command\n");
     }
 
     fn handle_error(&self, e: Error) {
-        println_async!("error {}", e);
+        print_async!("error {}\n", e);
     }
 }
 

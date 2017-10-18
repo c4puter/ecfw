@@ -25,6 +25,8 @@ use drivers::clocksynth::ClockSynth;
 use drivers::spi::Spi;
 use drivers::fpga::Spartan6;
 use drivers::northbridge::Northbridge;
+use drivers::com_usart;
+use drivers::com_cdc;
 use devices::twi;
 use devices::pins;
 
@@ -49,3 +51,7 @@ pub static FPGAS: [Spartan6; 3] = [
 ];
 
 pub static NORTHBRIDGE: Northbridge = Northbridge::new();
+
+pub use self::com_usart::COMUSART;
+pub use self::com_cdc::COMCDC;
+

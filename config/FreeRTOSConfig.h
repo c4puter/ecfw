@@ -111,5 +111,10 @@ header file. */
 #define xPortPendSVHandler PendSV_Handler
 #define xPortSysTickHandler SysTick_Handler
 
+void trace_malloc(void *, size_t);
+void trace_free(void *, size_t);
+#define traceMALLOC trace_malloc
+#define traceFREE trace_free
+
 #endif /* FREERTOS_CONFIG_H */
 

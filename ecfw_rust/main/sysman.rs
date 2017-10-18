@@ -224,6 +224,9 @@ fn do_boot() -> StdResult
 
     boot_init_clock()?;
 
+    debug!(DEBUG_SYSMAN, "start USB-CDC");
+    devices::COMCDC.start();
+
     POWER_R.set(false);
     devices::MATRIX.write().set_full_brightness()?;
     POWER_STATE.store(STATE_RUN, Ordering::SeqCst);
@@ -358,6 +361,9 @@ fn do_shutdown() -> StdResult
         CARD_G.set(false);
     }
 
+    debug!(DEBUG_SYSMAN, "stop USB-CDC");
+    devices::COMCDC.stop();
+
     unsafe {
         devices::CLOCK_SYNTH.disable_mck();
     }
@@ -430,6 +436,8 @@ fn recover_boot() -> StdResult
     // order that gets us into the safest state possible if teardown fails
 
     debug!(DEBUG_SYSMAN, "failed to boot, recovering");
+    debug!(DEBUG_SYSMAN, "stop USB-CDC");
+    devices::COMCDC.stop();
 
     debug!(DEBUG_SYSMAN, "quick supply shutdown");
     POWER_R.set(true);

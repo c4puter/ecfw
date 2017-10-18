@@ -21,9 +21,9 @@ use main::{commands, sysman, reset};
 use esh;
 use drivers;
 use drivers::gpio::Gpio;
+use drivers::com::Com;
 use devices;
 use bindgen_mcu;
-use rustsys::ec_io;
 use os;
 
 use core::str;
@@ -58,8 +58,10 @@ pub fn esh_task() {
     esh.register_print(esh_print_cb);
     esh.rx(b'\n');
 
+    let com_ifs = [&devices::COMUSART as &Com, &devices::COMCDC as &Com];
+
     loop {
-        let c = ec_io::getc_async();
+        let c = drivers::com::getc_any_blocking(&com_ifs, true);
         let c_replaced =
             if c == b'\r' { b'\n' }
             else          { c };
@@ -72,11 +74,8 @@ pub static mut UNUSED: usize = 0;
 
 pub fn init_task()
 {
-    unsafe {
-        bindgen_mcu::mcu_init();
-        ec_io::init();
-        bindgen_mcu::mcu_start_usb();
-    }
+    devices::COMCDC.init();
+
     println!("");
     debug!(DEBUG_ECBOOT, "==================================================");
     debug!(DEBUG_ECBOOT, "# Booting EC firmware");
@@ -92,15 +91,15 @@ pub fn init_task()
     unsafe { UNUSED = unused as usize };
     debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
-    ec_io::flush_output();
+    devices::COMUSART.flush_output();
     debug!(DEBUG_ECBOOT, "initialize TWI");
     devices::twi::TWI0.init(400000).unwrap();
 
-    ec_io::flush_output();
+    devices::COMUSART.flush_output();
     debug!(DEBUG_ECBOOT, "initialize SPI");
     devices::SPI.init().unwrap();
 
-    ec_io::flush_output();
+    devices::COMUSART.flush_output();
     debug!(DEBUG_ECBOOT, "initialize GPIO");
     for &pin in devices::pins::PIN_TABLE {
         pin.init();
@@ -112,7 +111,7 @@ pub fn init_task()
     // Put all power supplies in known state - all but standby rail down
     reset::shutdown_supplies_cleanly();
 
-    ec_io::flush_output();
+    devices::COMUSART.flush_output();
     debug!(DEBUG_ECBOOT, "initialize LED matrix");
     devices::MATRIX.write().init().unwrap();
     os::delay(250);
@@ -122,7 +121,7 @@ pub fn init_task()
         mat.flush().unwrap();
     }
 
-    ec_io::flush_output();
+    devices::COMUSART.flush_output();
     debug!(DEBUG_ECBOOT, "initialize HSMCI (SD)");
     drivers::sd::init();
 
@@ -142,9 +141,11 @@ pub extern "C" fn main() -> i32 {
     unsafe {
         bindgen_mcu::write_stack_canaries();
         bindgen_mcu::mcu_init_early();
+        bindgen_mcu::mcu_init();
+        devices::COMUSART.init(115200);
     }
 
-    os::Task::new(init_task, "init", 20000, 0);
+    os::Task::new(init_task, "init", 2000, 0);
     os::freertos::run();
 
     loop {}
