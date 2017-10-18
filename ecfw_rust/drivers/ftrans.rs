@@ -23,6 +23,7 @@ use data::{base64,ParseInt};
 use drivers::ext4;
 use drivers::com::Com;
 use devices;
+use devices::COMCDC;
 use core::iter::Iterator;
 use core::str;
 use alloc::string::String;
@@ -40,12 +41,12 @@ impl FTrans {
 
     /// Open a file transfer session. Quits when either ^C or ^D is received.
     pub fn run(&mut self) {
-        devices::COMUSART.flush_output();
+        devices::COMCDC.flush_output();
         let mut s = String::with_capacity(8192);
         let mut invalid = false;
 
         loop {
-            let c = devices::COMUSART.getc_blocking(true);
+            let c = devices::COMCDC.getc_blocking(true);
 
             match c {
                 3 | 4 => { /* ^C or ^D */ break; },
@@ -136,14 +137,13 @@ impl FTrans {
         let rx_crc32_str = iter.next().ok_or(ERR_EXPECTED_ARGS)?;
         let rx_crc32 = u32::parseint(rx_crc32_str)?;
 
-        /*
         let actual_crc32 = crc32(&decode_buf[0..n_bytes]);
 
         if actual_crc32 != rx_crc32 {
             Err(ERR_CKSUM)
-        } else { */
+        } else {
             f(self, &decode_buf[0..n_bytes])
-        //}
+        }
     }
 
     fn open_wrapped(&mut self, filename: &[u8]) -> StdResult
@@ -151,7 +151,7 @@ impl FTrans {
         let strslice = str::from_utf8(filename).unwrap();
         self.file = Some(ext4::fopen(strslice, ext4::OpenFlags::ReadAppend)?);
 
-        print_async!("ack\n");
+        print_to_async!(&COMCDC, "ack\n");
         Ok(())
     }
 
@@ -160,7 +160,7 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 file.write(data)?;
-                print_async!("ack\n");
+                print_to_async!(&COMCDC, "ack\n");
                 Ok(())
             },
             None => {
@@ -177,9 +177,9 @@ impl FTrans {
         self.file = None;
 
         if was_open {
-            print_async!("ack\n");
+            print_to_async!(&COMCDC, "ack\n");
         } else {
-            print_async!("warn was_not_open\n");
+            print_to_async!(&COMCDC, "warn was_not_open\n");
         }
 
         Ok(())
@@ -191,7 +191,7 @@ impl FTrans {
         if let Err(e) = ext4::sync("/") {
             Err(e)
         } else {
-            print_async!("ack\n");
+            print_to_async!(&COMCDC, "ack\n");
             Ok(())
         }
     }
@@ -209,11 +209,11 @@ impl FTrans {
                     &mut b64_buf, &file_buf[0..bytes_read]).unwrap();
                 let crc = crc32(&file_buf[0..bytes_read]);
 
-                print_async!("ack ");
+                print_to_async!(&COMCDC, "ack ");
                 for i in &b64_buf[0..b64_converted] {
-                    print_async!("{}", *i as char);
+                    print_to_async!(&COMCDC, "{}", *i as char);
                 }
-                print_async!(" {}\n", crc);
+                print_to_async!(&COMCDC, " {}\n", crc);
 
                 Ok(())
             },
@@ -228,7 +228,7 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 file.truncate(sz as usize)?;
-                print_async!("ack\n");
+                print_to_async!(&COMCDC, "ack\n");
                 Ok(())
             },
             None => {
@@ -245,7 +245,7 @@ impl FTrans {
         match self.file {
             Some(ref mut file) => {
                 file.seek(pos as usize, origin)?;
-                print_async!("ack\n");
+                print_to_async!(&COMCDC, "ack\n");
                 Ok(())
             },
             None => {
@@ -255,11 +255,11 @@ impl FTrans {
     }
 
     fn handle_invalid(&self) {
-        print_async!("error invalid_byte_or_command\n");
+        print_to_async!(&COMCDC, "error invalid_byte_or_command\n");
     }
 
     fn handle_error(&self, e: Error) {
-        print_async!("error {}\n", e);
+        print_to_async!(&COMCDC, "error {}\n", e);
     }
 }
 

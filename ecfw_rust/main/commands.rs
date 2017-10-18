@@ -73,7 +73,7 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "readlink",  f: cmd_readlink,    descr: "readlink" },
     Command{ name: "rm",        f: cmd_rm,          descr: "delete PATH" },
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
-    Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer" },
+    Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer (requires USB)" },
 
     Command{ name: "peek",      f: cmd_peek,        descr: "read 32 bits at ADDR" },
     Command{ name: "poke",      f: cmd_poke,        descr: "write to ADDR, 32 bit DATA" },
