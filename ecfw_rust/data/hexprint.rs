@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use core::str;
 
@@ -28,7 +26,7 @@ pub fn hexprint(data: &[u8])
 
     let mut skipping = false;
 
-    for i in 0..data.len() {
+    for i in 0 .. data.len() {
 
         let col = i % 16;
 
@@ -36,7 +34,11 @@ pub fn hexprint(data: &[u8])
             let is_zero = zero_row(data, i);
 
             if is_zero && !skipping {
-                println!("{:08x}  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|", i);
+                println!(
+                    "{:08x}  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  \
+                     |................|",
+                    i
+                );
                 println!("*");
             }
 
@@ -58,7 +60,7 @@ pub fn hexprint(data: &[u8])
         print!(" {:02x}", data[i]);
 
         if col == 15 || i == (data.len() - 1) {
-            for _ in 0..(15 - col) {
+            for _ in 0 .. (15 - col) {
                 print!("   ");
             }
             if col < 8 {
@@ -73,15 +75,20 @@ pub fn hexprint(data: &[u8])
 }
 
 
-fn asciiprint(data: &[u8], offset: usize) {
+fn asciiprint(data: &[u8], offset: usize)
+{
     print!("  |");
 
-    for i in offset..offset+16 {
-        if i >= data.len() { break; }
+    for i in offset .. offset + 16 {
+        if i >= data.len() {
+            break;
+        }
         if isprint(data[i]) {
-            print!("{}",
+            print!(
+                "{}",
                 // safe: isprint
-                unsafe{str::from_utf8_unchecked(&data[i..i+1])});
+                unsafe { str::from_utf8_unchecked(&data[i .. i + 1]) }
+            );
         } else {
             print!(".");
         }
@@ -91,13 +98,14 @@ fn asciiprint(data: &[u8], offset: usize) {
 }
 
 
-fn isprint(c: u8) -> bool {
+fn isprint(c: u8) -> bool
+{
     return c > 0x1f && c < 0x7f;
 }
 
 fn zero_row(data: &[u8], idata: usize) -> bool
 {
-    for i in idata..data.len() {
+    for i in idata .. data.len() {
         if data[i] != 0 {
             return false;
         }

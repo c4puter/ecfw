@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use os;
 use drivers::{gpio, twi};
@@ -36,8 +34,7 @@ pub const LED_CURRENT_AS1130: u8 = (LED_CURRENT / 0.11765) as u8;
 // AS1130 register banks
 #[allow(dead_code)]
 #[repr(u8)]
-enum RegBank
-{
+enum RegBank {
     Nop = 0x00,
     Frame0 = 0x01,
     // Frame1 through Frame35 are 0x02 through 0x24. Not going to bother
@@ -53,8 +50,7 @@ const REG_BANK_SELECT: u8 = 0xfd;
 
 #[allow(dead_code)]
 #[repr(u8)]
-enum CtrlReg
-{
+enum CtrlReg {
     Picture = 0x00,
     Movie = 0x01,
     MovieMode = 0x02,
@@ -71,15 +67,13 @@ enum CtrlReg
     Status = 0x0f,
 }
 
-pub struct LedMatrix<'a>
-{
+pub struct LedMatrix<'a> {
     twi: &'a os::Mutex<twi::TwiDevice<'a>>,
     buffer: [u8; 24],
     blinkbuf: [u8; 24],
 }
 
-impl<'a> LedMatrix<'a>
-{
+impl<'a> LedMatrix<'a> {
     pub const fn new(twi: &'a os::Mutex<twi::TwiDevice<'a>>) -> LedMatrix<'a>
     {
         LedMatrix {
@@ -107,8 +101,10 @@ impl<'a> LedMatrix<'a>
         //  - Current source
         //  - Display options
         //  - Display picture/play movie
-        dev.write(&[CtrlReg::CurrentSource as u8],
-                  &[LedMatrix::current_val(STANDBY_BRIGHTNESS)])?;
+        dev.write(
+            &[CtrlReg::CurrentSource as u8],
+            &[LedMatrix::current_val(STANDBY_BRIGHTNESS)],
+        )?;
         dev.write(&[CtrlReg::DisplayOpt as u8], &[0xfb])?; // Scan all segments
         dev.write(&[CtrlReg::Movie as u8], &[0x00])?; // No movie
         dev.write(&[CtrlReg::Picture as u8], &[0x40])?; // Display picture, frame 0
@@ -118,11 +114,11 @@ impl<'a> LedMatrix<'a>
 
         // Initialize display data
         self.switch_bank(&mut dev, RegBank::BlinkPwm0)?;
-        for seg in 0x00..0x0c {
+        for seg in 0x00 .. 0x0c {
             // Blink bits
-            dev.write(&[seg*2], &[0, 0])?;
+            dev.write(&[seg * 2], &[0, 0])?;
         }
-        for addr in 0x18..0x9c {
+        for addr in 0x18 .. 0x9c {
             // PWM value
             dev.write(&[addr], &[0x80])?;
         }
@@ -132,18 +128,27 @@ impl<'a> LedMatrix<'a>
         Ok(())
     }
 
-    fn switch_bank(&mut self, dev: &mut os::MutexLock<twi::TwiDevice>, bank: RegBank) -> StdResult
+    fn switch_bank(
+        &mut self,
+        dev: &mut os::MutexLock<twi::TwiDevice>,
+        bank: RegBank,
+    ) -> StdResult
     {
         dev.write(&[REG_BANK_SELECT], &[bank as u8])
     }
 
-    fn flush_with_lock(&mut self, mut dev: &mut os::MutexLock<twi::TwiDevice>) -> StdResult
+    fn flush_with_lock(
+        &mut self,
+        mut dev: &mut os::MutexLock<twi::TwiDevice>,
+    ) -> StdResult
     {
         self.switch_bank(&mut dev, RegBank::Frame0)?;
 
-        for seg in 0x00usize..0x0cusize {
-            dev.write(&[(seg*2) as u8],
-                  &[self.buffer[seg*2], self.buffer[seg*2 + 1]])?;
+        for seg in 0x00usize .. 0x0cusize {
+            dev.write(
+                &[(seg * 2) as u8],
+                &[self.buffer[seg * 2], self.buffer[seg * 2 + 1]],
+            )?;
         }
         Ok(())
     }
@@ -162,9 +167,9 @@ impl<'a> LedMatrix<'a>
         };
 
         {
-            for seg in 0x00..0x0c {
-                self.buffer[seg*2] = regval[0];
-                self.buffer[seg*2 + 1] = regval[1];
+            for seg in 0x00 .. 0x0c {
+                self.buffer[seg * 2] = regval[0];
+                self.buffer[seg * 2 + 1] = regval[1];
             }
         }
     }
@@ -174,8 +179,8 @@ impl<'a> LedMatrix<'a>
         let segment = (led & 0xf0) >> 4;
         let addr = (2 * segment) as usize;
 
-        let buffer = &mut self.buffer[addr..addr+2];
-        let blinkbuf = &mut self.blinkbuf[addr..addr+2];
+        let buffer = &mut self.buffer[addr .. addr + 2];
+        let blinkbuf = &mut self.blinkbuf[addr .. addr + 2];
 
         write_bit(buffer, (led & 0x0f) as _, val);
         write_bit(blinkbuf, (led & 0x0f) as _, blink);
@@ -193,10 +198,13 @@ impl<'a> LedMatrix<'a>
 
         let mut dev = self.twi.lock();
         self.switch_bank(&mut dev, RegBank::Frame0)?;
-        dev.write(&[addr as u8], &mut self.buffer[addr..addr+2])?;
+        dev.write(&[addr as u8], &mut self.buffer[addr .. addr + 2])?;
 
         self.switch_bank(&mut dev, RegBank::BlinkPwm0)?;
-        dev.write(&[addr as u8], &mut self.blinkbuf[addr..addr+2])?;
+        dev.write(
+            &[addr as u8],
+            &mut self.blinkbuf[addr .. addr + 2],
+        )?;
 
         Ok(())
     }
@@ -206,7 +214,7 @@ impl<'a> LedMatrix<'a>
         let segment = (led & 0xf0) >> 4;
         let addr = (2 * segment) as usize;
         let bit = 1 << (led & 0x0f);
-        let buffer = &self.buffer[addr..addr+2];
+        let buffer = &self.buffer[addr .. addr + 2];
 
         let register = (buffer[0] as u16) | ((buffer[1] as u16) << 8);
 
@@ -218,8 +226,10 @@ impl<'a> LedMatrix<'a>
     {
         let mut dev = self.twi.lock();
         self.switch_bank(&mut dev, RegBank::ControlReg)?;
-        dev.write(&[CtrlReg::CurrentSource as u8],
-                       &[LedMatrix::current_val(brightness)])?;
+        dev.write(
+            &[CtrlReg::CurrentSource as u8],
+            &[LedMatrix::current_val(brightness)],
+        )?;
         Ok(())
     }
 
@@ -251,33 +261,36 @@ fn write_bit(buffer: &mut [u8], bit: usize, val: bool)
     }
 }
 
-pub struct LedGpio<'a>
-{
+pub struct LedGpio<'a> {
     pub addr: u8,
     pub matrix: &'a os::RwLock<LedMatrix<'a>>,
     pub name: &'static str,
 }
 
-impl<'a> LedGpio<'a>
-{
-    pub fn set_blink(&self) {
+impl<'a> LedGpio<'a> {
+    pub fn set_blink(&self)
+    {
         self.matrix.write().set_led(self.addr, true, true).unwrap();
     }
 }
 
-impl<'a> gpio::Gpio for LedGpio<'a>
-{
-    fn init(&self) {}
+impl<'a> gpio::Gpio for LedGpio<'a> {
+    fn init(&self)
+    {
+    }
 
-    fn set(&self, v: bool) {
+    fn set(&self, v: bool)
+    {
         self.matrix.write().set_led(self.addr, v, false).unwrap();
     }
 
-    fn get(&self) -> bool {
+    fn get(&self) -> bool
+    {
         self.matrix.read().get_led(self.addr)
     }
 
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str
+    {
         self.name
     }
 }

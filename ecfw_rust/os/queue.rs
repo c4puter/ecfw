@@ -1,25 +1,23 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
-/*!
-Lock-free threadsafe queue.
-*/
+//!
+// Lock-free threadsafe queue.
+//
 
 extern crate bindgen_mcu;
 use os;
@@ -32,7 +30,10 @@ use alloc::allocator;
 use alloc::allocator::Alloc;
 use alloc::heap;
 
-pub struct Queue<'a, T> where T: 'a + Send + Copy + Sized {
+pub struct Queue<'a, T>
+where
+    T: 'a + Send + Copy + Sized,
+{
     data: &'a [Cell<Option<T>>],
     _owned_data: Option<Box<[Cell<Option<T>>]>>,
     iread: AtomicUsize,
@@ -62,15 +63,24 @@ macro_rules! queue_static_new {
         queue_static_new!( $( $name: [$ty; $n] );+ ); )
 }
 
-unsafe impl<'a, T> Sync for Queue<'a, T> where T: 'a + Send + Copy + Sized {}
+unsafe impl<'a, T> Sync for Queue<'a, T>
+where
+    T: 'a + Send + Copy + Sized,
+{
+}
 
-impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
-    /// Create a new queue using a static backing array. This is unsafe because
+impl<'a, T> Queue<'a, T>
+where
+    T: 'a + Send + Copy + Sized,
+{
+    /// Create a new queue using a static backing array. This is unsafe
+    /// because
     /// it "takes" the array; nothing else should ever touch it.
     ///
     /// Don't use this function. See queue_static_new!.
     pub const unsafe fn new_static(
-        buffer: &'static [Cell<Option<T>>]) -> Queue<'a, T>
+        buffer: &'static [Cell<Option<T>>],
+    ) -> Queue<'a, T>
     {
         Queue {
             data: buffer,
@@ -83,16 +93,20 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
         }
     }
 
-    pub fn new_dynamic(sz: usize) -> Queue<'a, T> {
+    pub fn new_dynamic(sz: usize) -> Queue<'a, T>
+    {
         let layout = allocator::Layout::from_size_align(
-            sz * mem::size_of::<Cell<Option<T>>>(), 4).unwrap();
-        let buffer = unsafe{heap::Heap.alloc_zeroed(layout)}.unwrap();
-        let as_slice = unsafe{
-            slice::from_raw_parts_mut(buffer as *mut Cell<Option<T>>, sz)};
-        for i in 0..sz {
+            sz * mem::size_of::<Cell<Option<T>>>(),
+            4,
+        ).unwrap();
+        let buffer = unsafe { heap::Heap.alloc_zeroed(layout) }.unwrap();
+        let as_slice = unsafe {
+            slice::from_raw_parts_mut(buffer as *mut Cell<Option<T>>, sz)
+        };
+        for i in 0 .. sz {
             as_slice[i] = Cell::new(None);
         }
-        let as_box = unsafe{Box::from_raw(as_slice)};
+        let as_box = unsafe { Box::from_raw(as_slice) };
 
         Queue {
             data: as_slice,
@@ -106,7 +120,8 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     }
 
     /// Send the value. If the queue is full or being flushed, return false.
-    pub fn send_no_wait(&'a self, val: T) -> bool {
+    pub fn send_no_wait(&'a self, val: T) -> bool
+    {
         let mut iwrite;
 
         if self.flushing.load(Ordering::Relaxed) {
@@ -124,23 +139,28 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
             }
 
             if self.iwrite.compare_and_swap(
-                iwrite, iwrite_new, Ordering::SeqCst) == iwrite
-            {
+                iwrite,
+                iwrite_new,
+                Ordering::SeqCst,
+            ) == iwrite {
                 break;
             }
         }
 
         self.data[iwrite].set(Some(val));
 
-        while iwrite != self.imaxread.compare_and_swap(
-            iwrite, (iwrite + 1) % self.data.len(), Ordering::SeqCst)
-        {
+        while iwrite !=
+              self.imaxread.compare_and_swap(
+                iwrite,
+                (iwrite + 1) % self.data.len(),
+                Ordering::SeqCst,
+        ) {
             os::yield_task();
         }
 
         let receiver = self.receiver.load(Ordering::SeqCst);
         if receiver != 0 {
-            if unsafe{bindgen_mcu::mcu_vector_active()} {
+            if unsafe { bindgen_mcu::mcu_vector_active() } {
                 os::freertos::notify_give_from_isr(receiver as _);
             } else {
                 os::freertos::notify_give(receiver as _);
@@ -151,7 +171,8 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     }
 
     /// Send the value. If the queue is full, wait until it isn't.
-    pub fn send_wait(&'a self, val: T) {
+    pub fn send_wait(&'a self, val: T)
+    {
         loop {
             if self.send_no_wait(val) {
                 return;
@@ -161,7 +182,8 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     }
 
     /// Receive a value. If the queue is empty, return None.
-    pub fn receive_no_wait(&self) -> Option<T> {
+    pub fn receive_no_wait(&self) -> Option<T>
+    {
         loop {
             let iread = self.iread.load(Ordering::SeqCst);
             let imaxread = self.imaxread.load(Ordering::SeqCst);
@@ -173,18 +195,24 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
 
             let val = self.data[iread].get().unwrap();
 
-            if self.iread.compare_and_swap(iread, (iread + 1) % self.data.len(),
-                Ordering::SeqCst) == iread {
+            if self.iread.compare_and_swap(
+                iread,
+                (iread + 1) % self.data.len(),
+                Ordering::SeqCst,
+            ) == iread {
                 return Some(val);
             }
         }
     }
 
     /// Receive a value. If the queue is empty, wait until it isn't.
-    pub fn receive_wait(&self) -> T {
+    pub fn receive_wait(&self) -> T
+    {
         loop {
             match self.receive_no_wait() {
-                Some(val) => { return val; },
+                Some(val) => {
+                    return val;
+                },
                 None => (),
             };
             os::yield_task();
@@ -194,9 +222,11 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
     /// Register the current task as the queue's singular notified receiver.
     /// Panics if there is already a receiver.
     ///
-    /// It is still possible to have multiple queue consumers, but only one can
+    /// It is still possible to have multiple queue consumers, but only one
+    /// can
     /// receive notifications via FreeRTOS.
-    pub fn register_receiver(&self) {
+    pub fn register_receiver(&self)
+    {
         let task = os::freertos::this_task();
         let previous_task = self.receiver.swap(task as usize, Ordering::SeqCst);
 
@@ -205,25 +235,34 @@ impl<'a, T> Queue<'a, T> where T: 'a + Send + Copy + Sized {
 
     /// Unregister the current task as the queue's notified receiver.
     /// Panics if the current task is not the one registered.
-    pub fn unregister_receiver(&self) {
+    pub fn unregister_receiver(&self)
+    {
         let previous_task = self.receiver.swap(0usize, Ordering::SeqCst);
         assert!(previous_task == os::freertos::this_task() as usize);
     }
 
-    /// Receive a value. If the queue is empty, block until it isn't. BEWARE, if
+    /// Receive a value. If the queue is empty, block until it isn't.
+    /// BEWARE, if
     /// the current task has not registered as receiver, this will deadlock.
-    pub fn receive_wait_blocking(&self) -> T {
+    pub fn receive_wait_blocking(&self) -> T
+    {
         loop {
             match self.receive_no_wait() {
-                Some(val) => { return val; },
+                Some(val) => {
+                    return val;
+                },
                 None => {},
             };
-            os::freertos::notify_take(os::freertos::CounterAction::Decrement, 1000);
+            os::freertos::notify_take(
+                os::freertos::CounterAction::Decrement,
+                1000,
+            );
         }
     }
 
     /// Flush the queue.
-    pub fn flush(&self) {
+    pub fn flush(&self)
+    {
         if self.flushing.swap(true, Ordering::Relaxed) {
             // Already being flushed by another thread, simply wait until done.
             while self.flushing.load(Ordering::Relaxed) {}

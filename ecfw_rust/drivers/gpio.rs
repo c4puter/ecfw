@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 extern crate bindgen_mcu;
 use drivers::twi;
@@ -42,7 +40,7 @@ pub type Ioport = u32;
 // bit 31 on = peripheral mode
 // bit 30 on = output
 // value & 0xffff = ASF ioport mode
-#[derive(PartialEq,Copy,Clone)]
+#[derive(PartialEq, Copy, Clone)]
 #[allow(dead_code)]
 #[repr(u32)]
 pub enum Mode {
@@ -68,30 +66,37 @@ pub struct SamGpio {
 }
 
 impl Gpio for SamGpio {
-    fn init(&self) {
+    fn init(&self)
+    {
         unsafe {
             bindgen_mcu::mcu_init_pin(
                 self.port + self.pin,
                 self.mode as u32,
-                self.default ^ self.invert);
+                self.default ^ self.invert,
+            );
         }
     }
 
-    fn set(&self, v: bool) {
+    fn set(&self, v: bool)
+    {
         unsafe {
             let inv_v = v ^ self.invert;
             bindgen_mcu::mcu_set_pin_level(self.port + self.pin, inv_v);
         }
     }
 
-    fn get(&self) -> bool {
+    fn get(&self) -> bool
+    {
         unsafe {
             let v = bindgen_mcu::mcu_get_pin_level(self.port + self.pin);
             v ^ self.invert
         }
     }
 
-    fn name(&self) -> &'static str { self.name }
+    fn name(&self) -> &'static str
+    {
+        self.name
+    }
 }
 
 unsafe impl Sync for SamGpio {}
@@ -114,11 +119,13 @@ pub struct PcfGpio<'a> {
 }
 
 impl<'a> Gpio for PcfGpio<'a> {
-    fn init(&self) {
+    fn init(&self)
+    {
         self.set(self.default);
     }
 
-    fn set(&self, v: bool) {
+    fn set(&self, v: bool)
+    {
         // Write to the chip:
         // MSB................LSB  MSB.................LSB
         // 7  6  5  4  3  2  1  0  17 16 15 14 13 12 11 10
@@ -126,10 +133,13 @@ impl<'a> Gpio for PcfGpio<'a> {
         let inv_v = v ^ self.invert;
 
         let mut data = [0 as u8; 2];
-        let pinbit =
-            if self.pin <= 7                            { 1 << (self.pin + 8) }
-            else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
-            else { panic!("invalid pin number {}", self.pin); };
+        let pinbit = if self.pin <= 7 {
+            1 << (self.pin + 8)
+        } else if self.pin <= 17 && self.pin >= 10 {
+            1 << (self.pin - 10)
+        } else {
+            panic!("invalid pin number {}", self.pin);
+        };
 
         let mut dev = self.dev.lock();
         dev.read(&[], &mut data).unwrap();
@@ -147,17 +157,21 @@ impl<'a> Gpio for PcfGpio<'a> {
         }
 
         data[0] = ((data_u16 >> 8) & 0xff) as u8;
-        data[1] = ((data_u16)      & 0xff) as u8;
+        data[1] = ((data_u16) & 0xff) as u8;
 
         dev.write(&[], &data).unwrap();
     }
 
-    fn get(&self) -> bool {
+    fn get(&self) -> bool
+    {
         let mut data = [0 as u8; 2];
-        let pinbit =
-            if self.pin <= 7                            { 1 << (self.pin + 8) }
-            else if self.pin <= 17 && self.pin >= 10    { 1 << (self.pin - 10) }
-            else { panic!("invalid pin number {}", self.pin); };
+        let pinbit = if self.pin <= 7 {
+            1 << (self.pin + 8)
+        } else if self.pin <= 17 && self.pin >= 10 {
+            1 << (self.pin - 10)
+        } else {
+            panic!("invalid pin number {}", self.pin);
+        };
 
         self.dev.lock().read(&[], &mut data).unwrap();
 
@@ -167,7 +181,10 @@ impl<'a> Gpio for PcfGpio<'a> {
         v ^ self.invert
     }
 
-    fn name(&self) -> &'static str { self.name }
+    fn name(&self) -> &'static str
+    {
+        self.name
+    }
 }
 
 unsafe impl<'a> Sync for PcfGpio<'a> {}

@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 //! GPT reader module
 
@@ -26,8 +24,8 @@ use os::Mutex;
 use core::fmt;
 use core::str;
 
-pub const BOOT_GUID: Guid = Guid::from_raw(
-    0x7cca2c66, 0xb705, 0x58cb, 0xb9d9, 0xe16a166b84d9);
+pub const BOOT_GUID: Guid =
+    Guid::from_raw(0x7cca2c66, 0xb705, 0x58cb, 0xb9d9, 0xe16a166b84d9);
 
 // GPT main header layout:      all values little endian
 //
@@ -65,7 +63,7 @@ pub const BOOT_GUID: Guid = Guid::from_raw(
 
 const GPT_HEADER_LBA: usize = 1;
 const BLOCK_SIZE: usize = 512;
-const SIGNATURE: u64 = 0x4546492050415254;  // "EFI PART"
+const SIGNATURE: u64 = 0x4546492050415254; // "EFI PART"
 
 /// GPT header.
 pub struct Gpt<'a> {
@@ -97,12 +95,12 @@ impl<'a> Gpt<'a> {
     {
         self.buffer_block(GPT_HEADER_LBA)?;
 
-        let sig = read_be(&self.buffer[0..8]);
+        let sig = read_be(&self.buffer[0 .. 8]);
         if sig != SIGNATURE {
             return Err(ERR_GPT_SIGNATURE);
         }
 
-        self.entry_len = read_le(&self.buffer[0x54..0x58]) as usize;
+        self.entry_len = read_le(&self.buffer[0x54 .. 0x58]) as usize;
         if self.entry_len == 0 {
             return Err(ERR_GPT_ZEROLEN);
         }
@@ -110,24 +108,34 @@ impl<'a> Gpt<'a> {
             return Err(ERR_GPT_SIZEMULT);
         }
 
-        self.lba_entries = read_le(&self.buffer[0x48..0x50]) as usize;
-        self.number_entries = read_le(&self.buffer[0x50..0x54]) as usize;
+        self.lba_entries = read_le(&self.buffer[0x48 .. 0x50]) as usize;
+        self.number_entries = read_le(&self.buffer[0x50 .. 0x54]) as usize;
 
-        self.guid = Guid::from_bytes(&self.buffer[0x38..0x48]);
+        self.guid = Guid::from_bytes(&self.buffer[0x38 .. 0x48]);
 
         Ok(())
     }
 
     /// Return the disk's GUID. Must be initialized.
-    pub fn guid(&self) -> &Guid { &self.guid }
+    pub fn guid(&self) -> &Guid
+    {
+        &self.guid
+    }
 
     /// Get the total number of partition entries. Note that this is not the
-    /// number of *used* entries; you must read them to know if they're used.
-    pub fn number_entries(&self) -> usize { self.number_entries }
+    /// number of *used* entries; you must read them to know if they're
+    /// used.
+    pub fn number_entries(&self) -> usize
+    {
+        self.number_entries
+    }
 
     /// Populate a GptEntry structure with a given entry.
-    pub fn read_entry(&mut self, ientry: usize, gptentry: &mut GptEntry)
-        -> StdResult
+    pub fn read_entry(
+        &mut self,
+        ientry: usize,
+        gptentry: &mut GptEntry,
+    ) -> StdResult
     {
         let entries_per_block = BLOCK_SIZE / self.entry_len;
         let block_index = ientry / entries_per_block + self.lba_entries;
@@ -135,7 +143,7 @@ impl<'a> Gpt<'a> {
         let entry_end = block_offset + self.entry_len;
 
         self.buffer_block(block_index)?;
-        gptentry.load(&self.buffer[block_offset..entry_end])?;
+        gptentry.load(&self.buffer[block_offset .. entry_end])?;
         Ok(())
     }
 
@@ -144,12 +152,12 @@ impl<'a> Gpt<'a> {
     /// If multiple boot partitions are found, returns the first.
     pub fn read_boot(&mut self, gptentry: &mut GptEntry) -> StdResult
     {
-        for i in 0..self.number_entries() {
+        for i in 0 .. self.number_entries() {
             self.read_entry(i, gptentry)?;
 
             if gptentry.valid() {
                 if gptentry.type_guid == BOOT_GUID {
-                    return Ok(())
+                    return Ok(());
                 } else {
                     gptentry.clear();
                 }
@@ -170,14 +178,15 @@ impl<'a> Gpt<'a> {
                     self.iblock = iblock;
                     Ok(()) },
                 Err(e) => {
-                    self.iblock = 0;    // buffer is invalid
-                    Err(e) },
+                    self.iblock = 0; // buffer is invalid
+                    Err(e)
+                },
             }
         }
     }
 }
 
-#[derive(Copy,Clone,PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct Guid {
     a: u32,
     b: u16,
@@ -211,11 +220,11 @@ impl Guid {
     {
         assert!(data.len() == 16);
         Guid {
-            a: read_le(&data[0..4]) as u32,
-            b: read_le(&data[4..6]) as u16,
-            c: read_le(&data[6..8]) as u16,
-            d: read_be(&data[8..10]) as u16,
-            e: read_be(&data[10..16])
+            a: read_le(&data[0 .. 4]) as u32,
+            b: read_le(&data[4 .. 6]) as u16,
+            c: read_le(&data[6 .. 8]) as u16,
+            d: read_be(&data[8 .. 10]) as u16,
+            e: read_be(&data[10 .. 16]),
         }
     }
 }
@@ -238,16 +247,16 @@ pub struct GptEntry {
 }
 
 impl GptEntry {
-
     /// Return a new, empty entry.
-    pub const fn new() -> GptEntry {
+    pub const fn new() -> GptEntry
+    {
         GptEntry {
             type_guid: Guid::new(),
             part_guid: Guid::new(),
             start_lba: 0,
             end_lba: 0,
             attributes: 0,
-            name_buf: [0u8; 72*4],
+            name_buf: [0u8; 72 * 4],
             name_len: 0,
         }
     }
@@ -255,14 +264,16 @@ impl GptEntry {
     /// Load a GPT entry given a block of raw data
     pub fn load(&mut self, data: &[u8]) -> StdResult
     {
-        self.type_guid = Guid::from_bytes(&data[0x00..0x10]);
-        self.part_guid = Guid::from_bytes(&data[0x10..0x20]);
-        self.start_lba = read_le(&data[0x20..0x28]) as usize;
-        self.end_lba = read_le(&data[0x28..0x30]) as usize;
-        self.attributes = read_le(&data[0x30..0x38]) as u32;
+        self.type_guid = Guid::from_bytes(&data[0x00 .. 0x10]);
+        self.part_guid = Guid::from_bytes(&data[0x10 .. 0x20]);
+        self.start_lba = read_le(&data[0x20 .. 0x28]) as usize;
+        self.end_lba = read_le(&data[0x28 .. 0x30]) as usize;
+        self.attributes = read_le(&data[0x30 .. 0x38]) as u32;
 
-        self.name_len =
-            utf::read_utf16le_into_utf8(&mut self.name_buf, &data[0x38..data.len()])?;
+        self.name_len = utf::read_utf16le_into_utf8(
+            &mut self.name_buf,
+            &data[0x38 .. data.len()],
+        )?;
         Ok(())
     }
 
@@ -274,7 +285,7 @@ impl GptEntry {
 
     pub fn name(&self) -> &str
     {
-        unsafe{str::from_utf8_unchecked(&self.name_buf[0..self.name_len])}
+        unsafe { str::from_utf8_unchecked(&self.name_buf[0 .. self.name_len]) }
     }
 
     pub fn valid(&self) -> bool
@@ -301,4 +312,3 @@ fn read_le(data: &[u8]) -> u64
 {
     read_be(data).swap_bytes() >> (8 * (8 - data.len()))
 }
-

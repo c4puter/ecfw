@@ -137,15 +137,17 @@ impl<'a> ClockSynth<'a> {
         let r = np - m * q;
 
         let frange = match freq {
-            0 ... 124999999 => 0,
-            125000000 ... 149999999 => 1,
-            150000000 ... 174999999 => 2,
+            0...124999999 => 0,
+            125000000...149999999 => 1,
+            150000000...174999999 => 2,
             _ => 3,
         };
 
-        debug!(DEBUG_CLOCK,
-               "configuring PLL with P={}, N={}. N'={}, Q={}, R={}",
-               p, n, np, q, r);
+        debug!(
+            DEBUG_CLOCK,
+            "configuring PLL with P={}, N={}. N'={}, Q={}, R={}",
+            p, n, np, q, r
+        );
 
         let reg18 = ((n & 0xff0) >> 4) as u8;
         let reg19 = (((n & 0x00f) << 4) | ((r & 0x1e0) >> 5)) as u8;
@@ -167,7 +169,8 @@ impl<'a> ClockSynth<'a> {
     /// and the internal configuration in conf_clock.h), and 2) be equal to
     /// BOARD_MCK if you don't want serial baud rates to go wonky.
     ///
-    /// This PANICs if some of its checks fail, and doesn't check everything.
+    /// This PANICs if some of its checks fail, and doesn't check
+    /// everything.
     ///
     /// Beware.
     pub unsafe fn enable_mck(&self)

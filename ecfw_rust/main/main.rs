@@ -1,23 +1,21 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
-use main::{commands, sysman, reset};
+use main::{commands, reset, sysman};
 use esh;
 use drivers;
 use drivers::gpio::Gpio;
@@ -34,11 +32,14 @@ fn command_dispatch(_esh: &esh::Esh, args: &[&str])
         return;
     }
 
-    match commands::COMMAND_TABLE.iter().find(|&c| {*(c.name) == *args[0]}) {
-        Some(cmd) =>
+    match commands::COMMAND_TABLE.iter().find(
+        |&c| *(c.name) == *args[0],
+    ) {
+        Some(cmd) => {
             if let Err(s) = (cmd.f)(args) {
                 println!("error: {}", s.message);
-            },
+            }
+        },
         None => println!("unrecognized command: {}", args[0]),
     }
 }
@@ -51,7 +52,8 @@ fn esh_print_cb(_esh: &esh::Esh, c: char)
     print!("{}", c);
 }
 
-pub fn esh_task() {
+pub fn esh_task()
+{
     debug!(DEBUG_ECBOOT, "start debug console");
     let esh = esh::Esh::init().unwrap();
     esh.register_command(command_dispatch);
@@ -62,9 +64,7 @@ pub fn esh_task() {
 
     loop {
         let c = drivers::com::getc_any_blocking(&com_ifs, true);
-        let c_replaced =
-            if c == b'\r' { b'\n' }
-            else          { c };
+        let c_replaced = if c == b'\r' { b'\n' } else { c };
         esh.rx(c_replaced);
     }
 }
@@ -77,17 +77,23 @@ pub fn init_task()
     devices::COMCDC.init();
 
     println!("");
-    debug!(DEBUG_ECBOOT, "==================================================");
+    debug!(
+        DEBUG_ECBOOT,
+        "=================================================="
+    );
     debug!(DEBUG_ECBOOT, "# Booting EC firmware");
     match option_env!("BUILD_ID") {
         Some(s) => debug!(DEBUG_ECBOOT, "# Build ID: {}", s),
-        None    => debug!(DEBUG_ECBOOT, "# No build ID"),
+        None => debug!(DEBUG_ECBOOT, "# No build ID"),
     };
-    debug!(DEBUG_ECBOOT, "==================================================");
+    debug!(
+        DEBUG_ECBOOT,
+        "=================================================="
+    );
     debug!(DEBUG_ECBOOT, "");
     debug!(DEBUG_ECBOOT, "initialized EC core and USART");
 
-    let unused = unsafe{bindgen_mcu::get_stack_unused()};
+    let unused = unsafe { bindgen_mcu::get_stack_unused() };
     unsafe { UNUSED = unused as usize };
     debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
@@ -137,7 +143,8 @@ pub fn init_task()
 
 #[no_mangle]
 #[allow(unreachable_code)]
-pub extern "C" fn main() -> i32 {
+pub extern "C" fn main() -> i32
+{
     unsafe {
         bindgen_mcu::write_stack_canaries();
         bindgen_mcu::mcu_init_early();

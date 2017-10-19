@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use os;
 use drivers::gpio::Gpio;
@@ -30,15 +28,15 @@ use core::sync::atomic::*;
 pub static POWER_MUTEX: os::Mutex<()> = os::Mutex::new(());
 
 #[allow(unused)]
-#[derive(Debug,Copy,Clone,PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum SupplyStatus {
     Down,
     Up,
     Transition,
-    Error
+    Error,
 }
 
-pub trait Supply : Sync {
+pub trait Supply: Sync {
     /// Return the supply's name. Override the default if not wrapping a
     /// virtual supply.
     fn name(&self) -> &'static str;
@@ -47,48 +45,58 @@ pub trait Supply : Sync {
     /// getting the status
     fn status(&self) -> Result<SupplyStatus, Error>;
 
-    /// Wait until the status is 'status'. Times out and panics after one second.
-    fn wait_status(&self, status: SupplyStatus) -> StdResult {
+    /// Wait until the status is 'status'. Times out and panics after one
+    /// second.
+    fn wait_status(&self, status: SupplyStatus) -> StdResult
+    {
         let mut to_timeout = 1000;
         loop {
             match self.status() {
                 Ok(s) => {
-                    if s == status { return Ok(()); }
-                    else {
+                    if s == status {
+                        return Ok(());
+                    } else {
                         if to_timeout > 0 {
                             to_timeout -= 1;
                             os::susp_safe_delay(1);
                         } else {
-                            panic!("timeout waiting for supply {} state change: {:?} -> {:?}",
-                                   self.name(), s, status)
+                            panic!(
+                                "timeout waiting for supply {} state change: \
+                                 {:?} -> {:?}",
+                                self.name(),
+                                s,
+                                status
+                            )
                         }
                     }
                 },
-                Err(e) => { return Err(e); }
+                Err(e) => {
+                    return Err(e);
+                },
             }
         }
     }
 
-    /// Bring this supply up. Will panic if any of its dependencies are not up.
-    /// Does nothing if already up.
+    /// Bring this supply up. Will panic if any of its dependencies are not
+    /// up. Does nothing if already up.
     ///
-    /// No timing guarantees: may return before the transition is complete or
-    /// may block.
+    /// No timing guarantees: may return before the transition is complete
+    /// or may block.
     fn up(&self) -> StdResult;
 
     /// Bring this supply down. Will panic if any of its dependants are not
-    /// down.
-    /// Does nothing if already down.
+    /// down. Does nothing if already down.
     ///
-    /// No timing guarantees: may return before the transition is complete or
-    /// may block.
+    /// No timing guarantees: may return before the transition is complete
+    /// or may block.
     fn down(&self) -> StdResult;
 
     /// Return a list of dependencies of this supply
     fn deps(&self) -> &[&Supply];
 
     /// Return the number of dependencies of this supply that are not up
-    fn count_deps_not_up(&self) -> Result<usize,Error> {
+    fn count_deps_not_up(&self) -> Result<usize, Error>
+    {
         let mut count = 0usize;
 
         for &dep in self.deps() {
@@ -101,7 +109,10 @@ pub trait Supply : Sync {
     }
 
     /// Return the number of dependants of this supply that are not down
-    fn count_rev_deps_not_down(&self) -> Result<usize,Error> where Self: Sized {
+    fn count_rev_deps_not_down(&self) -> Result<usize, Error>
+    where
+        Self: Sized,
+    {
         let mut count = 0usize;
         let self_ptr = self as *const Supply;
 
@@ -123,7 +134,7 @@ pub trait Supply : Sync {
 
 /// Power supply section on the voltage regulator module
 pub struct VrmSupply<'a> {
-    vrm_id: u8,         // ID used by the VRM I2C interface
+    vrm_id: u8, // ID used by the VRM I2C interface
     disch: Option<(&'a Gpio, u32)>,
     set_state: AtomicBool,
     transitioning: AtomicBool,
@@ -146,7 +157,8 @@ impl<'a> VrmSupply<'a> {
         name: &'static str,
         deps: &'a [&'a Supply],
         vrm_id: u8,
-        disch: Option<(&'a Gpio, u32)>) -> VrmSupply<'a>
+        disch: Option<(&'a Gpio, u32)>,
+    ) -> VrmSupply<'a>
     {
         VrmSupply {
             vrm_id: vrm_id,
@@ -158,13 +170,15 @@ impl<'a> VrmSupply<'a> {
         }
     }
 
-    pub const CTRL_BIT_ENABLED: u8 =    1u8 << 0;
+    pub const CTRL_BIT_ENABLED: u8 = 1u8 << 0;
     pub const CTRL_BIT_POWER_GOOD: u8 = 1u8 << 1;
 }
 
 impl<'a> Supply for VrmSupply<'a> {
-    fn status(&self) -> Result<SupplyStatus, Error> {
-        let up_bits = VrmSupply::CTRL_BIT_ENABLED | VrmSupply::CTRL_BIT_POWER_GOOD;
+    fn status(&self) -> Result<SupplyStatus, Error>
+    {
+        let up_bits = VrmSupply::CTRL_BIT_ENABLED |
+                      VrmSupply::CTRL_BIT_POWER_GOOD;
         let mut buf = [0u8; 1];
         VRM901.lock().read(&[self.vrm_id], &mut buf)?;
         let up = buf[0] & up_bits == up_bits;
@@ -172,31 +186,44 @@ impl<'a> Supply for VrmSupply<'a> {
         if self.transitioning.load(Ordering::Relaxed) {
             if up == self.set_state.load(Ordering::Relaxed) {
                 self.transitioning.store(false, Ordering::Relaxed);
-                if up { Ok(SupplyStatus::Up) } else { Ok(SupplyStatus::Down) }
+                if up {
+                    Ok(SupplyStatus::Up)
+                } else {
+                    Ok(SupplyStatus::Down)
+                }
             } else {
                 Ok(SupplyStatus::Transition)
             }
         } else {
-            if up { Ok(SupplyStatus::Up) } else { Ok(SupplyStatus::Down) }
+            if up {
+                Ok(SupplyStatus::Up)
+            } else {
+                Ok(SupplyStatus::Down)
+            }
         }
     }
 
-    fn up(&self) -> StdResult {
+    fn up(&self) -> StdResult
+    {
         assert!(self.count_deps_not_up()? == 0);
 
         match self.disch {
             Some((gpio, _wait)) => {
                 gpio.set(false);
             },
-            None => ()
+            None => (),
         }
-        VRM901.lock().write(&[self.vrm_id], &[VrmSupply::CTRL_BIT_ENABLED])?;
+        VRM901.lock().write(
+            &[self.vrm_id],
+            &[VrmSupply::CTRL_BIT_ENABLED],
+        )?;
         self.set_state.store(true, Ordering::SeqCst);
         self.transitioning.store(true, Ordering::SeqCst);
         Ok(())
     }
 
-    fn down(&self) -> StdResult {
+    fn down(&self) -> StdResult
+    {
         assert!(self.count_rev_deps_not_down()? == 0);
 
         VRM901.lock().write(&[self.vrm_id], &[0])?;
@@ -212,11 +239,13 @@ impl<'a> Supply for VrmSupply<'a> {
         Ok(())
     }
 
-    fn deps(&self) -> &[&Supply] {
+    fn deps(&self) -> &[&Supply]
+    {
         &self.deps
     }
 
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str
+    {
         &self.name
     }
 }
@@ -227,7 +256,8 @@ impl<'a> GpioSwitchedSupply<'a> {
         deps: &'a [&'a Supply],
         gpio: &'a Gpio,
         wait_ticks: u32,
-        disch: Option<(&'a Gpio, u32)>) -> GpioSwitchedSupply<'a>
+        disch: Option<(&'a Gpio, u32)>,
+    ) -> GpioSwitchedSupply<'a>
     {
         GpioSwitchedSupply {
             gpio: gpio,
@@ -240,11 +270,17 @@ impl<'a> GpioSwitchedSupply<'a> {
 }
 
 impl<'a> Supply for GpioSwitchedSupply<'a> {
-    fn status(&self) -> Result<SupplyStatus, Error> {
-        if self.gpio.get() { Ok(SupplyStatus::Up) } else { Ok(SupplyStatus::Down) }
+    fn status(&self) -> Result<SupplyStatus, Error>
+    {
+        if self.gpio.get() {
+            Ok(SupplyStatus::Up)
+        } else {
+            Ok(SupplyStatus::Down)
+        }
     }
 
-    fn up(&self) -> StdResult {
+    fn up(&self) -> StdResult
+    {
         assert!(self.count_deps_not_up()? == 0);
 
         if let Some((disgpio, _wait)) = self.disch {
@@ -255,7 +291,8 @@ impl<'a> Supply for GpioSwitchedSupply<'a> {
         Ok(())
     }
 
-    fn down(&self) -> StdResult {
+    fn down(&self) -> StdResult
+    {
         assert!(self.count_rev_deps_not_down()? == 0);
 
         let mut max_wait = self.wait_ticks;
@@ -263,17 +300,21 @@ impl<'a> Supply for GpioSwitchedSupply<'a> {
         self.gpio.set(false);
         if let Some((disgpio, wait)) = self.disch {
             disgpio.set(true);
-            if wait > max_wait { max_wait = wait; }
+            if wait > max_wait {
+                max_wait = wait;
+            }
         }
         os::susp_safe_delay(max_wait);
         Ok(())
     }
 
-    fn deps(&self) -> &[&Supply] {
+    fn deps(&self) -> &[&Supply]
+    {
         &self.deps
     }
 
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &'static str
+    {
         &self.name
     }
 }

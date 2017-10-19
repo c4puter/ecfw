@@ -1,23 +1,21 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
-use os::{Mutex,MutexLock};
+use os::{Mutex, MutexLock};
 use os::freertos;
 use messages::*;
 use drivers::spi::Spi;
@@ -36,27 +34,33 @@ pub struct Spartan6<'a> {
     programmed: AtomicBool,
 }
 
-impl <'a> Spartan6<'a> {
-
+impl<'a> Spartan6<'a> {
     /// Construct a Spartan6 device.
     ///
-    /// mutex:  Mutex to lock the programming interface. If any hardware (init
-    ///         pin, SPI) is shared between FPGAs, they must share a mutex.
-    /// spi:    SPI peripheral for sending code to the FPGA.
-    /// done_pin:   Input to indicate when the FPGA is done initializing. This
-    ///             may not be shared between FPGAs.
-    /// init_pin:   IO to indicate initialization status. This may be shared
-    ///             between FPGAs, and should be inverted to reflect the
-    ///             active-low hardware interface.
-    /// prog_pin:   Output to put the FPGA in programming mode. This may not be
-    ///             shared between FPGAs, and should be inverted to reflect the
-    ///             active-low hardware interface.
+    /// # Arguments
+    ///
+    /// * `mutex`    - Mutex to lock the programming interface. If any
+    ///                hardware (SPI) is shared between FPGAs, they must
+    ///                share a mutex.
+    /// * `spi`      - SPI peripheral for sending code to the FPGA.
+    /// * `done_pin` - Input to indicate when the FPGA is done
+    ///                initializing. This may not be shared between
+    ///                FPGAs.
+    /// * `init_pin` - IO to indicate initialization status. This should
+    ///                not be shared between FPGAs, and should be
+    ///                inverted to reflect the active-low hardware
+    ///                interface.
+    /// * `prog_pin` - Output to put the FPGA in programming mode. This
+    ///                may not be shared between FPGAs, and should be
+    ///                inverted to reflect the active-low hardware
+    ///                interface.
     pub const fn new<'b>(
-            mutex: &'b Mutex<()>,
-            spi: &'b Spi,
-            done_pin: &'b (Gpio + Sync),
-            init_pin: &'b (Gpio + Sync),
-            prog_pin: &'b (Gpio + Sync)) -> Spartan6<'b>
+        mutex: &'b Mutex<()>,
+        spi: &'b Spi,
+        done_pin: &'b (Gpio + Sync),
+        init_pin: &'b (Gpio + Sync),
+        prog_pin: &'b (Gpio + Sync),
+    ) -> Spartan6<'b>
     {
         Spartan6 {
             mutex: mutex,
@@ -68,8 +72,9 @@ impl <'a> Spartan6<'a> {
         }
     }
 
-    /// Check whether the FPGA has been programmed, and lock if so, returning
-    /// the lock. While this lock is held, the FPGA cannot be reprogrammed.
+    /// Check whether the FPGA has been programmed, and lock if so,
+    /// returning the lock. While this lock is held, the FPGA cannot
+    /// be reprogrammed.
     pub fn proglock<'b>(&'b self) -> Option<MutexLock<'b, ()>>
     {
         let lock = self.mutex.lock();
@@ -120,7 +125,7 @@ impl <'a> Spartan6<'a> {
                 break;
             }
 
-            let wr2 = self.spi.start_write(&buf1[0..n_read1])?;
+            let wr2 = self.spi.start_write(&buf1[0 .. n_read1])?;
 
             let n_read2 = file.read(&mut buf2)?;
             self.spi.end_write(wr2);
@@ -129,7 +134,7 @@ impl <'a> Spartan6<'a> {
                 break;
             }
 
-            wr1 = Some(self.spi.start_write(&buf2[0..n_read2])?);
+            wr1 = Some(self.spi.start_write(&buf2[0 .. n_read2])?);
         }
 
         Ok(())

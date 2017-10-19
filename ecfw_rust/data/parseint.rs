@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use messages::*;
 
@@ -36,24 +34,29 @@ use messages::*;
 /// - `0d`, `0D`: decimal (default)
 /// - `0x`, `0X`: hexadecimal
 
-pub trait ParseInt where Self: Sized {
-    fn parseint(s: &str) -> Result<Self,Error>;
+pub trait ParseInt
+where
+    Self: Sized,
+{
+    fn parseint(s: &str) -> Result<Self, Error>;
 }
 
-fn parsedigit(c: char, radix: u8) -> Result<u8,Error> {
+fn parsedigit(c: char, radix: u8) -> Result<u8, Error>
+{
     match c.to_digit(radix as u32) {
         Some(c) => Ok(c as u8),
-        None => Err(ERR_DIGIT)
+        None => Err(ERR_DIGIT),
     }
 }
 
 impl ParseInt for u64 {
-    fn parseint(s: &str) -> Result<u64,Error> {
+    fn parseint(s: &str) -> Result<u64, Error>
+    {
         #[derive(PartialEq)]
         enum State {
             Radix1,
             Radix2,
-            Number
+            Number,
         }
         let mut state = State::Radix1;
         let mut accumulator: u64 = 0;
@@ -94,7 +97,7 @@ impl ParseInt for u64 {
                 let parsed = parsedigit(c, radix as u8)?;
                 let limit = (u64::max_value() - parsed as u64) / radix;
                 if accumulator > limit {
-                    return Err(ERR_NRANGE)
+                    return Err(ERR_NRANGE);
                 }
                 accumulator = accumulator * radix + parsed as u64;
             }
@@ -105,7 +108,8 @@ impl ParseInt for u64 {
 }
 
 impl ParseInt for i64 {
-    fn parseint(s: &str) -> Result<i64,Error> {
+    fn parseint(s: &str) -> Result<i64, Error>
+    {
         // Here's the tricky bit. i64 parseint is the one that performs the
         // conversion between signed and unsigned. Watch ranges!
 
@@ -116,7 +120,7 @@ impl ParseInt for i64 {
 
         let absval = match firstchar {
             '+' | '-' => u64::parseint(s.split_at(1).1)?,
-            _ => u64::parseint(s)?
+            _ => u64::parseint(s)?,
         };
 
         if firstchar == '-' {
@@ -125,7 +129,7 @@ impl ParseInt for i64 {
             } else if absval <= u64::max_value() / 2 {
                 return Ok(-(absval as i64));
             } else {
-                return Err(ERR_NRANGE)
+                return Err(ERR_NRANGE);
             }
         } else {
             if absval > (i64::max_value() as u64) {
@@ -138,52 +142,63 @@ impl ParseInt for i64 {
 }
 
 impl ParseInt for u32 {
-    fn parseint(s: &str) -> Result<u32,Error> {
+    fn parseint(s: &str) -> Result<u32, Error>
+    {
         match u64::parseint(s)? {
             n if n <= (u32::max_value() as u64) => Ok(n as u32),
-            _ => Err(ERR_NRANGE)
+            _ => Err(ERR_NRANGE),
         }
     }
 }
 impl ParseInt for u16 {
-    fn parseint(s: &str) -> Result<u16,Error> {
+    fn parseint(s: &str) -> Result<u16, Error>
+    {
         match u64::parseint(s)? {
             n if n <= (u16::max_value() as u64) => Ok(n as u16),
-            _ => Err(ERR_NRANGE)
+            _ => Err(ERR_NRANGE),
         }
     }
 }
 impl ParseInt for u8 {
-    fn parseint(s: &str) -> Result<u8,Error> {
+    fn parseint(s: &str) -> Result<u8, Error>
+    {
         match u64::parseint(s)? {
             n if n <= (u8::max_value() as u64) => Ok(n as u8),
-            _ => Err(ERR_NRANGE)
+            _ => Err(ERR_NRANGE),
         }
     }
 }
 
 impl ParseInt for i32 {
-    fn parseint(s: &str) -> Result<i32,Error> {
+    fn parseint(s: &str) -> Result<i32, Error>
+    {
         match i64::parseint(s)? {
-            n if n >= (i32::min_value() as i64) && n <= (i32::max_value() as i64) => Ok(n as i32),
-            _ => Err(ERR_NRANGE)
+            n
+                if n >= (i32::min_value() as i64) &&
+                   n <= (i32::max_value() as i64) => Ok(n as i32),
+            _ => Err(ERR_NRANGE),
         }
     }
 }
 impl ParseInt for i16 {
-    fn parseint(s: &str) -> Result<i16,Error> {
+    fn parseint(s: &str) -> Result<i16, Error>
+    {
         match i64::parseint(s)? {
-            n if n >= (i16::min_value() as i64) && n <= (i16::max_value() as i64) => Ok(n as i16),
-            _ => Err(ERR_NRANGE)
+            n
+                if n >= (i16::min_value() as i64) &&
+                   n <= (i16::max_value() as i64) => Ok(n as i16),
+            _ => Err(ERR_NRANGE),
         }
     }
 }
 impl ParseInt for i8 {
-    fn parseint(s: &str) -> Result<i8,Error> {
+    fn parseint(s: &str) -> Result<i8, Error>
+    {
         match i64::parseint(s)? {
-            n if n >= (i8::min_value() as i64) && n <= (i8::max_value() as i64) => Ok(n as i8),
-            _ => Err(ERR_NRANGE)
+            n
+                if n >= (i8::min_value() as i64) &&
+                   n <= (i8::max_value() as i64) => Ok(n as i8),
+            _ => Err(ERR_NRANGE),
         }
     }
 }
-

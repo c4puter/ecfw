@@ -236,7 +236,7 @@ pub fn dir_open(path: &str) -> Result<Dir, Error>
 }
 
 #[repr(u32)]
-#[derive(Copy,Clone,PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum OpenFlags {
     Read = lwext4::O_RDONLY,
     Write = lwext4::O_WRONLY | lwext4::O_CREAT | lwext4::O_TRUNC,
@@ -261,11 +261,9 @@ fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File, Error>
 {
     let c_path = path as *const _;
     let mut file: File = unsafe { mem::zeroed() };
-    to_stdresult(
-        unsafe {
-            lwext4::ext4_fopen2(&mut file.0, c_path, flags as _)
-        }
-    )?;
+    to_stdresult(unsafe {
+        lwext4::ext4_fopen2(&mut file.0, c_path, flags as _)
+    })?;
 
     Ok(file)
 }
@@ -297,11 +295,9 @@ fn stat_cstr(path: *const u8) -> Result<Stat, Error>
     let mut inode: Stat = unsafe { mem::zeroed() };
     let mut ret_ino = 0u32;
 
-    to_stdresult(
-        unsafe {
-            lwext4::ext4_raw_inode_fill(c_path, &mut ret_ino, &mut inode.0)
-        },
-    )?;
+    to_stdresult(unsafe {
+        lwext4::ext4_raw_inode_fill(c_path, &mut ret_ino, &mut inode.0)
+    })?;
 
     Ok(inode as Stat)
 }
@@ -410,7 +406,8 @@ impl Dir {
 impl ops::Drop for Dir {
     fn drop(&mut self)
     {
-        to_stdresult(unsafe { lwext4::ext4_dir_close(&mut self.0) }).unwrap();
+        to_stdresult(unsafe { lwext4::ext4_dir_close(&mut self.0) })
+            .unwrap();
     }
 }
 
@@ -448,12 +445,10 @@ impl<'a> Iterator for DirIter<'a> {
         if de == ptr::null() {
             None
         } else {
-            Some(
-                DirEntry {
-                    de: de,
-                    _p: PhantomData,
-                },
-            )
+            Some(DirEntry {
+                de: de,
+                _p: PhantomData,
+            })
         }
     }
 }
@@ -471,26 +466,26 @@ impl File {
     /// Truncate file to the specified length.
     pub fn truncate(&mut self, size: usize) -> StdResult
     {
-        to_stdresult(unsafe { lwext4::ext4_ftruncate(&mut self.0, size as u64) },)
+        to_stdresult(
+            unsafe { lwext4::ext4_ftruncate(&mut self.0, size as u64) },
+        )
     }
 
-    /// Read data from file. Will attempt to fill `buf`; returns the number of
-    /// bytes read.
+    /// Read data from file. Will attempt to fill `buf`; returns the number
+    /// of bytes read.
     pub fn read(&mut self, buf: &mut [u8]) -> Result<usize, IoError>
     {
         let mut rcnt = 0usize;
         let buflen = buf.len();
 
-        match to_stdresult(
-            unsafe {
-                lwext4::ext4_fread(
-                    &mut self.0,
-                    buf.as_mut_ptr() as *mut ctypes::c_void,
-                    buflen,
-                    &mut rcnt,
-                )
-            },
-        ) {
+        match to_stdresult(unsafe {
+            lwext4::ext4_fread(
+                &mut self.0,
+                buf.as_mut_ptr() as *mut ctypes::c_void,
+                buflen,
+                &mut rcnt,
+            )
+        }) {
 
             Ok(..) => Ok(rcnt),
             Err(e) => Err(IoError::new(e, rcnt)),
@@ -504,16 +499,14 @@ impl File {
         let mut rcnt = 0usize;
         let buflen = buf.len();
 
-        match to_stdresult(
-            unsafe {
-                lwext4::ext4_fwrite(
-                    &mut self.0,
-                    buf.as_ptr() as *mut ctypes::c_void,
-                    buflen,
-                    &mut rcnt,
-                )
-            },
-        ) {
+        match to_stdresult(unsafe {
+            lwext4::ext4_fwrite(
+                &mut self.0,
+                buf.as_ptr() as *mut ctypes::c_void,
+                buflen,
+                &mut rcnt,
+            )
+        }) {
 
             Ok(..) => Ok(rcnt),
             Err(e) => Err(IoError::new(e, rcnt)),
@@ -529,7 +522,9 @@ impl File {
             Origin::End => lwext4::SEEK_END,
         };
 
-        to_stdresult(unsafe { lwext4::ext4_fseek(&mut self.0, offset as u64, c_origin) },)
+        to_stdresult(unsafe {
+            lwext4::ext4_fseek(&mut self.0, offset as u64, c_origin)
+        })
     }
 
     /// Get file position
@@ -548,12 +543,13 @@ impl File {
 impl ops::Drop for File {
     fn drop(&mut self)
     {
-        to_stdresult(unsafe { lwext4::ext4_fclose(&mut self.0) }).unwrap();
+        to_stdresult(unsafe { lwext4::ext4_fclose(&mut self.0) })
+            .unwrap();
     }
 }
 
 #[repr(C)]
-#[derive(Copy,Clone,PartialEq)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum InodeType {
     Other = 0,
     Fifo = 0x1000,
@@ -704,29 +700,39 @@ extern "C" fn blockdev_open(_bdev: *mut ext4_blockdev) -> i32
     0
 }
 
-unsafe extern "C" fn blockdev_bread(bdev: *mut ext4_blockdev,
-                                    buf: *mut ctypes::c_void,
-                                    blk_id: u64,
-                                    blk_cnt: u32)
-    -> i32
+unsafe extern "C" fn blockdev_bread(
+    bdev: *mut ext4_blockdev,
+    buf: *mut ctypes::c_void,
+    blk_id: u64,
+    blk_cnt: u32,
+) -> i32
 {
     let bd = SdBlockDev::from_ptr(bdev);
     let mut sd = bd.sd.lock();
-    match sd.read_blocks(blk_id as usize, blk_cnt as u16, buf as *mut u8) {
+    match sd.read_blocks(
+        blk_id as usize,
+        blk_cnt as u16,
+        buf as *mut u8,
+    ) {
         Ok(()) => 0,
         Err(_) => EIO,
     }
 }
 
-unsafe extern "C" fn blockdev_bwrite(bdev: *mut ext4_blockdev,
-                                     buf: *const ctypes::c_void,
-                                     blk_id: u64,
-                                     blk_cnt: u32)
-    -> i32
+unsafe extern "C" fn blockdev_bwrite(
+    bdev: *mut ext4_blockdev,
+    buf: *const ctypes::c_void,
+    blk_id: u64,
+    blk_cnt: u32,
+) -> i32
 {
     let bd = SdBlockDev::from_ptr(bdev);
     let mut sd = bd.sd.lock();
-    match sd.write_blocks(blk_id as usize, blk_cnt as u16, buf as *const u8) {
+    match sd.write_blocks(
+        blk_id as usize,
+        blk_cnt as u16,
+        buf as *const u8,
+    ) {
         Ok(()) => 0,
         Err(_) => EIO,
     }

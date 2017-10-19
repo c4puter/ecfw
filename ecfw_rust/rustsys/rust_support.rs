@@ -1,36 +1,42 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use core::mem;
 use core::fmt;
 
-#[lang="eh_personality"] extern fn eh_personality() {}
+#[lang = "eh_personality"]
+extern "C" fn eh_personality()
+{
+}
 
 pub trait Error: fmt::Display {
     fn description(&self) -> &str;
-    fn cause(&self) -> Option<&Error> {None}
+    fn cause(&self) -> Option<&Error>
+    {
+        None
+    }
 }
 
 #[inline(always)]
 pub fn nop()
 {
-    unsafe{asm!("nop" : : : : "volatile");}
+    unsafe {
+        asm!("nop" : : : : "volatile");
+    }
 }
 
 #[inline(always)]
@@ -54,13 +60,17 @@ pub unsafe fn pendsv()
 #[inline(always)]
 pub fn dsb()
 {
-    unsafe{asm!("dsb" :::: "volatile");}
+    unsafe {
+        asm!("dsb" :::: "volatile");
+    }
 }
 
 #[inline(always)]
 pub fn isb()
 {
-    unsafe{asm!("isb" :::: "volatile");}
+    unsafe {
+        asm!("isb" :::: "volatile");
+    }
 }
 
 #[inline(always)]
@@ -76,4 +86,3 @@ pub unsafe fn writemem(addr: u32, value: u32)
     let p: *mut u32 = mem::transmute(addr);
     *p = value;
 }
-

@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use os;
 use drivers::{ext4, gpt};
@@ -79,18 +77,24 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "poke",      f: cmd_poke,        descr: "write to ADDR, 32 bit DATA" },
 ];
 
-fn argv_parsed<T, U>(args: &[&str], n: usize, _name: &str, parser: fn(&str)->Result<T,U>) -> Result<T, Error>
-    where U: fmt::Display
+fn argv_parsed<T, U>(
+    args:   &[&str],
+    n:      usize,
+    _name:  &str,
+    parser: fn(&str) -> Result<T, U>,
+) -> Result<T, Error>
+where
+    U: fmt::Display,
 {
     match parser(args[n]) {
         Ok(val) => Ok(val),
-        Err(_) => Err(ERR_PARSE_ARGUMENT)
+        Err(_) => Err(ERR_PARSE_ARGUMENT),
     }
 }
 
 fn cmd_help(_args: &[&str]) -> StdResult
 {
-    for i in 0..COMMAND_TABLE.len() {
+    for i in 0 .. COMMAND_TABLE.len() {
         let ref cmd = COMMAND_TABLE[i];
         println!("{:12} - {}", cmd.name, cmd.descr);
     }
@@ -100,8 +104,11 @@ fn cmd_help(_args: &[&str]) -> StdResult
 
 fn cmd_free(_args: &[&str]) -> StdResult
 {
-    println!("{} B, worst case {} B",
-             os::freertos::get_free_heap(), os::freertos::get_worst_free_heap());
+    println!(
+        "{} B, worst case {} B",
+        os::freertos::get_free_heap(),
+        os::freertos::get_worst_free_heap()
+    );
     Ok(())
 }
 
@@ -140,55 +147,108 @@ fn cmd_dbgdis(args: &[&str]) -> StdResult
 fn cmd_dbgls(_args: &[&str]) -> StdResult
 {
     for &dbg in DEBUG_TABLE {
-        println!("{}    {}",
+        println!(
+            "{}    {}",
             if dbg.enabled() { "en " } else { "dis" },
-            dbg.name );
+            dbg.name
+        );
     }
     Ok(())
 }
 
 fn cmd_panel(_args: &[&str]) -> StdResult
 {
-    fn r_(v: bool) -> &'static str {
-        match v { true => "R ", false => "  " }
+    fn r_(v: bool) -> &'static str
+    {
+        match v {
+            true => "R ",
+            false => "  ",
+        }
     }
-    fn g_(v: bool) -> &'static str {
-        match v { true => "G ", false => "  " }
+    fn g_(v: bool) -> &'static str
+    {
+        match v {
+            true => "G ",
+            false => "  ",
+        }
     }
-    fn yn(v: bool) -> &'static str {
-        match v { true => "Y ", false => " N" }
+    fn yn(v: bool) -> &'static str
+    {
+        match v {
+            true => "Y ",
+            false => " N",
+        }
     }
 
-    println!("P12V   {} {} | P3V3_STBY  {} {} | EC FMW {} {}       {} {} STATE FAIL",
-             r_(P12V_PCI_R.get()), g_(P12V_PCI_G.get()),
-             r_(P3V3_STBY_R.get()), g_(P3V3_STBY_G.get()),
-             r_(ECFW_R.get()), g_(ECFW_G.get()),
-             r_(STATE_FAIL_R.get()), g_(STATE_FAIL_G.get()));
-    println!("P5V_A  {} {} | P3V3_AUX   {} {} | PWR SQ {} {}       {} {} UNC1",
-             r_(P5V_PCI_A_R.get()), g_(P5V_PCI_A_G.get()),
-             r_(P3V3_AUX_R.get()), g_(P3V3_AUX_G.get()),
-             r_(POWER_R.get()), g_(POWER_G.get()),
-             r_(UNC1_R.get()), g_(UNC1_G.get()));
-    println!("P5V_B  {} {} | P3V3_LOGIC {} {} | CARD   {} {}       {} {} UNC2",
-             r_(P5V_PCI_B_R.get()), g_(P5V_PCI_B_G.get()),
-             r_(P3V3_LOGIC_R.get()), g_(P3V3_LOGIC_G.get()),
-             r_(CARD_R.get()), g_(CARD_G.get()),
-             r_(UNC2_R.get()), g_(UNC2_G.get()));
-    println!("P3V3_A {} {} | P1V5_LOGIC {} {} | BITSTR {} {} {} {} {} {} UNC3",
-             r_(P3V3_PCI_A_R.get()), g_(P3V3_PCI_A_G.get()),
-             r_(P1V5_LOGIC_R.get()), g_(P1V5_LOGIC_G.get()),
-             r_(BIT_R.get()), g_(BIT_BRIDGE_G.get()), g_(BIT_CPU0_G.get()), g_(BIT_CPU1_G.get()),
-             r_(UNC3_R.get()), g_(UNC3_G.get()));
-    println!("P3V3_B {} {} | P1V2_LOGIC {} {} | MEM LD {} {}       {} {} UNC4",
-             r_(P3V3_PCI_B_R.get()), g_(P3V3_PCI_B_G.get()),
-             r_(P1V2_LOGIC_R.get()), g_(P1V2_LOGIC_G.get()),
-             r_(MEM_R.get()), g_(MEM_G.get()),
-             r_(UNC4_R.get()), g_(UNC4_G.get()));
-    println!("N12V   {} {} | PV75_TERM  {} {} | RUN    {} {}    {} {} {} UNC5",
-             r_(N12V_PCI_R.get()), g_(N12V_PCI_G.get()),
-             r_(PV75_TERM_R.get()), g_(PV75_TERM_G.get()),
-             r_(RUN_R.get()), g_(RUN_G.get()), g_(UPDOG_G.get()),
-             r_(UNC5_R.get()), g_(UNC5_G.get()));
+    println!(
+        "P12V   {} {} | P3V3_STBY  {} {} | EC FMW {} {}       {} {} STATE FAIL",
+        r_(P12V_PCI_R.get()),
+        g_(P12V_PCI_G.get()),
+        r_(P3V3_STBY_R.get()),
+        g_(P3V3_STBY_G.get()),
+        r_(ECFW_R.get()),
+        g_(ECFW_G.get()),
+        r_(STATE_FAIL_R.get()),
+        g_(STATE_FAIL_G.get())
+    );
+    println!(
+        "P5V_A  {} {} | P3V3_AUX   {} {} | PWR SQ {} {}       {} {} UNC1",
+        r_(P5V_PCI_A_R.get()),
+        g_(P5V_PCI_A_G.get()),
+        r_(P3V3_AUX_R.get()),
+        g_(P3V3_AUX_G.get()),
+        r_(POWER_R.get()),
+        g_(POWER_G.get()),
+        r_(UNC1_R.get()),
+        g_(UNC1_G.get())
+    );
+    println!(
+        "P5V_B  {} {} | P3V3_LOGIC {} {} | CARD   {} {}       {} {} UNC2",
+        r_(P5V_PCI_B_R.get()),
+        g_(P5V_PCI_B_G.get()),
+        r_(P3V3_LOGIC_R.get()),
+        g_(P3V3_LOGIC_G.get()),
+        r_(CARD_R.get()),
+        g_(CARD_G.get()),
+        r_(UNC2_R.get()),
+        g_(UNC2_G.get())
+    );
+    println!(
+        "P3V3_A {} {} | P1V5_LOGIC {} {} | BITSTR {} {} {} {} {} {} UNC3",
+        r_(P3V3_PCI_A_R.get()),
+        g_(P3V3_PCI_A_G.get()),
+        r_(P1V5_LOGIC_R.get()),
+        g_(P1V5_LOGIC_G.get()),
+        r_(BIT_R.get()),
+        g_(BIT_BRIDGE_G.get()),
+        g_(BIT_CPU0_G.get()),
+        g_(BIT_CPU1_G.get()),
+        r_(UNC3_R.get()),
+        g_(UNC3_G.get())
+    );
+    println!(
+        "P3V3_B {} {} | P1V2_LOGIC {} {} | MEM LD {} {}       {} {} UNC4",
+        r_(P3V3_PCI_B_R.get()),
+        g_(P3V3_PCI_B_G.get()),
+        r_(P1V2_LOGIC_R.get()),
+        g_(P1V2_LOGIC_G.get()),
+        r_(MEM_R.get()),
+        g_(MEM_G.get()),
+        r_(UNC4_R.get()),
+        g_(UNC4_G.get())
+    );
+    println!(
+        "N12V   {} {} | PV75_TERM  {} {} | RUN    {} {}    {} {} {} UNC5",
+        r_(N12V_PCI_R.get()),
+        g_(N12V_PCI_G.get()),
+        r_(PV75_TERM_R.get()),
+        g_(PV75_TERM_G.get()),
+        r_(RUN_R.get()),
+        g_(RUN_G.get()),
+        g_(UPDOG_G.get()),
+        r_(UNC5_R.get()),
+        g_(UNC5_G.get())
+    );
     println!("");
     println!("{} UNC0", yn(UNC_SW_0.get()));
     println!("{} UNC1", yn(UNC_SW_1.get()));
@@ -206,8 +266,8 @@ fn cmd_temps(_args: &[&str]) -> StdResult
     let temp_logic = devices::SENSOR_LOGIC.read()?;
     let temp_ambient = devices::SENSOR_AMBIENT.read()?;
 
-    println!("Logic:   {}.{} degC", temp_logic/10, temp_logic%10);
-    println!("Ambient: {}.{} degC", temp_ambient/10, temp_ambient%10);
+    println!("Logic:   {}.{} degC", temp_logic / 10, temp_logic % 10);
+    println!("Ambient: {}.{} degC", temp_ambient / 10, temp_ambient % 10);
 
     Ok(())
 }
@@ -262,8 +322,12 @@ fn cmd_i2c_read(args: &[&str]) -> StdResult
     let location_arr = [loc];
     let mut buffer = [0 as u8; 16];
 
-    devices::twi::TWI0.read(addr, &location_arr, &mut buffer[0..n as usize])?;
-    println!("{:?}", &buffer[0..n as usize]);
+    devices::twi::TWI0.read(
+        addr,
+        &location_arr,
+        &mut buffer[0 .. n as usize],
+    )?;
+    println!("{:?}", &buffer[0 .. n as usize]);
     Ok(())
 }
 
@@ -281,14 +345,18 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
 
     let mut buffer = [0 as u8; 16];
     let n = args.len() - 3;
-    for i in 0..n {
+    for i in 0 .. n {
         let arg = argv_parsed(args, i + 3, "BYTES", u8::parseint)?;
         buffer[i] = arg;
     }
 
     let location_arr = [loc];
 
-    devices::twi::TWI0.write(addr, &location_arr, &buffer[0..n as usize])?;
+    devices::twi::TWI0.write(
+        addr,
+        &location_arr,
+        &buffer[0 .. n as usize],
+    )?;
     Ok(())
 }
 
@@ -299,7 +367,9 @@ fn cmd_gpio_read(args: &[&str]) -> StdResult
     }
     let gpio_name = args[1];
 
-    match devices::pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
+    match devices::pins::PIN_TABLE.iter().find(|&pin| {
+        *(pin.name()) == *gpio_name
+    }) {
         Some(pin) => println!("{}", pin.get()),
         None => println!("pin {} not found", gpio_name),
     }
@@ -315,7 +385,9 @@ fn cmd_gpio_write(args: &[&str]) -> StdResult
     let gpio_name = args[1];
     let gpio_val = argv_parsed(args, 2, "VALUE", i8::parseint)?;
 
-    match devices::pins::PIN_TABLE.iter().find(|&pin| {*(pin.name()) == *gpio_name}) {
+    match devices::pins::PIN_TABLE.iter().find(|&pin| {
+        *(pin.name()) == *gpio_name
+    }) {
         Some(pin) => pin.set(gpio_val != 0),
         None => println!("pin {} not found", gpio_name),
     }
@@ -376,11 +448,11 @@ fn cmd_pwr_stat(args: &[&str]) -> StdResult
     let supply_name = args[1];
     let _lock = devices::supplies::POWER_MUTEX.lock();
     let mut it = devices::supplies::SUPPLY_TABLE.iter();
-    match it.find(|&supply| {*(supply.name()) == *supply_name}) {
-        Some(supply) =>
-            println!("supply {} status: {:?}", supply_name, supply.status()?),
-        None =>
-            println!("supply {} not found", supply_name),
+    match it.find(|&supply| *(supply.name()) == *supply_name) {
+        Some(supply) => {
+            println!("supply {} status: {:?}", supply_name, supply.status()?)
+        },
+        None => println!("supply {} not found", supply_name),
     }
     Ok(())
 }
@@ -418,7 +490,7 @@ fn cmd_umount(_args: &[&str]) -> StdResult
     ext4::unregister_device("root")?;
 
     if !CARD.get() {
-        return Err(ERR_NO_CARD)
+        return Err(ERR_NO_CARD);
     }
     CARDEN.set(false);
     Ok(())
@@ -440,8 +512,10 @@ fn cmd_sdinfo(_args: &[&str]) -> StdResult
     println!("Type:      {:?}", sd.cardtype());
     println!("Version:   {:?}", sd.version());
     println!("Capacity:  {:?} MiB", sd.capacity() / 1024);
-    println!("Protected: {}",
-             if sd.writeprotected() { "yes" } else { "no" });
+    println!(
+        "Protected: {}",
+        if sd.writeprotected() { "yes" } else { "no" }
+    );
 
     Ok(())
 }
@@ -470,7 +544,7 @@ fn cmd_writeblock(args: &[&str]) -> StdResult
     let iblock = argv_parsed(args, 1, "BLOCK", u32::parseint)? as usize;
 
     let mut buf = [0u8; 512];
-    for i in 2..args.len() {
+    for i in 2 .. args.len() {
         let data = argv_parsed(args, i, "DATA", u8::parseint)?;
         buf[i - 2] = data;
     }
@@ -488,7 +562,7 @@ fn cmd_partinfo(_args: &[&str]) -> StdResult
 
     println!("Disk GUID: {}", table.guid());
 
-    for i in 0..table.number_entries() {
+    for i in 0 .. table.number_entries() {
         table.read_entry(i, &mut entry)?;
         if !entry.valid() {
             continue;
@@ -497,7 +571,11 @@ fn cmd_partinfo(_args: &[&str]) -> StdResult
         println!("Entry {}:", i);
         println!("  Type GUID:   {}", entry.type_guid);
         println!("  Unique GUID: {}", entry.part_guid);
-        println!("  Range:       {:08x}...{:08x}", entry.start_lba, entry.end_lba);
+        println!(
+            "  Range:       {:08x}...{:08x}",
+            entry.start_lba,
+            entry.end_lba
+        );
         println!("  Attributes:  {:08x}", entry.attributes);
         println!("  Name:        {}", entry.name());
     }
@@ -543,7 +621,7 @@ fn cmd_hd(args: &[&str]) -> StdResult
 
     let bytes = file.read(&mut buf)?;
 
-    hexprint(&buf[0..bytes]);
+    hexprint(&buf[0 .. bytes]);
     Ok(())
 }
 

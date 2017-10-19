@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use os;
 use drivers;
@@ -34,14 +32,16 @@ pub fn hard_reset()
     // in an unknown state.
     {
         debug!(DEBUG_RESET, "acquire power control lock");
-        let _plock = drivers::power::POWER_MUTEX.lock_timeout(1000).expect("timeout");
+        let _plock = drivers::power::POWER_MUTEX.lock_timeout(1000).expect(
+            "timeout",
+        );
         debug!(DEBUG_RESET, "acquire VRM TWI lock");
         let _lock = devices::twi::VRM901.lock_timeout(1000).expect("timeout");
 
         // Unsafe: shuts down the task scheduler
         debug!(DEBUG_RESET, "suspend tasks");
         devices::COMUSART.flush_output();
-        unsafe {os::freertos::suspend_all()};
+        unsafe { os::freertos::suspend_all() };
     }
 
     // Locks are released now; may be picked up again by the individual supply
@@ -49,7 +49,9 @@ pub fn hard_reset()
     debug_async!(DEBUG_RESET, "shut down supplies");
     shutdown_supplies_cleanly();
     debug_async!(DEBUG_RESET, "shut down standby rail");
-    unsafe{ shutdown_final(); }
+    unsafe {
+        shutdown_final();
+    }
 
     loop {}
 }
@@ -65,27 +67,32 @@ pub fn shutdown_supplies_cleanly()
         devices::CLOCK_SYNTH.disable_mck();
     }
 
-    static SUPPLIES_IN_ORDER: &[&(devices::supplies::Supply + Sync)] = &[
-        &devices::supplies::SW1,
-        &devices::supplies::SW2,
-        &devices::supplies::SW3,
-        &devices::supplies::LDO_S0,
-        &devices::supplies::LDO_S3,
-        &devices::supplies::BUCK_1V2,
-        &devices::supplies::BUCK_1V5,
-        &devices::supplies::INV_N12,
-        &devices::supplies::BUCK_5VA,
-        &devices::supplies::BUCK_5VB,
-        &devices::supplies::BUCK_3VA,
-    ];
+    static SUPPLIES_IN_ORDER: &[&(devices::supplies::Supply + Sync)] =
+        &[
+            &devices::supplies::SW1,
+            &devices::supplies::SW2,
+            &devices::supplies::SW3,
+            &devices::supplies::LDO_S0,
+            &devices::supplies::LDO_S3,
+            &devices::supplies::BUCK_1V2,
+            &devices::supplies::BUCK_1V5,
+            &devices::supplies::INV_N12,
+            &devices::supplies::BUCK_5VA,
+            &devices::supplies::BUCK_5VB,
+            &devices::supplies::BUCK_3VA,
+        ];
     for supply in SUPPLIES_IN_ORDER {
         match supply.down() {
             Ok(_) => (),
-            Err(e) => {print_async!("WARNING: {:?}\n", e);}
+            Err(e) => {
+                print_async!("WARNING: {:?}\n", e);
+            },
         }
         match supply.wait_status(drivers::power::SupplyStatus::Down) {
             Ok(_) => (),
-            Err(e) => {print_async!("WARNING: {:?}\n", e);}
+            Err(e) => {
+                print_async!("WARNING: {:?}\n", e);
+            },
         }
     }
 }

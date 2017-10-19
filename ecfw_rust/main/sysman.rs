@@ -1,27 +1,25 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use os;
 use drivers;
 use devices;
 use drivers::gpio::Gpio;
-use drivers::{ext4,gpt};
+use drivers::{ext4, gpt};
 use devices::pins::*;
 use devices::supplies::*;
 use main::reset;
@@ -32,7 +30,7 @@ use core::sync::atomic::*;
 const POWER_BUTTON_START_CYCLES_MAX: u32 = 5; // <1s: start
 const POWER_BUTTON_STOP_CYCLES_MIN: u32 = 20; // >4s: stop
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Event {
     Boot,
     Shutdown,
@@ -80,7 +78,7 @@ fn handle_one_event(evt: Event) -> StdResult
 
 /// Supply/LED status indication struct. This pairs a power supply with the LEDs
 /// that indicate its status.
-#[derive(Copy,Clone)]
+#[derive(Copy, Clone)]
 struct SupplyStatusPair<'a> {
     supply: &'a (drivers::power::Supply + Sync),
     good: &'a drivers::ledmatrix::LedGpio<'a>,
@@ -148,7 +146,8 @@ pub fn run_status()
                 debug!(DEBUG_PWRBTN, "button pressed");
             }
             powerbtn_cycles_held += 1;
-            if powerbtn_cycles_held >= POWER_BUTTON_STOP_CYCLES_MIN && !powerbtn_handled {
+            if powerbtn_cycles_held >= POWER_BUTTON_STOP_CYCLES_MIN &&
+               !powerbtn_handled {
                 debug!(DEBUG_PWRBTN, "press event (long)");
                 powerbtn_handled = true;
                 button_press(powerbtn_cycles_held);
@@ -182,7 +181,10 @@ fn button_press(cycles: u32)
         } else if state == STATE_OFF {
             post(Event::Boot);
         } else if state == STATE_SHUTDOWN_FAIL {
-            debug!(DEBUG_SYSMAN, "ignoring power button because previous shutdown failed");
+            debug!(
+                DEBUG_SYSMAN,
+                "ignoring power button because previous shutdown failed"
+            );
             debug!(DEBUG_SYSMAN, "power cycle or use debug interface");
         }
 
@@ -194,7 +196,10 @@ fn button_press(cycles: u32)
         } else if state == STATE_SUSP {
             post(Event::Shutdown);
         } else if state == STATE_SHUTDOWN_FAIL {
-            debug!(DEBUG_SYSMAN, "ignoring power button because previous shutdown failed");
+            debug!(
+                DEBUG_SYSMAN,
+                "ignoring power button because previous shutdown failed"
+            );
             debug!(DEBUG_SYSMAN, "power cycle or use debug interface");
         }
     }
@@ -246,11 +251,15 @@ fn do_boot() -> StdResult
 
     boot_load_fpgas()?;
 
-    unsafe {os::freertos::suspend_all();}
+    unsafe {
+        os::freertos::suspend_all();
+    }
     SPEAKER.set(true);
     os::susp_safe_delay(125);
     SPEAKER.set(false);
-    unsafe {os::freertos::resume_all();}
+    unsafe {
+        os::freertos::resume_all();
+    }
     Ok(())
 }
 
@@ -299,10 +308,16 @@ fn boot_init_clock() -> StdResult
     if LOW_SPEED.get() {
         debug!(DEBUG_SYSMAN, "LOW SPEED set");
         devices::CLOCK_SYNTH.y3div(20)?;
-        debug!(DEBUG_SYSMAN, "EC ref: 7.5 MHz, bridge ref: 62.5 MHz, CPU: 9.375 MHz");
+        debug!(
+            DEBUG_SYSMAN,
+            "EC ref: 7.5 MHz, bridge ref: 62.5 MHz, CPU: 9.375 MHz"
+        );
     } else {
         devices::CLOCK_SYNTH.y3div(2)?;
-        debug!(DEBUG_SYSMAN, "EC ref: 7.5 MHz, bridge ref: 62.5 MHz, CPU: 93.75 MHz");
+        debug!(
+            DEBUG_SYSMAN,
+            "EC ref: 7.5 MHz, bridge ref: 62.5 MHz, CPU: 93.75 MHz"
+        );
     }
 
     devices::CLOCK_SYNTH.ratio(75, 8)?;

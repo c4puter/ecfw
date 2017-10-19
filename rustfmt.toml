@@ -22,3 +22,4 @@ struct_variant_width = 0
 use_try_shorthand = true
 wrap_comments = true
 fn_call_style = "Block"
+write_mode = "overwrite"

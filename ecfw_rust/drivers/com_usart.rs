@@ -67,17 +67,21 @@ impl ComUsart {
             irda_filter: 0,
         };
 
-        os::Task::new(move || { putc_task(&self.queue_out, self.usart); },
-                      "comusart",
-                      200,
-                      0);
+        os::Task::new(
+            move || { putc_task(&self.queue_out, self.usart); },
+            "comusart",
+            200,
+            0,
+        );
 
         let fcpu = bindgen_mcu::mcu_get_peripheral_hz();
         asf_usart::usart_init_rs232(self.usart, &usart_settings, fcpu);
         asf_usart::usart_enable_tx(self.usart);
         asf_usart::usart_enable_rx(self.usart);
-        asf_usart::usart_enable_interrupt(self.usart,
-                                          asf_usart::US_IER_RXRDY as u32);
+        asf_usart::usart_enable_interrupt(
+            self.usart,
+            asf_usart::US_IER_RXRDY as u32,
+        );
         bindgen_mcu::mcu_set_irq_prio(self.irqn, 4, 1);
         bindgen_mcu::mcu_enable_irq(self.irqn);
     }

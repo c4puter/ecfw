@@ -1,21 +1,19 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 pub use drivers::power::*;
 use devices::pins::*;
@@ -72,7 +70,8 @@ supply_table!{
     SW3,        GpioSwitchedSupply, &[&BUCK_3VB],       &EN_P3V3_S0B,   6,  Some((&DISCH_3VB,   36));
 }
 
-pub fn transition_s3_from_s5() -> StdResult {
+pub fn transition_s3_from_s5() -> StdResult
+{
     BUCK_5VB.up()?;
     BUCK_5VA.up()?;
 
@@ -91,7 +90,8 @@ pub fn transition_s3_from_s5() -> StdResult {
     Ok(())
 }
 
-pub fn transition_s0_from_s3() -> StdResult {
+pub fn transition_s0_from_s3() -> StdResult
+{
     BUCK_3VA.up()?;
     LDO_S0.up()?;
     INV_N12.up()?;
@@ -108,7 +108,8 @@ pub fn transition_s0_from_s3() -> StdResult {
     Ok(())
 }
 
-pub fn transition_s3_from_s0() -> StdResult {
+pub fn transition_s3_from_s0() -> StdResult
+{
     SW3.down()?;
     SW2.down()?;
     SW1.down()?;
@@ -125,7 +126,8 @@ pub fn transition_s3_from_s0() -> StdResult {
     Ok(())
 }
 
-pub fn transition_s5_from_s3() -> StdResult {
+pub fn transition_s5_from_s3() -> StdResult
+{
     LDO_S3.down()?;
     BUCK_1V2.down()?;
 

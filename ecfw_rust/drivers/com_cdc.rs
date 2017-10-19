@@ -44,10 +44,12 @@ fn putc_task(q: &'static os::Queue<'static, u8>)
 impl ComCdc {
     pub fn init(&self)
     {
-        os::Task::new(move || { putc_task(&self.queue_out); },
-                      "comcdc",
-                      200,
-                      0);
+        os::Task::new(
+            move || { putc_task(&self.queue_out); },
+            "comcdc",
+            200,
+            0,
+        );
     }
 
     pub fn start(&self)
