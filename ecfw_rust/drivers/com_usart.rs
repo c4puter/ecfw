@@ -1,21 +1,20 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 extern crate bindgen_mcu;
 extern crate asf_usart;
@@ -57,7 +56,8 @@ fn putc_task(q: &'static os::Queue<'static, u8>, usart: *mut asf_usart::Usart)
 }
 
 impl ComUsart {
-    pub unsafe fn init(&self, baud: u32) {
+    pub unsafe fn init(&self, baud: u32)
+    {
         let usart_settings = asf_usart::sam_usart_opt_t {
             baudrate: baud,
             char_length: asf_usart::US_MR_CHRL_8_BIT as u32,
@@ -68,36 +68,44 @@ impl ComUsart {
         };
 
         os::Task::new(move || { putc_task(&self.queue_out, self.usart); },
-                      "comusart", 200, 0);
+                      "comusart",
+                      200,
+                      0);
 
         let fcpu = bindgen_mcu::mcu_get_peripheral_hz();
         asf_usart::usart_init_rs232(self.usart, &usart_settings, fcpu);
         asf_usart::usart_enable_tx(self.usart);
         asf_usart::usart_enable_rx(self.usart);
-        asf_usart::usart_enable_interrupt(self.usart, asf_usart::US_IER_RXRDY as u32);
+        asf_usart::usart_enable_interrupt(self.usart,
+                                          asf_usart::US_IER_RXRDY as u32);
         bindgen_mcu::mcu_set_irq_prio(self.irqn, 4, 1);
         bindgen_mcu::mcu_enable_irq(self.irqn);
     }
 }
 
 impl Com for ComUsart {
-    fn getc(&self) -> Option<u8> {
+    fn getc(&self) -> Option<u8>
+    {
         self.queue_in.receive_no_wait()
     }
 
-    fn putc(&self, c: u8) {
+    fn putc(&self, c: u8)
+    {
         self.queue_out.send_wait(c);
     }
 
-    fn putc_nowait(&self, c: u8) {
+    fn putc_nowait(&self, c: u8)
+    {
         self.queue_out.send_no_wait(c);
     }
 
-    fn putc_async(&self, c: u8) {
-        unsafe{asf_usart::usart_putchar(self.usart, c as u32)};
+    fn putc_async(&self, c: u8)
+    {
+        unsafe { asf_usart::usart_putchar(self.usart, c as u32) };
     }
 
-    fn flush_output(&self) -> bool {
+    fn flush_output(&self) -> bool
+    {
         self.queue_out.flush();
         true
     }

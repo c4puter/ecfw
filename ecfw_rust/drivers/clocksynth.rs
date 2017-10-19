@@ -1,21 +1,20 @@
-/*
- * c4puter embedded controller firmware
- * Copyright (C) 2017 Chris Pavlina
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
- */
+// c4puter embedded controller firmware
+// Copyright (C) 2017 Chris Pavlina
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License along
+// with this program; if not, write to the Free Software Foundation, Inc.,
+// 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+//
 
 use drivers::twi::TwiDevice;
 use messages::*;
@@ -32,9 +31,13 @@ impl<'a> ClockSynth<'a> {
     /// Create a ClockSynth instance for a CDCE913.
     /// twi: TwiDevice for this CDCE913.
     /// xtal: Frequency of the crystal (or other clock input) in Hz.
-    pub const fn new(twi: &'a Mutex<TwiDevice<'a>>, xtal: u32) -> ClockSynth<'a>
+    pub const fn new(twi: &'a Mutex<TwiDevice<'a>>, xtal: u32)
+        -> ClockSynth<'a>
     {
-        ClockSynth { twi: twi, xtal: xtal }
+        ClockSynth {
+            twi: twi,
+            xtal: xtal,
+        }
     }
 
     /// Set the Y1 output divider, from 1 to 1023
@@ -137,11 +140,12 @@ impl<'a> ClockSynth<'a> {
             0 ... 124999999 => 0,
             125000000 ... 149999999 => 1,
             150000000 ... 174999999 => 2,
-            _ => 3 };
+            _ => 3,
+        };
 
         debug!(DEBUG_CLOCK,
                "configuring PLL with P={}, N={}. N'={}, Q={}, R={}",
-                p, n, np, q, r);
+               p, n, np, q, r);
 
         let reg18 = ((n & 0xff0) >> 4) as u8;
         let reg19 = (((n & 0x00f) << 4) | ((r & 0x1e0) >> 5)) as u8;
@@ -170,7 +174,6 @@ impl<'a> ClockSynth<'a> {
     {
         let mut twilock = self.twi.lock();
         debug!(DEBUG_CLOCK, "switching to external clock");
-        //ec_io::flush_output();
         os::freertos::suspend_all();
         let mut buf = [0u8];
         if let Err(_) = twilock.read(&[0x80], &mut buf) {
@@ -186,7 +189,6 @@ impl<'a> ClockSynth<'a> {
     pub unsafe fn disable_mck(&self)
     {
         debug!(DEBUG_CLOCK, "switching to internal clock");
-        //ec_io::flush_output();
         os::freertos::suspend_all();
         bindgen_mcu::mcu_use_external_clock(false);
         os::freertos::resume_all();
