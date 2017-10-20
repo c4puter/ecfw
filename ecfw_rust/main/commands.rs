@@ -297,7 +297,7 @@ fn cmd_i2c_probe(args: &[&str]) -> StdResult
     }
     let addr = argv_parsed(args, 1, "ADDR", u8::parseint)?;
 
-    let is_present = devices::twi::TWI0.probe(addr)?;
+    let is_present = devices::i2c::I2C0.probe(addr)?;
 
     if is_present {
         println!("address {} present", addr);
@@ -322,7 +322,7 @@ fn cmd_i2c_read(args: &[&str]) -> StdResult
     let location_arr = [loc];
     let mut buffer = [0 as u8; 16];
 
-    devices::twi::TWI0.read(
+    devices::i2c::I2C0.read(
         addr,
         &location_arr,
         &mut buffer[0 .. n as usize],
@@ -352,7 +352,7 @@ fn cmd_i2c_write(args: &[&str]) -> StdResult
 
     let location_arr = [loc];
 
-    devices::twi::TWI0.write(
+    devices::i2c::I2C0.write(
         addr,
         &location_arr,
         &buffer[0 .. n as usize],

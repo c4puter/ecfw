@@ -16,7 +16,7 @@
 //
 
 extern crate bindgen_mcu;
-use drivers::twi;
+use drivers::i2c;
 use os::Mutex;
 
 pub trait Gpio {
@@ -102,7 +102,7 @@ impl Gpio for SamGpio {
 unsafe impl Sync for SamGpio {}
 
 pub struct PcfGpio<'a> {
-    pub dev: &'a Mutex<twi::TwiDevice<'a>>,
+    pub dev: &'a Mutex<i2c::I2CDevice<'a>>,
     pub pin: u8,
     pub default: bool,
     pub invert: bool,

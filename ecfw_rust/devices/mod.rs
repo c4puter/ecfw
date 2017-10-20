@@ -21,6 +21,6 @@
 mod misc;
 pub use self::misc::*;
 
-pub mod twi;
+pub mod i2c;
 pub mod pins;
 pub mod supplies;

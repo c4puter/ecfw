@@ -25,23 +25,23 @@ use drivers::fpga::Spartan6;
 use drivers::northbridge::Northbridge;
 use drivers::com_usart;
 use drivers::com_cdc;
-use devices::twi;
+use devices::i2c;
 use devices::pins;
 
 /// LED matrix driver on I2C at `0x37`
-pub static MATRIX: RwLock<LedMatrix> = RwLock::new(LedMatrix::new(&twi::U801));
+pub static MATRIX: RwLock<LedMatrix> = RwLock::new(LedMatrix::new(&i2c::U801));
 
 /// SD card on local interface 0
 pub static SD: Mutex<Sd> = Mutex::new(Sd::new(0));
 
 /// Temperature sensor on I2C at `0x48` near the FPGAs
-pub static SENSOR_LOGIC: TempSensor = TempSensor::new(&twi::LM75B_LOGIC);
+pub static SENSOR_LOGIC: TempSensor = TempSensor::new(&i2c::LM75B_LOGIC);
 
 /// Temperature sensor on I2C at `0x49` at board edge
-pub static SENSOR_AMBIENT: TempSensor = TempSensor::new(&twi::LM75B_AMBIENT);
+pub static SENSOR_AMBIENT: TempSensor = TempSensor::new(&i2c::LM75B_AMBIENT);
 
 /// System clock synthesizer on I2C at `0x65`
-pub static CLOCK_SYNTH: ClockSynth = ClockSynth::new(&twi::CDCE913, 20000000);
+pub static CLOCK_SYNTH: ClockSynth = ClockSynth::new(&i2c::CDCE913, 20000000);
 
 /// Local SPI interface
 pub static SPI: Spi = Spi::new();

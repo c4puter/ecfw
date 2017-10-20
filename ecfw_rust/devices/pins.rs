@@ -20,7 +20,7 @@
 use drivers::gpio::*;
 use drivers::ledmatrix::LedGpio;
 use drivers::gpio::Mode::*;
-use devices::twi::{U101, U901};
+use devices::i2c::{U101, U901};
 use devices::MATRIX;
 
 macro_rules! pin_table {
@@ -89,8 +89,8 @@ pin_table!{
     RTCINT,             SamGpio, port => PIOC, pin => 25, mode => Input,  default => false, invert => true;
     SDRAM_EVENT,        SamGpio, port => PIOC, pin => 18, mode => Input,  default => false, invert => true;
     SDRAM_RST,          SamGpio, port => PIOB, pin => 13, mode => Output, default => false, invert => true;
-    TWI0_SCL,           SamGpio, port => PIOA, pin => 4,  mode => PerA,   default => false, invert => false;
-    TWI0_SDA,           SamGpio, port => PIOA, pin => 3,  mode => PerA,   default => false, invert => false;
+    I2C0_SCL,           SamGpio, port => PIOA, pin => 4,  mode => PerA,   default => false, invert => false;
+    I2C0_SDA,           SamGpio, port => PIOA, pin => 3,  mode => PerA,   default => false, invert => false;
     USB_VBSENSE,        SamGpio, port => PIOA, pin =>  0, mode => Input,  default => false, invert => false;
     VREFEN,             SamGpio, port => PIOB, pin =>  0, mode => Output, default => false, invert => false;
 

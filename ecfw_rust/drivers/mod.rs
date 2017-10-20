@@ -23,7 +23,7 @@ pub mod ledmatrix;
 pub mod sd;
 pub mod tempsensor;
 pub mod clocksynth;
-pub mod twi;
+pub mod i2c;
 pub mod spi;
 pub mod fpga;
 pub mod northbridge;

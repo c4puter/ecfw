@@ -106,14 +106,14 @@ error_table! {
     ERR_FILE_NOT_OPEN:          "file not open";
 
     ///////////////////////////////////////////////////////////////////
-    // TWI_related
-    ERR_TWI_INVALID:            "TWI: invalid argument";
-    ERR_TWI_ARBITRATION:        "TWI: arbitration lost";
-    ERR_TWI_NOTFOUND:           "TWI: chip not found";
-    ERR_TWI_RXOVF:              "TWI: receive overrun";
-    ERR_TWI_RXNACK:             "TWI: receive NACK";
-    ERR_TWI_TXOVF:              "TWI: transmit overrun";
-    ERR_TWI_TXNACK:             "TWI: transmit NACK";
+    // I2C-related
+    ERR_I2C_INVALID:            "I2C: invalid argument";
+    ERR_I2C_ARBITRATION:        "I2C: arbitration lost";
+    ERR_I2C_NOTFOUND:           "I2C: chip not found";
+    ERR_I2C_RXOVF:              "I2C: receive overrun";
+    ERR_I2C_RXNACK:             "I2C: receive NACK";
+    ERR_I2C_TXOVF:              "I2C: transmit overrun";
+    ERR_I2C_TXNACK:             "I2C: transmit NACK";
 
     ///////////////////////////////////////////////////////////////////
     // Oddly specific

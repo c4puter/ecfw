@@ -98,8 +98,8 @@ pub fn init_task()
     debug!(DEBUG_ECBOOT, "main stack unused: {} bytes", unused);
 
     devices::COMUSART.flush_output();
-    debug!(DEBUG_ECBOOT, "initialize TWI");
-    devices::twi::TWI0.init(400000).unwrap();
+    debug!(DEBUG_ECBOOT, "initialize I2C");
+    devices::i2c::I2C0.init(400000).unwrap();
 
     devices::COMUSART.flush_output();
     debug!(DEBUG_ECBOOT, "initialize SPI");

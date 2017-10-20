@@ -15,28 +15,28 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
-use drivers::twi::TwiDevice;
+use drivers::i2c::I2CDevice;
 use messages::Error;
 use os::Mutex;
 
 const TEMP_ADDR: u8 = 0u8;
 
 pub struct TempSensor<'a> {
-    twi: &'a Mutex<TwiDevice<'a>>,
+    i2c: &'a Mutex<I2CDevice<'a>>,
 }
 
 pub type TenthsDegC = i32;
 
 impl<'a> TempSensor<'a> {
-    pub const fn new(twi: &'a Mutex<TwiDevice<'a>>) -> TempSensor<'a>
+    pub const fn new(i2c: &'a Mutex<I2CDevice<'a>>) -> TempSensor<'a>
     {
-        TempSensor { twi: twi }
+        TempSensor { i2c: i2c }
     }
 
     pub fn read(&self) -> Result<TenthsDegC, Error>
     {
         let mut buf = [0u8; 2];
-        self.twi.lock().read(&[TEMP_ADDR], &mut buf)?;
+        self.i2c.lock().read(&[TEMP_ADDR], &mut buf)?;
 
         let raw = ((buf[0] as u32) << 8) | (buf[1] as u32);
         let right_aligned = raw >> 5;

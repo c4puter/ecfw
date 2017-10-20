@@ -18,7 +18,7 @@
 use os;
 use drivers::gpio::Gpio;
 use devices::supplies;
-use devices::twi::VRM901;
+use devices::i2c::VRM901;
 use messages::*;
 use core::sync::atomic::*;
 

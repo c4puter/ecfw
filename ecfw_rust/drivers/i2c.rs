@@ -18,13 +18,13 @@
 use os::Mutex;
 use messages::*;
 extern crate bindgen_mcu;
-pub type TwiHandle = u32;
+pub type I2CHandle = u32;
 use core::sync::atomic::*;
 
 #[repr(u32)]
 #[derive(Debug)]
 #[allow(dead_code)]
-pub enum TwiResultCode {
+pub enum I2CResultCode {
     Success         = 0,
     InvalidArgument = 1,
     ArbitrationLost = 2,
@@ -37,24 +37,24 @@ pub enum TwiResultCode {
     ErrorTimeout    = 9,
 }
 
-fn to_stdresult(code: TwiResultCode) -> StdResult
+fn to_stdresult(code: I2CResultCode) -> StdResult
 {
     match code {
-        TwiResultCode::Success          => Ok(()),
-        TwiResultCode::InvalidArgument  => Err(ERR_TWI_INVALID),
-        TwiResultCode::ArbitrationLost  => Err(ERR_TWI_ARBITRATION),
-        TwiResultCode::NoChipFound      => Err(ERR_TWI_NOTFOUND),
-        TwiResultCode::ReceiveOverrun   => Err(ERR_TWI_RXOVF),
-        TwiResultCode::ReceiveNack      => Err(ERR_TWI_RXNACK),
-        TwiResultCode::SendOverrun      => Err(ERR_TWI_TXOVF),
-        TwiResultCode::SendNack         => Err(ERR_TWI_TXNACK),
-        TwiResultCode::Busy             => Err(ERR_BUSY),
-        TwiResultCode::ErrorTimeout     => Err(ERR_TIMEOUT),
+        I2CResultCode::Success          => Ok(()),
+        I2CResultCode::InvalidArgument  => Err(ERR_I2C_INVALID),
+        I2CResultCode::ArbitrationLost  => Err(ERR_I2C_ARBITRATION),
+        I2CResultCode::NoChipFound      => Err(ERR_I2C_NOTFOUND),
+        I2CResultCode::ReceiveOverrun   => Err(ERR_I2C_RXOVF),
+        I2CResultCode::ReceiveNack      => Err(ERR_I2C_RXNACK),
+        I2CResultCode::SendOverrun      => Err(ERR_I2C_TXOVF),
+        I2CResultCode::SendNack         => Err(ERR_I2C_TXNACK),
+        I2CResultCode::Busy             => Err(ERR_BUSY),
+        I2CResultCode::ErrorTimeout     => Err(ERR_TIMEOUT),
     }
 }
 
 #[repr(C)]
-struct TwiOptions {
+struct I2COptions {
     master_clk: u32,
     speed: u32,
     chip: u8,
@@ -62,7 +62,7 @@ struct TwiOptions {
 }
 
 #[repr(C)]
-struct TwiPacket {
+struct I2CPacket {
     addr: [u8; 3],
     addr_length: u32,
     buffer: *mut u8,
@@ -72,58 +72,58 @@ struct TwiPacket {
 
 extern "C" {
     fn twi_master_init(
-        p_twi: TwiHandle,
-        p_opt: *const TwiOptions,
-    ) -> TwiResultCode;
-    fn twi_probe(p_twi: TwiHandle, uc_slave_addr: u8) -> TwiResultCode;
+        p_i2c: I2CHandle,
+        p_opt: *const I2COptions,
+    ) -> I2CResultCode;
+    fn twi_probe(p_i2c: I2CHandle, uc_slave_addr: u8) -> I2CResultCode;
     fn twi_master_read(
-        p_twi: TwiHandle,
-        p_packet: *mut TwiPacket,
-    ) -> TwiResultCode;
+        p_i2c: I2CHandle,
+        p_packet: *mut I2CPacket,
+    ) -> I2CResultCode;
     fn twi_master_write(
-        p_twi: TwiHandle,
-        p_packet: *mut TwiPacket,
-    ) -> TwiResultCode;
+        p_i2c: I2CHandle,
+        p_packet: *mut I2CPacket,
+    ) -> I2CResultCode;
 }
 
-pub struct Twi {
-    p_twi: TwiHandle,
+pub struct I2C {
+    p_i2c: I2CHandle,
     mutex: Mutex<()>,
     initialized: AtomicBool,
 }
 
-pub struct TwiDevice<'a> {
-    pub twi: &'a Twi,
+pub struct I2CDevice<'a> {
+    pub i2c: &'a I2C,
     pub addr: u8,
 }
 
-/// Threadsafe wrapper around TWI peripheral. This must be initialized before
+/// Threadsafe wrapper around I2C peripheral. This must be initialized before
 /// use; use before init() or a double-init() will panic.
-impl Twi {
-    pub const fn new(p_twi: TwiHandle) -> Twi
+impl I2C {
+    pub const fn new(p_i2c: I2CHandle) -> I2C
     {
-        Twi {
-            p_twi: p_twi,
+        I2C {
+            p_i2c: p_i2c,
             mutex: Mutex::new(()),
             initialized: ATOMIC_BOOL_INIT,
         }
     }
 
-    /// Initialize the TWI; panic if double-initialized.
+    /// Initialize the I2C; panic if double-initialized.
     pub fn init(&self, speed: u32) -> StdResult
     {
         let was_initialized = self.initialized.swap(true, Ordering::Relaxed);
         if was_initialized {
-            panic!("TWI: double init()");
+            panic!("I2C: double init()");
         }
 
-        let opts = TwiOptions {
+        let opts = I2COptions {
             master_clk: unsafe { bindgen_mcu::mcu_get_peripheral_hz() },
             speed: speed,
             chip: 0,
             smbus: false,
         };
-        let rc = unsafe { twi_master_init(self.p_twi, &opts) };
+        let rc = unsafe { twi_master_init(self.p_i2c, &opts) };
         to_stdresult(rc)
     }
 
@@ -131,14 +131,14 @@ impl Twi {
     pub fn probe(&self, addr: u8) -> Result<bool, Error>
     {
         if !self.initialized.load(Ordering::Relaxed) {
-            panic!("TWI: use before init()");
+            panic!("I2C: use before init()");
         }
 
         let _lock = self.mutex.lock();
-        let rc = unsafe { twi_probe(self.p_twi, addr) };
+        let rc = unsafe { twi_probe(self.p_i2c, addr) };
         match rc {
-            TwiResultCode::Success => Ok(true),
-            TwiResultCode::ReceiveNack => Ok(false),
+            I2CResultCode::Success => Ok(true),
+            I2CResultCode::ReceiveNack => Ok(false),
             _ => Err(to_stdresult(rc).unwrap_err()),
         }
     }
@@ -155,13 +155,13 @@ impl Twi {
     ) -> StdResult
     {
         if !self.initialized.load(Ordering::Relaxed) {
-            panic!("TWI: use before init()");
+            panic!("I2C: use before init()");
         }
         let _lock = self.mutex.lock();
         if location.len() > 3 {
-            return Err(ERR_TWI_INVALID);
+            return Err(ERR_I2C_INVALID);
         }
-        let mut packet = TwiPacket {
+        let mut packet = I2CPacket {
             addr: [0; 3],
             addr_length: location.len() as u32,
             buffer: buffer.as_mut_ptr(),
@@ -171,7 +171,7 @@ impl Twi {
         (&mut packet.addr[0 .. location.len()]).clone_from_slice(
             &location,
         );
-        let rc = unsafe { twi_master_read(self.p_twi, &mut packet) };
+        let rc = unsafe { twi_master_read(self.p_i2c, &mut packet) };
         to_stdresult(rc)
     }
 
@@ -182,13 +182,13 @@ impl Twi {
     pub fn write(&self, addr: u8, location: &[u8], buffer: &[u8]) -> StdResult
     {
         if !self.initialized.load(Ordering::Relaxed) {
-            panic!("TWI: use before init()");
+            panic!("I2C: use before init()");
         }
         let _lock = self.mutex.lock();
         if location.len() > 3 {
-            return Err(ERR_TWI_INVALID);
+            return Err(ERR_I2C_INVALID);
         }
-        let mut packet = TwiPacket {
+        let mut packet = I2CPacket {
             addr: [0; 3],
             addr_length: location.len() as u32,
             buffer: buffer.as_ptr() as *mut u8,
@@ -198,16 +198,16 @@ impl Twi {
         (&mut packet.addr[0 .. location.len()]).clone_from_slice(
             &location,
         );
-        let rc = unsafe { twi_master_write(self.p_twi, &mut packet) };
+        let rc = unsafe { twi_master_write(self.p_i2c, &mut packet) };
         to_stdresult(rc)
     }
 }
 
-impl<'a> TwiDevice<'a> {
-    pub const fn new(twi: &'a Twi, addr: u8) -> TwiDevice<'a>
+impl<'a> I2CDevice<'a> {
+    pub const fn new(i2c: &'a I2C, addr: u8) -> I2CDevice<'a>
     {
-        TwiDevice {
-            twi: twi,
+        I2CDevice {
+            i2c: i2c,
             addr: addr,
         }
     }
@@ -216,7 +216,7 @@ impl<'a> TwiDevice<'a> {
     #[allow(dead_code)]
     pub fn probe(&mut self) -> Result<bool, Error>
     {
-        self.twi.probe(self.addr)
+        self.i2c.probe(self.addr)
     }
 
     /// Read from 'location' into 'buffer'
@@ -224,7 +224,7 @@ impl<'a> TwiDevice<'a> {
     /// buffer:     buffer to receive. Will receive buffer.len() bytes
     pub fn read(&mut self, location: &[u8], buffer: &mut [u8]) -> StdResult
     {
-        self.twi.read(self.addr, location, buffer)
+        self.i2c.read(self.addr, location, buffer)
     }
 
     /// Write to 'location' from 'buffer'.
@@ -232,6 +232,6 @@ impl<'a> TwiDevice<'a> {
     /// buffer:     buffer to write. Will write buffer.len() bytes
     pub fn write(&mut self, location: &[u8], buffer: &[u8]) -> StdResult
     {
-        self.twi.write(self.addr, location, buffer)
+        self.i2c.write(self.addr, location, buffer)
     }
 }

@@ -16,26 +16,26 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
-use drivers::twi::TwiDevice;
+use drivers::i2c::I2CDevice;
 use messages::*;
 use os::Mutex;
 use os;
 use bindgen_mcu;
 
 pub struct ClockSynth<'a> {
-    twi: &'a Mutex<TwiDevice<'a>>,
+    i2c: &'a Mutex<I2CDevice<'a>>,
     xtal: u32,
 }
 
 impl<'a> ClockSynth<'a> {
     /// Create a ClockSynth instance for a CDCE913.
-    /// twi: TwiDevice for this CDCE913.
+    /// i2c: I2CDevice for this CDCE913.
     /// xtal: Frequency of the crystal (or other clock input) in Hz.
-    pub const fn new(twi: &'a Mutex<TwiDevice<'a>>, xtal: u32)
+    pub const fn new(i2c: &'a Mutex<I2CDevice<'a>>, xtal: u32)
         -> ClockSynth<'a>
     {
         ClockSynth {
-            twi: twi,
+            i2c: i2c,
             xtal: xtal,
         }
     }
@@ -48,7 +48,7 @@ impl<'a> ClockSynth<'a> {
         } else {
             let reg02 = 0xb4 | ((div & 0x300) >> 8) as u8;
             let reg03 = (div & 0xff) as u8;
-            self.twi.lock().write(&[0x02], &[2, reg02, reg03])
+            self.i2c.lock().write(&[0x02], &[2, reg02, reg03])
         }
     }
 
@@ -59,13 +59,13 @@ impl<'a> ClockSynth<'a> {
             Err(ERR_NRANGE)
         } else {
             let mut reg16 = [0u8; 1];
-            let mut twilock = self.twi.lock();
-            twilock.read(&[0x16 | 0x80], &mut reg16)?;
+            let mut i2clock = self.i2c.lock();
+            i2clock.read(&[0x16 | 0x80], &mut reg16)?;
 
             reg16[0] &= 0x7f;
             reg16[0] |= div as u8;
 
-            twilock.write(&[0x16], &[1, reg16[0]])
+            i2clock.write(&[0x16], &[1, reg16[0]])
         }
     }
 
@@ -76,7 +76,7 @@ impl<'a> ClockSynth<'a> {
             Err(ERR_NRANGE)
         } else {
             let reg17 = div as u8;
-            self.twi.lock().write(&[0x17], &[1, reg17])
+            self.i2c.lock().write(&[0x17], &[1, reg17])
         }
     }
 
@@ -87,7 +87,7 @@ impl<'a> ClockSynth<'a> {
             Err(ERR_NRANGE)
         } else {
             let reg05 = (pf << 3) as u8;
-            self.twi.lock().write(&[0x05], &[1, reg05])
+            self.i2c.lock().write(&[0x05], &[1, reg05])
         }
     }
 
@@ -95,8 +95,8 @@ impl<'a> ClockSynth<'a> {
     pub fn usepll(&self, v: bool) -> StdResult
     {
         let mut reg14 = [0u8; 1];
-        let mut twilock = self.twi.lock();
-        twilock.read(&[0x14 | 0x80], &mut reg14)?;
+        let mut i2clock = self.i2c.lock();
+        i2clock.read(&[0x14 | 0x80], &mut reg14)?;
 
         if v {
             reg14[0] &= !0x80;
@@ -104,7 +104,7 @@ impl<'a> ClockSynth<'a> {
             reg14[0] |= 0x80;
         }
 
-        twilock.write(&[0x14], &[1, reg14[0]])?;
+        i2clock.write(&[0x14], &[1, reg14[0]])?;
         Ok(())
     }
 
@@ -154,11 +154,11 @@ impl<'a> ClockSynth<'a> {
         let reg1a = (((r & 0x1f) << 3) | ((q & 0x38) >> 3)) as u8;
         let reg1b = (((q & 0x07) << 5) | ((p & 0x03) << 2) | frange) as u8;
 
-        let mut twilock = self.twi.lock();
-        twilock.write(&[0x18], &[1, reg18])?;
-        twilock.write(&[0x19], &[1, reg19])?;
-        twilock.write(&[0x1a], &[1, reg1a])?;
-        twilock.write(&[0x1b], &[1, reg1b])?;
+        let mut i2clock = self.i2c.lock();
+        i2clock.write(&[0x18], &[1, reg18])?;
+        i2clock.write(&[0x19], &[1, reg19])?;
+        i2clock.write(&[0x1a], &[1, reg1a])?;
+        i2clock.write(&[0x1b], &[1, reg1b])?;
         Ok(())
     }
 
@@ -175,11 +175,11 @@ impl<'a> ClockSynth<'a> {
     /// Beware.
     pub unsafe fn enable_mck(&self)
     {
-        let mut twilock = self.twi.lock();
+        let mut i2clock = self.i2c.lock();
         debug!(DEBUG_CLOCK, "switching to external clock");
         os::freertos::suspend_all();
         let mut buf = [0u8];
-        if let Err(_) = twilock.read(&[0x80], &mut buf) {
+        if let Err(_) = i2clock.read(&[0x80], &mut buf) {
             panic!("Tried to enable external clock when main I2C is down");
         }
 

@@ -35,8 +35,8 @@ pub fn hard_reset()
         let _plock = drivers::power::POWER_MUTEX.lock_timeout(1000).expect(
             "timeout",
         );
-        debug!(DEBUG_RESET, "acquire VRM TWI lock");
-        let _lock = devices::twi::VRM901.lock_timeout(1000).expect("timeout");
+        debug!(DEBUG_RESET, "acquire VRM I2C lock");
+        let _lock = devices::i2c::VRM901.lock_timeout(1000).expect("timeout");
 
         // Unsafe: shuts down the task scheduler
         debug!(DEBUG_RESET, "suspend tasks");
