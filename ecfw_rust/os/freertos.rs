@@ -296,6 +296,7 @@ pub fn notify_take(counter_action: CounterAction, timeout_ticks: u32) -> u32
 
 #[no_mangle]
 #[allow(non_snake_case)]
+#[doc(hidden)]
 pub extern "C" fn vApplicationStackOverflowHook(
     taskhnd: *const c_void,
     pname: *const u8,
@@ -311,6 +312,7 @@ pub extern "C" fn vApplicationStackOverflowHook(
 
 #[no_mangle]
 #[allow(non_snake_case)]
+#[doc(hidden)]
 pub extern "C" fn vApplicationMallocFailedHook()
 {
     panic!("Out of memory");
@@ -318,6 +320,7 @@ pub extern "C" fn vApplicationMallocFailedHook()
 
 #[no_mangle]
 #[allow(non_snake_case)]
+#[doc(hidden)]
 pub extern "C" fn vApplicationTickHook()
 {
     TICK_COUNT.fetch_add(1, Ordering::Relaxed);

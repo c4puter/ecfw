@@ -152,18 +152,6 @@ pub fn print(interface: &Com, args: fmt::Arguments)
     fmt::write(&mut cw, args).unwrap();
 }
 
-/// Print to an interface one call at a time, guarded by a mutex.
-///
-/// Will be interrupted by any simultaneous asynchronous prints.
-pub fn println(interface: &Com, args: fmt::Arguments)
-{
-    let _lock = OUT_MUTEX.lock();
-    let mut cw = ComWriter { com: interface };
-    fmt::write(&mut cw, args).unwrap();
-    interface.putc(b'\r');
-    interface.putc(b'\n');
-}
-
 /// Print to all listed interfaces one call at a time, guarded by a mutex.
 ///
 /// Mutex is acquired individually for each print to each interface. Will be
@@ -174,20 +162,5 @@ pub fn print_all(interfaces: &[&Com], args: fmt::Arguments)
         let _lock = OUT_MUTEX.lock();
         let mut cw = ComWriterNoWait { com: *i };
         fmt::write(&mut cw, args).unwrap();
-    }
-}
-
-/// Print to all listed interfaces one call at a time, guarded by a mutex.
-///
-/// Mutex is acquired individually for each print to each interface. Will be
-/// interrupted by any simultaneous asynchronous prints.
-pub fn println_all(interfaces: &[&Com], args: fmt::Arguments)
-{
-    for i in interfaces {
-        let _lock = OUT_MUTEX.lock();
-        let mut cw = ComWriterNoWait { com: *i };
-        fmt::write(&mut cw, args).unwrap();
-        i.putc_nowait(b'\r');
-        i.putc_nowait(b'\n');
     }
 }
