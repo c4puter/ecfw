@@ -283,7 +283,7 @@ fn boot_mount_card() -> StdResult
         return Err(ERR_NO_BOOT_PART);
     }
 
-    let bd = ext4::makedev(&devices::SD, &entry);
+    let bd = ext4::SdBlockDev::new(&devices::SD, &entry);
 
     if let Err(e) = ext4::register_device(bd, "root") {
         if e == ERR_EEXIST {

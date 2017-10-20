@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Driver to load bitstreams onto FPGAs.
+
 use os::{Mutex, MutexLock};
 use os::freertos;
 use messages::*;

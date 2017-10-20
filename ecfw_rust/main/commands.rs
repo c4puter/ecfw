@@ -477,7 +477,7 @@ fn cmd_mount(_args: &[&str]) -> StdResult
         return Err(ERR_NO_BOOT_PART);
     }
 
-    let bd = ext4::makedev(&devices::SD, &entry);
+    let bd = ext4::SdBlockDev::new(&devices::SD, &entry);
     ext4::register_device(bd, "root")?;
 
     ext4::mount("root", "/", false)?;

@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Drivers for power supply control.
+
 use os;
 use drivers::gpio::Gpio;
 use devices::supplies;

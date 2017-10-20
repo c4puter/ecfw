@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! On-chip SPI driver (wrapper around `mcu.c` functions).
+
 use os::{Mutex, MutexLock};
 use messages::*;
 extern crate bindgen_mcu;

@@ -15,7 +15,7 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
-//! GPT reader module
+//! GUID partition table driver.
 
 use data::utf;
 use drivers::sd::*;

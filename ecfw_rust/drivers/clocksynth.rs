@@ -16,6 +16,10 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! [CDCE913] clock synthesizer.
+//!
+//! [CDCE913]: http://www.ti.com/lit/ds/scas849g/scas849g.pdf
+
 use drivers::i2c::I2CDevice;
 use messages::*;
 use os::Mutex;

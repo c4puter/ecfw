@@ -16,6 +16,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! USB-CDC COM driver (wrapper around Atmel ASF's USB-CDC).
+
 extern crate bindgen_mcu;
 use os;
 use drivers::com::Com;

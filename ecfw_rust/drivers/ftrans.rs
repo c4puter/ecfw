@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! File transfer over debug interface.
+
 extern crate lwext4_crc32;
 extern crate ctypes;
 use data::{ParseInt, base64};

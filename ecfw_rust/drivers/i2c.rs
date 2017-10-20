@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! On-chip I2C driver (wrapper around Atmel ASF's TWI)
+
 use os::Mutex;
 use messages::*;
 extern crate bindgen_mcu;

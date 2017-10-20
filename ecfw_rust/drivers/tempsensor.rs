@@ -15,6 +15,10 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! [LM75B] I2C temperature sensor driver.
+//!
+//! [LM75B]: https://www.nxp.com/docs/en/data-sheet/LM75B.pdf
+
 use drivers::i2c::I2CDevice;
 use messages::Error;
 use os::Mutex;

@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Drivers for on-chip and off-chip GPIOs.
+
 extern crate bindgen_mcu;
 use drivers::i2c;
 use os::Mutex;

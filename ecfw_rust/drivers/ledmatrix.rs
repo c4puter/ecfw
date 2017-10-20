@@ -15,6 +15,10 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! [AS1130] LED matrix driver.
+//!
+//! [AS1130]: https://ams.com/chi/content/download/185846/834724/file/AS1130_DS000283_3-00.pdf
+
 use os;
 use drivers::{gpio, i2c};
 use messages::*;

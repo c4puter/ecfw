@@ -16,6 +16,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! COM driver using on-chip USART.
+
 extern crate bindgen_mcu;
 extern crate asf_usart;
 use os;

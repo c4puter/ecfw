@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! FreeRTOS wrappers and related functions
+
 #![allow(improper_ctypes, non_upper_case_globals)]
 
 use rustsys::rust_support;
@@ -24,10 +26,10 @@ use core::slice;
 use core::mem;
 use core::sync::atomic::*;
 use alloc::boxed::Box;
+use ctypes::c_void;
 
 static TICK_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
 
-pub enum Void {}
 pub type TaskHandle = u32;
 
 #[allow(dead_code)] const pdTRUE: i32 = 1;
@@ -49,13 +51,13 @@ enum NotifyAction {
 
 extern "C" {
     fn xTaskCreate(
-        pxTaskCode: extern "C" fn(task: *mut Void),
+        pxTaskCode: extern "C" fn(task: *mut c_void),
         pcName: *const u8,
         ulStackDepth: u32,
-        pvParameters: *mut Void,
+        pvParameters: *mut c_void,
         uxPriority: u32,
-        puxStackBuffer: *const Void,
-        pxTaskBuffer: *const Void,
+        puxStackBuffer: *const c_void,
+        pxTaskBuffer: *const c_void,
     );
     fn vTaskStartScheduler();
     fn strlen(s: *const u8) -> usize;
@@ -108,7 +110,7 @@ extern "C" {
     fn ulTaskNotifyTake(xClearCountOnExit: i32, xTicksToWait: u32) -> u32;
 }
 
-extern "C" fn task_wrapper<F>(task: *mut Void)
+extern "C" fn task_wrapper<F>(task: *mut c_void)
 where
     F: Fn(),
 {
@@ -118,6 +120,13 @@ where
 }
 
 impl Task {
+    /// Create and start a task
+    ///
+    /// # Arguments
+    /// - `f` - closure or function to run as the task
+    /// - `name` - task name
+    /// - `stackdepth` - size of the task's stack in words
+    /// - `priority` - task priority
     pub fn new<F>(f: F, name: &str, stackdepth: usize, priority: u32) -> Task
     where
         F: Fn(),
@@ -128,7 +137,7 @@ impl Task {
                 task_wrapper::<F>,
                 name.as_bytes().as_ptr(),
                 stackdepth as u32,
-                Box::into_raw(fbox) as *mut Void,
+                Box::into_raw(fbox) as *mut c_void,
                 priority,
                 ptr::null(),
                 ptr::null(),
@@ -138,6 +147,7 @@ impl Task {
     }
 }
 
+/// Launch the task scheduler.
 pub fn run()
 {
     unsafe {
@@ -145,16 +155,19 @@ pub fn run()
     }
 }
 
+/// Return the number of bytes of free heap space.
 pub fn get_free_heap() -> usize
 {
     unsafe { xPortGetFreeHeapSize() }
 }
 
+/// Return the smallest number of bytes of free heap space ever.
 pub fn get_worst_free_heap() -> usize
 {
     unsafe { xPortGetMinimumEverFreeHeapSize() }
 }
 
+/// Yield the current task to the next.
 pub fn yield_task()
 {
     unsafe {
@@ -164,6 +177,7 @@ pub fn yield_task()
     rust_support::isb();
 }
 
+/// Delay the current task for the given number of millisecond ticks.
 pub fn delay(nticks: u32)
 {
     unsafe {
@@ -172,9 +186,12 @@ pub fn delay(nticks: u32)
 }
 
 /// Delay just enough to make the task run with a fixed period.
-/// @param lastwake - the last tick count when the task woke. This is written,
-///     and must be initialized to ticks_running().
-/// @param period - delay period in ticks.
+///
+/// # Arguments
+/// - `lastwake` - The last tick count when the task woke. This is written with
+///                each `delay_period` call, and must be initialized to
+///                `ticks_running()`.
+/// - `period` - Delay period in millisecond ticks.
 pub fn delay_period(lastwake: &mut u32, period: u32)
 {
     unsafe {
@@ -182,7 +199,8 @@ pub fn delay_period(lastwake: &mut u32, period: u32)
     }
 }
 
-/// Delay, even if the scheduler is suspended
+/// Delay a specified number of millisecond ticks, even if the scheduler is
+/// suspended.
 pub fn susp_safe_delay(nticks: u32)
 {
     let end_tick = ticks().wrapping_add(nticks);
@@ -195,37 +213,39 @@ pub fn susp_safe_delay(nticks: u32)
     }
 }
 
-/// Get the total number of ticks elapsed since run(). This is an independent
+/// Get the total number of ticks elapsed since `run()`. This is an independent
 /// tick counter that runs even when the scheduler is suspended.
 pub fn ticks() -> u32
 {
     TICK_COUNT.load(Ordering::Relaxed) as u32
 }
 
-/// Get the total number of ticks elapsed since run(). This is the FreeRTOS
+/// Get the total number of ticks elapsed since `run()`. This is the FreeRTOS
 /// counter and does not run while the scheduler is suspended.
 pub fn ticks_running() -> u32
 {
     unsafe { xTaskGetTickCount() }
 }
 
+/// Suspend all tasks. Nests safely.
 pub unsafe fn suspend_all()
 {
     vTaskSuspendAll();
 }
 
+/// Resume all tasks. Nests safely; panics if not suspended.
 pub unsafe fn resume_all()
 {
     xTaskResumeAll();
 }
 
-/// Get the handle of the currently running task
+/// Get the handle of the currently running task.
 pub fn this_task() -> TaskHandle
 {
     unsafe { xTaskGetCurrentTaskHandle() }
 }
 
-/// Increment the notification counter of a task.
+/// Increment the notification counter of a task from within another task.
 pub fn notify_give(task: TaskHandle)
 {
     unsafe {
@@ -233,6 +253,7 @@ pub fn notify_give(task: TaskHandle)
     }
 }
 
+/// Incremnt hte notification counter of a task from within an ISR.
 pub fn notify_give_from_isr(task: TaskHandle)
 {
     unsafe {
@@ -253,9 +274,13 @@ pub enum CounterAction {
 }
 
 /// Wait for the notification counter of the current task to become nonzero.
-/// @param counter_action - what to do with the counter when it becomes nonzero
-/// @param timeout_ticks - how many ticks before timeout
-/// @return value of the counter after notification. If zero, timed out
+///
+/// # Arguments
+/// - `counter_action` - what to do with the counter when it becomes nonzero
+/// - `timeout_ticks` - how many ticks before timeout
+///
+/// # Return
+/// Value of the counter after notification. If zero, timeout occurred.
 pub fn notify_take(counter_action: CounterAction, timeout_ticks: u32) -> u32
 {
     unsafe {
@@ -272,11 +297,12 @@ pub fn notify_take(counter_action: CounterAction, timeout_ticks: u32) -> u32
 #[no_mangle]
 #[allow(non_snake_case)]
 pub extern "C" fn vApplicationStackOverflowHook(
-    taskhnd: *const Void,
+    taskhnd: *const c_void,
     pname: *const u8,
 )
 {
     let _ = taskhnd;
+    // Safe: originally came from &str
     let name = unsafe {
         str::from_utf8_unchecked(slice::from_raw_parts(pname, strlen(pname)))
     };

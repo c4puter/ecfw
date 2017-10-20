@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! On-chip SD card driver (wrapper around Atmel ASF's SD/MMC).
+
 extern crate asf_sd_mmc;
 extern crate ctypes;
 

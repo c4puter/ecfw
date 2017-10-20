@@ -36,6 +36,7 @@
 extern crate esh;
 extern crate alloc;
 extern crate bindgen_mcu;
+extern crate ctypes;
 
 #[macro_use] pub mod os;
 #[macro_use] pub mod rustsys;

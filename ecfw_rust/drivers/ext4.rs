@@ -16,6 +16,10 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! ext2/ext3/ext4 filesystem driver ([lwext4] wrapper)
+//!
+//! [lwext4]: https://github.com/gkostka/lwext4
+
 extern crate lwext4;
 extern crate ctypes;
 use core::{convert, fmt, mem, ops, ptr, slice, str};
@@ -32,10 +36,32 @@ use drivers::gpt;
 use os::{Mutex, StrAlloc};
 use messages::*;
 
+/// Block device representing a partition on an SD card
 #[repr(C)]
 pub struct SdBlockDev<'a> {
     lwext4_bd: ext4_blockdev,
     sd: &'a Mutex<Sd>,
+}
+
+impl<'a> SdBlockDev<'a> {
+    /// Create a new block device from an SD card device and a GPT entry
+    pub fn new<'b>(sd: &'b Mutex<Sd>, part: &gpt::GptEntry) -> SdBlockDev<'b>
+    {
+        SdBlockDev {
+            lwext4_bd: ext4_blockdev {
+                bdif: unsafe { &mut BLOCKDEV_IFACE },
+                part_offset: (512 * part.start_lba) as u64,
+                part_size: (512 * (part.end_lba - part.start_lba + 1)) as u64,
+                bc: ptr::null_mut(),
+                lg_bsize: 0,
+                lg_bcnt: 0,
+                cache_write_back: 0,
+                fs: ptr::null_mut(),
+                journal: ptr::null_mut(),
+            },
+            sd: sd,
+        }
+    }
 }
 
 unsafe impl<'a> Sync for SdBlockDev<'a> {}
@@ -67,6 +93,7 @@ impl convert::From<IoError> for Error {
 }
 
 impl IoError {
+    /// Create a new IoError given error code and number of bytes accessed
     pub const fn new(error: Error, bytes: usize) -> IoError
     {
         IoError {
@@ -75,11 +102,13 @@ impl IoError {
         }
     }
 
+    /// Get the number of bytes accessed before error
     pub fn bytes(&self) -> usize
     {
         self.bytes
     }
 
+    /// Get the actual error code
     pub fn error(&self) -> Error
     {
         self.error
@@ -110,7 +139,10 @@ impl IoError {
 
 static BLOCKDEV: Mutex<Option<SdBlockDev<'static>>> = Mutex::new(None);
 
-/// Register a block device with a device name.
+/// Register a block device with a device name
+///
+/// Only one can be registered at a time; if you want to see the gory details
+/// check "lifetime notes" in ext4.rs.
 pub fn register_device(bd: SdBlockDev<'static>, dev_name: &str) -> StdResult
 {
     let mut lock = BLOCKDEV.lock();
@@ -151,13 +183,6 @@ pub fn unregister_device(dev_name: &str) -> StdResult
 
     *lock = None;
     Ok(())
-}
-
-/// Unregister all block devices.
-pub fn unregister_all() -> StdResult
-{
-    debug!(DEBUG_FS, "unregister all block devices");
-    to_stdresult(unsafe { lwext4::ext4_device_unregister_all() })
 }
 
 /// Mount a filesystem. If journaled, recovers journal.
@@ -251,19 +276,21 @@ pub fn fopen(path: &str, flags: OpenFlags) -> Result<File, Error>
 {
     let mut alloc = StrAlloc::new();
     let c_path = alloc.nulterm(path)?.as_ptr();
-    fopen_cstr(c_path, flags)
+    unsafe {
+        fopen_cstr(c_path, flags)
+    }
 }
 
 /// Open a file from a C string path. Used internally to reduce the allocations
 /// caused by additional null-termination when the string is already terminated
 /// or can be terminated cheaply.
-fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File, Error>
+unsafe fn fopen_cstr(path: *const u8, flags: OpenFlags) -> Result<File, Error>
 {
     let c_path = path as *const _;
-    let mut file: File = unsafe { mem::zeroed() };
-    to_stdresult(unsafe {
+    let mut file: File = mem::zeroed();
+    to_stdresult(
         lwext4::ext4_fopen2(&mut file.0, c_path, flags as _)
-    })?;
+    )?;
 
     Ok(file)
 }
@@ -275,7 +302,10 @@ pub fn fopen_expand(path: &str, flags: OpenFlags) -> Result<File, Error>
 
     // Append \0 to get a C string
     expanded.push('\0');
-    fopen_cstr(expanded.as_ptr(), flags)
+
+    unsafe {
+        fopen_cstr(expanded.as_ptr(), flags)
+    }
 }
 
 /// Stat a file.
@@ -283,21 +313,23 @@ pub fn stat(path: &str) -> Result<Stat, Error>
 {
     let mut alloc = StrAlloc::new();
     let c_path = alloc.nulterm(path)?.as_ptr();
-    stat_cstr(c_path)
+    unsafe {
+        stat_cstr(c_path)
+    }
 }
 
 /// Stat a file from a C string path. Used internally to reduce the allocations
 /// caused by additional null-termination when the string is already terminated
 /// or can be terminated cheaply.
-fn stat_cstr(path: *const u8) -> Result<Stat, Error>
+unsafe fn stat_cstr(path: *const u8) -> Result<Stat, Error>
 {
     let c_path = path as *const _;
-    let mut inode: Stat = unsafe { mem::zeroed() };
+    let mut inode: Stat = mem::zeroed();
     let mut ret_ino = 0u32;
 
-    to_stdresult(unsafe {
+    to_stdresult(
         lwext4::ext4_raw_inode_fill(c_path, &mut ret_ino, &mut inode.0)
-    })?;
+    )?;
 
     Ok(inode as Stat)
 }
@@ -337,7 +369,7 @@ pub fn readlink(path: &str) -> Result<String, Error>
     }
 }
 
-/// Unlink a path
+/// Unlink a path.
 pub fn unlink(path: &str) -> StdResult
 {
     let mut alloc = StrAlloc::new();
@@ -364,7 +396,7 @@ pub fn expand(path: &str) -> Result<String, Error>
         s.push_str(i);
         s.push('\0');
 
-        let stat = stat_cstr(s.as_ptr())?;
+        let stat = unsafe { stat_cstr(s.as_ptr()) }?;
 
         // Truncate the \0 that was added just to get a C string
         let without_nulterm = s.len() - 1;
@@ -751,24 +783,6 @@ extern "C" fn blockdev_lock(_bdev: *mut ext4_blockdev) -> i32
 extern "C" fn blockdev_unlock(_bdev: *mut ext4_blockdev) -> i32
 {
     EIO
-}
-
-pub fn makedev<'a>(sd: &'a Mutex<Sd>, part: &gpt::GptEntry) -> SdBlockDev<'a>
-{
-    SdBlockDev {
-        lwext4_bd: ext4_blockdev {
-            bdif: unsafe { &mut BLOCKDEV_IFACE },
-            part_offset: (512 * part.start_lba) as u64,
-            part_size: (512 * (part.end_lba - part.start_lba + 1)) as u64,
-            bc: ptr::null_mut(),
-            lg_bsize: 0,
-            lg_bcnt: 0,
-            cache_write_back: 0,
-            fs: ptr::null_mut(),
-            journal: ptr::null_mut(),
-        },
-        sd: sd,
-    }
 }
 
 #[no_mangle]

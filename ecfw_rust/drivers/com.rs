@@ -16,6 +16,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Generic COM (RS232/CDC-like) trait and helpers
+
 use os;
 use core::fmt;
 
@@ -64,6 +66,7 @@ pub trait Com {
 ///
 /// # Arguments
 ///
+/// * `interfaces` - a list of interfaces to check
 /// * `yield_task` - whether the task should yield to other tasks until
 ///     input is ready (most polite) or loop tightly (best throughput).
 pub fn getc_any_blocking(interfaces: &[&Com], yield_task: bool) -> u8
@@ -132,12 +135,16 @@ impl<'a> fmt::Write for ComWriterNoWait<'a> {
     }
 }
 
+/// Print immediately to an interface.
 pub fn print_async(interface: &Com, args: fmt::Arguments)
 {
     let mut cw = ComWriterAsync { com: interface };
     fmt::write(&mut cw, args).unwrap();
 }
 
+/// Print to an interface one call at a time, guarded by a mutex.
+///
+/// Will be interrupted by any simultaneous asynchronous prints.
 pub fn print(interface: &Com, args: fmt::Arguments)
 {
     let _lock = OUT_MUTEX.lock();
@@ -145,6 +152,9 @@ pub fn print(interface: &Com, args: fmt::Arguments)
     fmt::write(&mut cw, args).unwrap();
 }
 
+/// Print to an interface one call at a time, guarded by a mutex.
+///
+/// Will be interrupted by any simultaneous asynchronous prints.
 pub fn println(interface: &Com, args: fmt::Arguments)
 {
     let _lock = OUT_MUTEX.lock();
@@ -154,6 +164,10 @@ pub fn println(interface: &Com, args: fmt::Arguments)
     interface.putc(b'\n');
 }
 
+/// Print to all listed interfaces one call at a time, guarded by a mutex.
+///
+/// Mutex is acquired individually for each print to each interface. Will be
+/// interrupted by any simultaneous asynchronous prints.
 pub fn print_all(interfaces: &[&Com], args: fmt::Arguments)
 {
     for i in interfaces {
@@ -163,6 +177,10 @@ pub fn print_all(interfaces: &[&Com], args: fmt::Arguments)
     }
 }
 
+/// Print to all listed interfaces one call at a time, guarded by a mutex.
+///
+/// Mutex is acquired individually for each print to each interface. Will be
+/// interrupted by any simultaneous asynchronous prints.
 pub fn println_all(interfaces: &[&Com], args: fmt::Arguments)
 {
     for i in interfaces {

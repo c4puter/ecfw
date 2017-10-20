@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Northbridge data bus interface.
+
 use os::Mutex;
 use messages::*;
 use devices;
