@@ -17,7 +17,8 @@
 
 //! Drivers for on-chip and off-chip GPIOs.
 
-extern crate bindgen_mcu;
+use bindgen_mcu;
+
 use drivers::i2c;
 use os::Mutex;
 

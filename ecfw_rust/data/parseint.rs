@@ -19,7 +19,6 @@ use messages::*;
 
 /// A string-to-int parser that handles radix specifiers.
 ///
-///     extern crate parseint;
 ///     use parseint::ParseInt;
 ///
 ///     let s = "-0x1337";

@@ -17,8 +17,8 @@
 
 //! File transfer over debug interface.
 
-extern crate lwext4_crc32;
-extern crate ctypes;
+use lwext4_crc32;
+use ctypes;
 use data::{ParseInt, base64};
 use drivers::ext4;
 use drivers::com::Com;

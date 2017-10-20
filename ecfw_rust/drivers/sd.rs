@@ -17,8 +17,8 @@
 
 //! On-chip SD card driver (wrapper around Atmel ASF's SD/MMC).
 
-extern crate asf_sd_mmc;
-extern crate ctypes;
+use asf_sd_mmc;
+use ctypes;
 
 use messages::*;
 

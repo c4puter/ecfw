@@ -20,8 +20,8 @@
 //!
 //! [lwext4]: https://github.com/gkostka/lwext4
 
-extern crate lwext4;
-extern crate ctypes;
+use lwext4;
+use ctypes;
 use core::{convert, fmt, mem, ops, ptr, slice, str};
 use core::marker::PhantomData;
 use alloc::raw_vec::RawVec;

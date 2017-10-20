@@ -21,7 +21,6 @@ use os::Mutex;
 use messages::*;
 use devices;
 use rustsys::rust_support::{disable_irq, enable_irq};
-extern crate bindgen_mcu;
 
 use asf_pio::Pio;
 use core::ptr::{read_volatile, write_volatile};

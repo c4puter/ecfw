@@ -19,11 +19,11 @@
 
 use os::{Mutex, MutexLock};
 use messages::*;
-extern crate bindgen_mcu;
-extern crate asf_pdc;
-extern crate ctypes;
 use core::sync::atomic::*;
 use core::ptr;
+
+use asf_pdc;
+use bindgen_mcu;
 
 pub struct Spi {
     mutex: Mutex<()>,

@@ -20,7 +20,6 @@ use drivers;
 use drivers::power::Supply;
 use drivers::com::Com;
 use devices;
-extern crate asf_rstc;
 
 /// Reset the system by shutting down all the power supplies including the
 /// standby rail. The VRM will automatically bring the standby rail back up

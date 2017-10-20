@@ -15,11 +15,10 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
-//!
-// Lock-free threadsafe queue.
-//
+//! Lock-free threadsafe queue.
 
-extern crate bindgen_mcu;
+use bindgen_mcu;
+
 use os;
 use core::sync::atomic::*;
 use core::cell::*;

@@ -18,8 +18,8 @@
 
 //! COM driver using on-chip USART.
 
-extern crate bindgen_mcu;
-extern crate asf_usart;
+use bindgen_mcu;
+use asf_usart;
 use os;
 use drivers::com::Com;
 

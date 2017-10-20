@@ -33,11 +33,19 @@
 
 #![crate_type = "rlib"]
 
-extern crate esh;
 extern crate alloc;
-extern crate bindgen_mcu;
 extern crate ctypes;
+extern crate esh;
+extern crate lwext4;
+extern crate lwext4_crc32;
+
+extern crate bindgen_mcu;
+
 extern crate asf_pio;
+extern crate asf_rstc;
+extern crate asf_pdc;
+extern crate asf_sd_mmc;
+extern crate asf_usart;
 
 #[macro_use] pub mod os;
 #[macro_use] pub mod rustsys;

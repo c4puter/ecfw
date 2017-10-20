@@ -17,11 +17,13 @@
 
 //! On-chip I2C driver (wrapper around Atmel ASF's TWI)
 
+use bindgen_mcu;
+
 use os::Mutex;
 use messages::*;
-extern crate bindgen_mcu;
-pub type I2CHandle = u32;
 use core::sync::atomic::*;
+
+pub type I2CHandle = u32;
 
 #[repr(u32)]
 #[derive(Debug)]

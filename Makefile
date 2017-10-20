@@ -112,12 +112,10 @@ BINDGEN_SOURCES = \
 	hardware/bindgen_mcu.rs:hardware/mcu.h \
 	asf_usart.rs:${ASF_UNF_DIR}/asf/drivers/usart/usart.h \
 	asf_rstc.rs:${ASF_UNF_DIR}/asf/drivers/rstc/rstc.h \
-	asf_hsmci.rs:${ASF_UNF_DIR}/asf/drivers/hsmci/hsmci.h \
 	asf_pdc.rs:${ASF_UNF_DIR}/asf/drivers/pdc/pdc.h \
 	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
 	asf_pio.rs:${ASF_UNF_DIR}/asf/drivers/pio/pio.h \
 	lwext4_crc32.rs:lwext4/include/ext4_crc32.h \
-	lwext4_blockdev.rs:lwext4/include/ext4_blockdev.h \
 	lwext4.rs:lwext4/include/ext4.h \
 
 ASF_UNF_DIR = resources/asf-unf
