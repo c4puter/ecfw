@@ -28,6 +28,10 @@ queue_static_new! {
     QUEUE_OUT: [u8; 1024];
 }
 
+/// COM over USB-CDC (for debug, to USB port on board)
+///
+/// Will extend to support multiple logical ports later; one will remain
+/// for debug and the other will be passed through to the main system.
 pub static COMCDC: ComCdc = ComCdc { queue_out: &QUEUE_OUT };
 
 fn putc_task(q: &'static os::Queue<'static, u8>)

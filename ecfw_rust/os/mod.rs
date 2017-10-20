@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! EC operating system (FreeRTOS, data structures, allocation...)
+
 #[macro_use] mod queue;
 pub mod freertos;
 mod mutex;

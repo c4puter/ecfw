@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Definitions of GPIOs on all interfaces
+
 use drivers::gpio::*;
 use drivers::ledmatrix::LedGpio;
 use drivers::gpio::Mode::*;

@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Definitions of power supplies and sequencing functions
+
 pub use drivers::power::*;
 use devices::pins::*;
 use messages::*;

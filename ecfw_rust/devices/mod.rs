@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Instantiations of devices supported by [drivers](drivers/index.html)
+
 #[macro_use]
 mod misc;
 pub use self::misc::*;

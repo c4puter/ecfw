@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Definitions of I2C peripherals
+
 use drivers::twi::*;
 use os::Mutex;
 

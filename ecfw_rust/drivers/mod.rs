@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Drivers for both hardware and software (e.g. filesystem)
+
 pub mod ext4;
 pub mod gpio;
 pub mod ledmatrix;

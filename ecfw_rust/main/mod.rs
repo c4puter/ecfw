@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! System "toplevel", including `main()`, debug shell, system manager
+
 mod commands;
 mod sysman;
 mod reset;

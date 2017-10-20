@@ -17,6 +17,8 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
 
+//! Error messages and debug categories
+
 pub use rustsys::debug::*;
 
 /// Table of all debug message categories.

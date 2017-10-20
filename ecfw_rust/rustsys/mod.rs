@@ -15,6 +15,8 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 
+//! Rust basics (allocation, panic, print/debug macros...)
+
 #[macro_use] pub mod debug;
 #[macro_use] pub mod print_macs;
 pub mod alloc_system;

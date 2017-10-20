@@ -17,7 +17,7 @@
 
 use core::str;
 
-/// Print a hex dump.  pub fn hexprint(data: &[u8])
+/// Print a hex dump in `hexdump -C` style
 pub fn hexprint(data: &[u8])
 {
     // Format:
