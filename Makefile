@@ -154,6 +154,23 @@ CFLAGS = \
 	-isystem ${ASF_UNF_DIR} \
 	-I esh \
 
+# Individual warning suppressions
+# These are in source files I can't really edit
+${ASF_UNF_DIR}/asf/drivers/udp/udp_device.o: CFLAGS := ${CFLAGS} \
+		-Wno-implicit-function-declaration
+
+${ASF_UNF_DIR}/asf/drivers/spi/spi.o: CFLAGS := ${CFLAGS} \
+		-Wno-misleading-indentation
+
+${ASF_UNF_DIR}/asf/drivers/pmc/sleep.o: CFLAGS := ${CFLAGS} \
+		-DBOARD_OSC_STARTUP_US=shut_up_atmel
+
+lwext4/src/ext4_hash.o: CFLAGS := ${CFLAGS} \
+		-Wno-implicit-fallthrough
+
+lwext4/src/ext4_journal.o: CFLAGS := ${CFLAGS} \
+		-Wno-unused-parameter
+
 RUSTFLAGS = \
 	-Copt-level=2 -Zno-landing-pads --target thumbv7em-none-eabi -g \
 	-L ${RUSTLIB_DIR} -L . -L hardware -L esh/esh_rust/src -L plugins
