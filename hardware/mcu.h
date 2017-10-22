@@ -32,8 +32,6 @@ bool mcu_vector_active(void);
 
 void mcu_use_external_clock(bool ext);
 
-void mcu_start_usb(void);
-void mcu_stop_usb(void);
 bool mcu_usb_putchar(char c);  // true on error
 int mcu_usb_getchar(void);  // -1 on error
 

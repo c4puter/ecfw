@@ -52,64 +52,6 @@ void mcu_init(void)
     sysclk_enable_peripheral_clock(ID_USART1);
 }
 
-void main_sof_action(void) { }
-void main_resume_action(void) { }
-void main_suspend_action(void) { }
-volatile bool G_CDC_ENABLED = false;
-volatile bool G_CDC_CONFIGURED = false;
-
-bool callback_cdc_enable(uint8_t port) {
-    (void) port;
-    G_CDC_ENABLED = true;
-    return true;
-}
-void callback_cdc_disable(uint8_t port) {
-    (void) port;
-}
-void callback_cdc_set_coding_ext(uint8_t port, usb_cdc_line_coding_t *cfg)
-{
-    (void) port;
-    (void) cfg;
-    G_CDC_CONFIGURED = true;
-}
-void callback_cdc_set_dtr(uint8_t port, bool enable)
-{
-    (void) port;
-    (void) enable;
-    G_CDC_CONFIGURED = true;
-}
-
-void mcu_start_usb(void)
-{
-    udc_start();
-}
-
-void mcu_stop_usb(void)
-{
-    udc_stop();
-}
-
-bool mcu_usb_putchar(char c)
-{
-    if (G_CDC_ENABLED) {
-        udi_cdc_putc(c);
-    }
-    return false;
-}
-
-int mcu_usb_getchar(void)
-{
-    if (G_CDC_CONFIGURED) {
-        if (udi_cdc_is_rx_ready()) {
-            return (int) (unsigned char) udi_cdc_getc();
-        } else {
-            return -1;
-        }
-    } else {
-        return -1;
-    }
-}
-
 extern uint32_t _sstack;
 extern uint32_t _estack;
 register uint32_t *sp __asm__("sp");

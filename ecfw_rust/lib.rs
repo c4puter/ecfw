@@ -46,6 +46,8 @@ extern crate asf_rstc;
 extern crate asf_pdc;
 extern crate asf_sd_mmc;
 extern crate asf_usart;
+extern crate asf_udc;
+extern crate asf_udi_cdc;
 
 #[macro_use] pub mod os;
 #[macro_use] pub mod rustsys;

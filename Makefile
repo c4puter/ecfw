@@ -28,6 +28,7 @@ SIZE    = ${CROSS_COMPILE}size
 RUSTC   = rustc
 RUSTDOC = rustdoc
 PYTHON  ?= python
+SHELL   := bash
 
 # }}}
 
@@ -115,6 +116,8 @@ BINDGEN_SOURCES = \
 	asf_pdc.rs:${ASF_UNF_DIR}/asf/drivers/pdc/pdc.h \
 	asf_sd_mmc.rs:${ASF_UNF_DIR}/asf/components/memory/sd_mmc/sd_mmc.h \
 	asf_pio.rs:${ASF_UNF_DIR}/asf/drivers/pio/pio.h \
+	asf_udc.rs:${ASF_UNF_DIR}/asf/services/usb/udc/udc.h \
+	asf_udi_cdc.rs:${ASF_UNF_DIR}/asf/services/usb/class/cdc/device/udi_cdc.h \
 	lwext4_crc32.rs:lwext4/include/ext4_crc32.h \
 	lwext4.rs:lwext4/include/ext4.h \
 
@@ -298,8 +301,8 @@ have-bindgen:
 
 define bindgen
 	@echo "[BINDGEN ] $(2)"
-	@( $$(cat have-bindgen) $(1) ${BINDGENFLAGS} \
-		> $(2) ) 2>&1 | sed -e '/^WARN:bindgen/d' >&2
+	@$$(cat have-bindgen) $(1) --output=$(2) ${BINDGENFLAGS} |& \
+			sed -e '/^WARN:bindgen/d' >&2
 
 endef
 

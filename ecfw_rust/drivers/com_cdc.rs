@@ -18,10 +18,16 @@
 
 //! USB-CDC COM driver (wrapper around Atmel ASF's USB-CDC).
 
-use bindgen_mcu;
+use asf_udc;
+use asf_udi_cdc;
+use ctypes::c_void;
 
 use os;
+use core::sync::atomic::*;
 use drivers::com::Com;
+
+static CDC_ENABLED: AtomicBool = ATOMIC_BOOL_INIT;
+static CDC_CONFIGURED: AtomicBool = ATOMIC_BOOL_INIT;
 
 pub struct ComCdc {
     queue_out: &'static os::Queue<'static, u8>,
@@ -42,9 +48,7 @@ fn putc_task(q: &'static os::Queue<'static, u8>)
     q.register_receiver();
     loop {
         let c = q.receive_wait_blocking();
-        unsafe {
-            bindgen_mcu::mcu_usb_putchar(c as i8);
-        }
+        ComCdc::putchar(c);
     }
 }
 
@@ -61,24 +65,43 @@ impl ComCdc {
 
     pub fn start(&self)
     {
-        unsafe { bindgen_mcu::mcu_start_usb() };
+        unsafe { asf_udc::udc_start() };
     }
 
     pub fn stop(&self)
     {
-        unsafe { bindgen_mcu::mcu_stop_usb() };
+        unsafe { asf_udc::udc_stop() };
+    }
+
+    fn putchar(c: u8)
+    {
+        if CDC_ENABLED.load(Ordering::Relaxed) {
+            unsafe {
+                asf_udi_cdc::udi_cdc_putc(c as i32);
+            }
+        }
+    }
+
+    fn getchar() -> Option<u8>
+    {
+        if CDC_CONFIGURED.load(Ordering::Relaxed) {
+            if unsafe {asf_udi_cdc::udi_cdc_is_rx_ready() } {
+                unsafe {
+                    Some(asf_udi_cdc::udi_cdc_getc() as u8)
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 }
 
 impl Com for ComCdc {
     fn getc(&self) -> Option<u8>
     {
-        let c = unsafe { bindgen_mcu::mcu_usb_getchar() };
-        if c > 0 && c <= 255 {
-            Some(c as u8)
-        } else {
-            None
-        }
+        ComCdc::getchar()
     }
 
     fn putc(&self, c: u8)
@@ -93,9 +116,7 @@ impl Com for ComCdc {
 
     fn putc_async(&self, c: u8)
     {
-        unsafe {
-            bindgen_mcu::mcu_usb_putchar(c as i8);
-        }
+        ComCdc::putchar(c);
     }
 
     fn flush_output(&self) -> bool
@@ -104,3 +125,37 @@ impl Com for ComCdc {
         true
     }
 }
+
+#[no_mangle]
+pub extern "C" fn callback_cdc_enable(_port: u8) -> bool
+{
+    CDC_ENABLED.store(true, Ordering::Relaxed);
+    true
+}
+
+#[no_mangle]
+pub extern "C" fn callback_cdc_disable(_port: u8)
+{
+    CDC_ENABLED.store(false, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub extern "C" fn callback_cdc_set_coding_ext(_port: u8, _cfg: *const c_void)
+{
+    CDC_CONFIGURED.store(true, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub extern "C" fn callback_cdc_set_dtr(_port: u8, _enable: bool)
+{
+    CDC_CONFIGURED.store(true, Ordering::Relaxed);
+}
+
+#[no_mangle]
+pub extern "C" fn main_sof_action() {}
+
+#[no_mangle]
+pub extern "C" fn main_resume_action() {}
+
+#[no_mangle]
+pub extern "C" fn main_suspend_action() {}
