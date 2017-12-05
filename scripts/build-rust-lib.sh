@@ -36,6 +36,7 @@ RUSTSRC="$RUST_SYSROOT/lib/rustlib/src/rust/src"
 
 if ! [[ -d "$RUSTSRC" ]]; then
     echo "rust-src component must be installed via rustup" >&2
+    echo "> rustup component add rust-src" >&2
     exit 1
 fi
 
