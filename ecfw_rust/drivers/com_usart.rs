@@ -42,7 +42,7 @@ queue_static_new! {
 /// COM over local USART (for debug, to RS232 on board)
 pub static COMUSART: ComUsart = ComUsart {
     usart: USART1,
-    irqn: asf_usart::IRQn::USART1_IRQn as i32,
+    irqn: asf_usart::IRQn_USART1_IRQn as i32,
     queue_in: &QUEUE_IN_1,
     queue_out: &QUEUE_OUT_1,
 };
