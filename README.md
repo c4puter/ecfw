@@ -59,3 +59,14 @@ rust-bindgen
 The build system requires [rust-bindgen](https://github.com/Yamakaky/rust-bindgen)
 to generate Rust bindings for C headers. It will be automatically installed
 in the local user context via cargo if you don't have it already.
+
+Programming
+===========
+
+The project's Makefile is set up to program the chip via a
+[Black Magic Probe](https://github.com/blacksphere/blackmagic/wiki). To load
+the firmware, type `make program`; `make debug` will start the debugger.
+
+The first time you load a fresh chip, you'll have to disable the on-chip
+bootloader by starting the debugger (`make debug`) and then issuing
+`mon gpnvm_set 1 1`.
