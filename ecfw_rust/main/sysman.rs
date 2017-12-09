@@ -236,6 +236,10 @@ fn do_boot() -> StdResult
     devices::MATRIX.write().set_full_brightness()?;
     POWER_STATE.store(STATE_RUN, Ordering::SeqCst);
 
+    if DEBUG_BOOT.get() {
+        return Ok(());
+    }
+
     if let Err(e) = boot_mount_card() {
         if e == ERR_NO_CARD {
             CARD_R.set_blink();
