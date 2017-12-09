@@ -20,7 +20,7 @@
 use os::Mutex;
 use messages::*;
 use devices;
-use rustsys::rust_support::{disable_irq, enable_irq};
+use rustsys::rust_support::{disable_irq, enable_irq, nop};
 
 use asf_pio::Pio;
 use core::ptr::{read_volatile, write_volatile};
@@ -72,6 +72,14 @@ def_set!(clear_pins, PIO_CODR);
 def_set!(pins_output, PIO_OER);
 def_set!(pins_input, PIO_ODR);
 
+#[inline(always)]
+fn delay()
+{
+    for _ in 0..100 {
+        nop();
+    }
+}
+
 pub struct Northbridge {}
 
 impl Northbridge {
@@ -91,7 +99,9 @@ impl Northbridge {
         set_pins(PIO, NRD_BM | START_BM);
         pins_output(PIO, 0xFF);
 
+        delay();
         while get_pins(PIO) & NWAIT_BM == 0 {}
+        delay();
 
         unsafe { disable_irq() };
 
@@ -99,19 +109,29 @@ impl Northbridge {
         disable_output_write(PIO, 0xFFFFFFFF);
         enable_output_write(PIO, CLK_BM | 0xFF | START_BM);
 
+        delay();
         write_pins(PIO, addr0 | START_BM);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, addr1);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, addr2);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, addr3);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, addr4);
+        delay();
         set_pins(PIO, CLK_BM);
 
         disable_output_write(PIO, 0xFFFFFFFF);
@@ -136,16 +156,24 @@ impl Northbridge {
         disable_output_write(PIO, 0xFFFFFFFF);
         enable_output_write(PIO, CLK_BM | 0xFF);
 
+        delay();
         write_pins(PIO, data0);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, data1);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, data2);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         write_pins(PIO, data3);
+        delay();
         set_pins(PIO, CLK_BM);
 
         disable_output_write(PIO, 0xFFFFFFFF);
@@ -153,6 +181,7 @@ impl Northbridge {
 
         unsafe { enable_irq() };
 
+        delay();
         while get_pins(PIO) & NWAIT_BM == 0 {}
     }
 
@@ -162,21 +191,29 @@ impl Northbridge {
         clear_pins(PIO, NRD_BM);
 
         clear_pins(PIO, CLK_BM);
+        delay();
         set_pins(PIO, CLK_BM);
+        delay();
         while get_pins(PIO) & NWAIT_BM == 0 {}
 
         let data0 = get_pins(PIO) & 0xFF;
         clear_pins(PIO, CLK_BM);
+        delay();
         set_pins(PIO, CLK_BM);
+        delay();
 
         let data1 = get_pins(PIO) & 0xFF;
         clear_pins(PIO, CLK_BM);
+        delay();
         set_pins(PIO, CLK_BM);
+        delay();
 
         let data2 = get_pins(PIO) & 0xFF;
         clear_pins(PIO, CLK_BM);
+        delay();
         set_pins(PIO, CLK_BM);
 
+        delay();
         let data3 = get_pins(PIO) & 0xFF;
 
         (data0 << 0) | (data1 << 8) | (data2 << 16) | (data3 << 24)
