@@ -727,7 +727,7 @@ fn cmd_poke(args: &[&str]) -> StdResult
     }
 
     let addr = argv_parsed(args, 1, "ADDR", u64::parseint)?;
-    let data = argv_parsed(args, 1, "DATA", u32::parseint)?;
+    let data = argv_parsed(args, 2, "DATA", u32::parseint)?;
 
     devices::NORTHBRIDGE.poke(addr, &[data])?;
 
