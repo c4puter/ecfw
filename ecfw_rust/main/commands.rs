@@ -52,6 +52,7 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "gpio_read", f: cmd_gpio_read,   descr: "read GPIO (by name)" },
     Command{ name: "gpio_write",f: cmd_gpio_write,  descr: "write to GPIO (by name) VALUE" },
 
+    Command{ name: "clkdoc",    f: cmd_clkdoc,      descr: "print out descriptions of clocks" },
     Command{ name: "clkdiv",    f: cmd_clkdiv,      descr: "set clock divider N to VALUE" },
     Command{ name: "clkrat",    f: cmd_clkrat,      descr: "set clock PLL ratio to N/M" },
     Command{ name: "clkload",   f: cmd_clkload,     descr: "set clock load capacitance to PF" },
@@ -395,6 +396,21 @@ fn cmd_gpio_write(args: &[&str]) -> StdResult
     Ok(())
 }
 
+fn cmd_clkdoc(_args: &[&str]) -> StdResult
+{
+    println!("PLL output before dividers: 187.5 MHz");
+    println!("Y1 = EC reference, default div/25 =  7.50 MHz");
+    println!("Y2 = memory clock, default div/ 3 = 62.50 MHz");
+    println!("Y3 = CPU clock,    fast    div/ 2 = 93.75 MHz");
+    println!("                   slow    div/20 =  9.38 MHz");
+    println!("");
+    println!("PLL reference is 20 MHz");
+    println!("PLL output range is 80 to 230 MHz");
+    println!("Load capacitance range is 0 to 20 pF plus ~6 pF on board");
+    println!("");
+    Ok(())
+}
+
 fn cmd_clkdiv(args: &[&str]) -> StdResult
 {
     if args.len() < 3 {
@@ -424,6 +440,7 @@ fn cmd_clkrat(args: &[&str]) -> StdResult
     let num = argv_parsed(args, 1, "N", u32::parseint)?;
     let den = argv_parsed(args, 2, "M", u32::parseint)?;
 
+    devices::CLOCK_SYNTH.usepll(false)?;
     devices::CLOCK_SYNTH.ratio(num, den)?;
     devices::CLOCK_SYNTH.usepll(true)?;
     Ok(())
