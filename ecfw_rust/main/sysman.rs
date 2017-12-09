@@ -342,9 +342,9 @@ fn reset_fpgas()
 
 fn boot_load_fpgas() -> StdResult
 {
-    boot_load_fpga(0, "/bridge.bit", &BIT_BRIDGE_G)?;
-    // boot_load_fpga(1, "/cpu0.bit", &BIT_CPU0_G)?;
-    // boot_load_fpga(2, "/cpu1.bit", &BIT_CPU1_G)?;
+    boot_load_fpga(0, "/bridge.bin", &BIT_BRIDGE_G)?;
+    // boot_load_fpga(1, "/cpu0.bin", &BIT_CPU0_G)?;
+    // boot_load_fpga(2, "/cpu1.bin", &BIT_CPU1_G)?;
     Ok(())
 }
 
