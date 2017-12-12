@@ -127,21 +127,11 @@ impl<'a> Spartan6<'a> {
 
 fn wait_for_pin(pin: &Gpio, state: bool, timeout_ticks: u32) -> StdResult
 {
-    let end_tick = freertos::ticks().wrapping_add(timeout_ticks);
-
-    while end_tick < freertos::ticks() {
+    freertos::until_timeout(timeout_ticks, move || {
         if pin.get() == state {
-            return Ok(());
+            return Some(());
+        } else {
+            return None;
         }
-        freertos::yield_task();
-    }
-
-    while freertos::ticks() < end_tick {
-        if pin.get() == state {
-            return Ok(());
-        }
-        freertos::yield_task();
-    }
-
-    Err(ERR_TIMEOUT)
+    })
 }

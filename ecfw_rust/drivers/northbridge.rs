@@ -74,26 +74,20 @@ def_set!(pins_input, PIO_ODR);
 
 fn fast_wait_for_pin(pio: *mut Pio, mask: u32, value: u32, timeout_ticks: u32)
     -> StdResult
+
 {
-    let end_tick = freertos::ticks().wrapping_add(timeout_ticks);
-
-    while end_tick < freertos::ticks() {
+    freertos::until_timeout(timeout_ticks, move || {
+        // Check many times in a row because until_timeout() will yield to
+        // freertos after each call to the closure. We don't want to yield
+        // unless the pin takes a really long time to change, because it'll
+        // usually change in just a couple clock cycles.
         for _ in 0..100 {
             if get_pins(pio) & mask == value {
-                return Ok(());
+                return Some(());
             }
         }
-    }
-
-    while freertos::ticks() < end_tick {
-        for _ in 0..100 {
-            if get_pins(pio) & mask == value {
-                return Ok(());
-            }
-        }
-    }
-
-    Err(ERR_TIMEOUT)
+        None
+    })
 }
 
 pub struct Northbridge {}

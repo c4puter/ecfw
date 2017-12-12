@@ -27,6 +27,7 @@ use core::mem;
 use core::cell::UnsafeCell;
 use alloc::boxed::Box;
 use ctypes::c_void;
+use messages::*;
 
 // Optimization because tick counts are sometimes checked in fairly tight
 // places - we don't actually need an Atomic here, because it's one word
@@ -299,6 +300,38 @@ pub fn notify_take(counter_action: CounterAction, timeout_ticks: u32) -> u32
             timeout_ticks,
         )
     }
+}
+
+/// Run a closure repeatedly until either it returns `Some(v)` or a timeout
+/// occurs, returning `Ok(v)` on success or `Err(ERR_TIMEOUT)` on failure.
+///
+/// # Arguments
+/// - `timeout_ticks` - how many ticks before timeout
+/// - `f` - closure returning `Some(v)` on success or `None` to keep executing
+///
+/// # Return
+/// `Ok(v)` if the closure returned `Some(v)` before timeout, otherwise
+/// `Err(ERR_TIMEOUT)`.
+pub fn until_timeout<F, T>(timeout_ticks: u32, f: F) -> Result<T, Error>
+    where F: Fn() -> Option<T>
+{
+    let end_tick = ticks().wrapping_add(timeout_ticks);
+
+    while end_tick < ticks() {
+        if let Some(v) = f() {
+            return Ok(v);
+        }
+        yield_task();
+    }
+
+    while ticks() < end_tick {
+        if let Some(v) = f() {
+            return Ok(v);
+        }
+        yield_task();
+    }
+
+    Err(ERR_TIMEOUT)
 }
 
 #[no_mangle]
