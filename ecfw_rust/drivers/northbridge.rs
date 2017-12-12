@@ -20,7 +20,6 @@
 use os::Mutex;
 use os::freertos;
 use messages::*;
-use devices;
 use rustsys::rust_support::{disable_irq, enable_irq};
 
 use asf_pio::Pio;
@@ -229,12 +228,6 @@ impl Northbridge {
     // Write a block of data into the northbridge. Destination is word-addressed
     pub fn poke(&self, dest_addr: u64, src: &[u32]) -> StdResult
     {
-        let mutlock = devices::FPGAS[0].proglock();
-
-        if mutlock.is_none() {
-            return Err(ERR_FPGA_BEFORE_BITSTREAM);
-        }
-
         let _lock = NB_MUTEX.lock();
 
         for i in 0 .. src.len() {
@@ -256,12 +249,6 @@ impl Northbridge {
     // Read a block of data from the northbridge. Source is word-addressed
     pub fn peek(&self, dest: &mut [u32], src_addr: u64) -> StdResult
     {
-        let mutlock = devices::FPGAS[0].proglock();
-
-        if mutlock.is_none() {
-            return Err(ERR_FPGA_BEFORE_BITSTREAM);
-        }
-
         let _lock = NB_MUTEX.lock();
 
         for i in 0 .. dest.len() {

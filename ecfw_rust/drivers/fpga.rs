@@ -17,14 +17,13 @@
 
 //! Driver to load bitstreams onto FPGAs.
 
-use os::{Mutex, MutexLock};
+use os::Mutex;
 use os::freertos;
 use messages::*;
 use drivers::spi::Spi;
 use drivers::gpio::Gpio;
 use drivers::ext4;
 use alloc::vec;
-use core::sync::atomic::*;
 
 /// Driver for programming a Spartan 6.
 pub struct Spartan6<'a> {
@@ -33,7 +32,6 @@ pub struct Spartan6<'a> {
     done_pin: &'a (Gpio + Sync),
     init_pin: &'a (Gpio + Sync),
     prog_pin: &'a (Gpio + Sync),
-    programmed: AtomicBool,
 }
 
 impl<'a> Spartan6<'a> {
@@ -70,20 +68,6 @@ impl<'a> Spartan6<'a> {
             done_pin: done_pin,
             init_pin: init_pin,
             prog_pin: prog_pin,
-            programmed: ATOMIC_BOOL_INIT,
-        }
-    }
-
-    /// Check whether the FPGA has been programmed, and lock if so,
-    /// returning the lock. While this lock is held, the FPGA cannot
-    /// be reprogrammed.
-    pub fn proglock<'b>(&'b self) -> Option<MutexLock<'b, ()>>
-    {
-        let lock = self.mutex.lock();
-        if self.programmed.load(Ordering::Relaxed) {
-            Some(lock)
-        } else {
-            None
         }
     }
 
@@ -92,7 +76,6 @@ impl<'a> Spartan6<'a> {
     {
         let _lock = self.mutex.lock();
 
-        self.programmed.store(false, Ordering::Relaxed);
         self.prog_pin.set(true);
         freertos::delay(1);
         self.prog_pin.set(false);
@@ -101,7 +84,6 @@ impl<'a> Spartan6<'a> {
         self.actual_load(filename)?;
 
         wait_for_pin(self.done_pin, true, 500)?;
-        self.programmed.store(true, Ordering::Relaxed);
 
         Ok(())
     }

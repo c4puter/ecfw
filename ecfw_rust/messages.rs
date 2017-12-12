@@ -118,5 +118,4 @@ error_table! {
     ///////////////////////////////////////////////////////////////////
     // Oddly specific
     ERR_PLL_RANGE:              "PLL frequency out of range";
-    ERR_FPGA_BEFORE_BITSTREAM:  "comm with FPGA before loading bitstream";
 }
