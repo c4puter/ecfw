@@ -72,13 +72,14 @@ def_set!(clear_pins, PIO_CODR);
 def_set!(pins_output, PIO_OER);
 def_set!(pins_input, PIO_ODR);
 
-fn fast_wait_for_pin(mask: u32, value: u32, timeout_ticks: u32) -> StdResult
+fn fast_wait_for_pin(pio: *mut Pio, mask: u32, value: u32, timeout_ticks: u32)
+    -> StdResult
 {
     let end_tick = freertos::ticks().wrapping_add(timeout_ticks);
 
     while end_tick < freertos::ticks() {
         for _ in 0..100 {
-            if get_pins(PIO) & mask == value {
+            if get_pins(pio) & mask == value {
                 return Ok(());
             }
         }
@@ -86,7 +87,7 @@ fn fast_wait_for_pin(mask: u32, value: u32, timeout_ticks: u32) -> StdResult
 
     while freertos::ticks() < end_tick {
         for _ in 0..100 {
-            if get_pins(PIO) & mask == value {
+            if get_pins(pio) & mask == value {
                 return Ok(());
             }
         }
@@ -114,7 +115,7 @@ impl Northbridge {
         set_pins(PIO, NRD_BM | START_BM);
         pins_output(PIO, 0xFF);
 
-        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
+        fast_wait_for_pin(PIO, NWAIT_BM, NWAIT_BM, 100)?;
 
         unsafe { disable_irq() };
 
@@ -177,7 +178,7 @@ impl Northbridge {
 
         unsafe { enable_irq() };
 
-        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
+        fast_wait_for_pin(PIO, NWAIT_BM, NWAIT_BM, 100)?;
         Ok(())
     }
 
@@ -188,30 +189,30 @@ impl Northbridge {
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
-        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
+        fast_wait_for_pin(PIO, NWAIT_BM, NWAIT_BM, 100)?;
 
         // Wait for GPIO output->input round trip
         // Could use a fixed number of NOPs, but the compiler emits fairly
         // nice code for this.
-        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
+        fast_wait_for_pin(PIO, CLK_BM, CLK_BM, 100)?;
         let data0 = get_pins(PIO) & 0xFF;
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
 
-        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
+        fast_wait_for_pin(PIO, CLK_BM, CLK_BM, 100)?;
         let data1 = get_pins(PIO) & 0xFF;
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
 
-        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
+        fast_wait_for_pin(PIO, CLK_BM, CLK_BM, 100)?;
         let data2 = get_pins(PIO) & 0xFF;
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
 
-        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
+        fast_wait_for_pin(PIO, CLK_BM, CLK_BM, 100)?;
         let data3 = get_pins(PIO) & 0xFF;
 
         Ok((data0 << 0) | (data1 << 8) | (data2 << 16) | (data3 << 24))
@@ -221,7 +222,7 @@ impl Northbridge {
     {
         set_pins(PIO, NRD_BM);
         pins_output(PIO, 0xFF);
-        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
+        fast_wait_for_pin(PIO, NWAIT_BM, NWAIT_BM, 100)?;
         Ok(())
     }
 
