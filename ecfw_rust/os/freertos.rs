@@ -24,11 +24,17 @@ use core::ptr;
 use core::str;
 use core::slice;
 use core::mem;
-use core::sync::atomic::*;
+use core::cell::UnsafeCell;
 use alloc::boxed::Box;
 use ctypes::c_void;
 
-static TICK_COUNT: AtomicUsize = ATOMIC_USIZE_INIT;
+// Optimization because tick counts are sometimes checked in fairly tight
+// places - we don't actually need an Atomic here, because it's one word
+// long and only modified in one place. Use an UnsafeCell instead and
+// read/write with ptr::volatile_load/volatile_store.
+struct TickCount(UnsafeCell<u32>);
+unsafe impl Sync for TickCount {}
+static TICK_COUNT: TickCount = TickCount(UnsafeCell::new(0));
 
 pub type TaskHandle = u32;
 
@@ -217,7 +223,8 @@ pub fn susp_safe_delay(nticks: u32)
 /// tick counter that runs even when the scheduler is suspended.
 pub fn ticks() -> u32
 {
-    TICK_COUNT.load(Ordering::Relaxed) as u32
+    // Safe: value is one word long and always in a valid state.
+    unsafe{ptr::read_volatile(TICK_COUNT.0.get())}
 }
 
 /// Get the total number of ticks elapsed since `run()`. This is the FreeRTOS
@@ -323,5 +330,10 @@ pub extern "C" fn vApplicationMallocFailedHook()
 #[doc(hidden)]
 pub extern "C" fn vApplicationTickHook()
 {
-    TICK_COUNT.fetch_add(1, Ordering::Relaxed);
+    // Safe: value is one word long and only modified here, so this will
+    // always be valid.
+    unsafe {
+        let tc = ptr::read_volatile(TICK_COUNT.0.get()).wrapping_add(1);
+        ptr::write_volatile(TICK_COUNT.0.get(), tc);
+    }
 }
