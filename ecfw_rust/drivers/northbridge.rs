@@ -18,6 +18,7 @@
 //! Northbridge data bus interface.
 
 use os::Mutex;
+use os::freertos;
 use messages::*;
 use devices;
 use rustsys::rust_support::{disable_irq, enable_irq};
@@ -72,6 +73,29 @@ def_set!(clear_pins, PIO_CODR);
 def_set!(pins_output, PIO_OER);
 def_set!(pins_input, PIO_ODR);
 
+fn fast_wait_for_pin(mask: u32, value: u32, timeout_ticks: u32) -> StdResult
+{
+    let end_tick = freertos::ticks().wrapping_add(timeout_ticks);
+
+    while end_tick < freertos::ticks() {
+        for _ in 0..100 {
+            if get_pins(PIO) & mask == value {
+                return Ok(());
+            }
+        }
+    }
+
+    while freertos::ticks() < end_tick {
+        for _ in 0..100 {
+            if get_pins(PIO) & mask == value {
+                return Ok(());
+            }
+        }
+    }
+
+    Err(ERR_TIMEOUT)
+}
+
 pub struct Northbridge {}
 
 impl Northbridge {
@@ -80,7 +104,7 @@ impl Northbridge {
         Northbridge {}
     }
 
-    fn send_addr(&self, dest_addr: u64)
+    fn send_addr(&self, dest_addr: u64) -> StdResult
     {
         let addr0 = ((dest_addr & 0x00000000FF) >> 0) as u32;
         let addr1 = ((dest_addr & 0x000000FF00) >> 8) as u32;
@@ -91,7 +115,7 @@ impl Northbridge {
         set_pins(PIO, NRD_BM | START_BM);
         pins_output(PIO, 0xFF);
 
-        while get_pins(PIO) & NWAIT_BM == 0 {}
+        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
 
         unsafe { disable_irq() };
 
@@ -118,9 +142,10 @@ impl Northbridge {
         enable_output_write(PIO, owsr);
 
         unsafe { enable_irq() };
+        Ok(())
     }
 
-    fn send_data(&self, data: u32)
+    fn send_data(&self, data: u32) -> StdResult
     {
         let data0 = ((data & 0x000000FF) >> 0) as u32;
         let data1 = ((data & 0x0000FF00) >> 8) as u32;
@@ -153,50 +178,52 @@ impl Northbridge {
 
         unsafe { enable_irq() };
 
-        while get_pins(PIO) & NWAIT_BM == 0 {}
+        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
+        Ok(())
     }
 
-    fn get_data(&self) -> u32
+    fn get_data(&self) -> Result<u32, Error>
     {
         pins_input(PIO, 0xFF);
         clear_pins(PIO, NRD_BM);
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
-        while get_pins(PIO) & NWAIT_BM == 0 {}
+        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
 
         // Wait for GPIO output->input round trip
         // Could use a fixed number of NOPs, but the compiler emits fairly
         // nice code for this.
-        while get_pins(PIO) & CLK_BM == 0 {}
+        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
         let data0 = get_pins(PIO) & 0xFF;
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
 
-        while get_pins(PIO) & CLK_BM == 0 {}
+        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
         let data1 = get_pins(PIO) & 0xFF;
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
 
-        while get_pins(PIO) & CLK_BM == 0 {}
+        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
         let data2 = get_pins(PIO) & 0xFF;
 
         clear_pins(PIO, CLK_BM);
         set_pins(PIO, CLK_BM);
 
-        while get_pins(PIO) & CLK_BM == 0 {}
+        fast_wait_for_pin(CLK_BM, CLK_BM, 100)?;
         let data3 = get_pins(PIO) & 0xFF;
 
-        (data0 << 0) | (data1 << 8) | (data2 << 16) | (data3 << 24)
+        Ok((data0 << 0) | (data1 << 8) | (data2 << 16) | (data3 << 24))
     }
 
-    fn finish_read(&self)
+    fn finish_read(&self) -> StdResult
     {
         set_pins(PIO, NRD_BM);
         pins_output(PIO, 0xFF);
-        while get_pins(PIO) & NWAIT_BM == 0 {}
+        fast_wait_for_pin(NWAIT_BM, NWAIT_BM, 100)?;
+        Ok(())
     }
 
     // Write a block of data into the northbridge. Destination is word-addressed
@@ -217,10 +244,10 @@ impl Northbridge {
                 // Northbridge interface has autoincrement over the last octet
                 // of the address. If we would overflow this autoincrement, we
                 // must retransmit the address.
-                self.send_addr(dest_addr_i);
+                self.send_addr(dest_addr_i)?;
             }
 
-            self.send_data(src[i]);
+            self.send_data(src[i])?;
         }
 
         Ok(())
@@ -245,12 +272,12 @@ impl Northbridge {
                 // of the address. If we would overflow this autoincrement, we
                 // must retransmit the address.
                 if i != 0 {
-                    self.finish_read();
+                    self.finish_read()?;
                 }
-                self.send_addr(src_addr_i);
+                self.send_addr(src_addr_i)?;
             }
 
-            dest[i] = self.get_data();
+            dest[i] = self.get_data()?;
         }
 
         Ok(())
