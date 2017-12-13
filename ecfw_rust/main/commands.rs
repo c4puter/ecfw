@@ -16,7 +16,7 @@
 //
 
 use os;
-use drivers::{ext4, gpt};
+use drivers::{ext4, gpt, sdram};
 use drivers::gpio::Gpio;
 use drivers::ftrans::FTrans;
 use devices;
@@ -74,6 +74,7 @@ pub static COMMAND_TABLE: &[Command] = &[
     Command{ name: "expand",    f: cmd_expand,      descr: "expand PATH, following links" },
     Command{ name: "ftrans",    f: cmd_ftrans,      descr: "open file transfer (requires USB)" },
 
+    Command{ name: "sdram_init",f: cmd_sdram_init,  descr: "initialize sdram" },
     Command{ name: "peek",      f: cmd_peek,        descr: "read 32 bits at ADDR" },
     Command{ name: "poke",      f: cmd_poke,        descr: "write to ADDR, 32 bit DATA" },
 ];
@@ -702,6 +703,11 @@ fn cmd_ftrans(_args: &[&str]) -> StdResult
     let mut ftrans = FTrans::new();
     ftrans.run();
     Ok(())
+}
+
+fn cmd_sdram_init(_args: &[&str]) -> StdResult
+{
+    sdram::sdram_init()
 }
 
 fn cmd_peek(args: &[&str]) -> StdResult

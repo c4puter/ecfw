@@ -27,6 +27,7 @@ pub mod i2c;
 pub mod spi;
 pub mod fpga;
 pub mod northbridge;
+pub mod sdram;
 pub mod gpt;
 pub mod power;
 pub mod ftrans;

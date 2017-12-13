@@ -34,6 +34,7 @@ debug_table! {
     DEBUG_FS:           "ext3fs",   true;
     DEBUG_ALLOC:        "alloc",    false;
     DEBUG_CLOCK:        "clock",    true;
+    DEBUG_SDRAM:        "sdram",    true;
 }
 
 /// Table of all error messages.
@@ -118,4 +119,5 @@ error_table! {
     ///////////////////////////////////////////////////////////////////
     // Oddly specific
     ERR_PLL_RANGE:              "PLL frequency out of range";
+    ERR_CAS:                    "SDRAM: unsupported CAS latency";
 }

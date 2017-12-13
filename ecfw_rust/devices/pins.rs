@@ -87,7 +87,7 @@ pin_table!{
     RS232_RX,           SamGpio, port => PIOA, pin => 21, mode => PerA,   default => false, invert => false;
     RS232_TX,           SamGpio, port => PIOA, pin => 22, mode => PerA,   default => false, invert => false;
     RTCINT,             SamGpio, port => PIOC, pin => 25, mode => Input,  default => false, invert => true;
-    SDRAM_EVENT,        SamGpio, port => PIOC, pin => 18, mode => Input,  default => false, invert => true;
+    SDRAM_EVENT,        SamGpio, port => PIOC, pin => 18, mode => Pullup, default => false, invert => true;
     SDRAM_RST,          SamGpio, port => PIOB, pin => 13, mode => Output, default => false, invert => true;
     I2C0_SCL,           SamGpio, port => PIOA, pin => 4,  mode => PerA,   default => false, invert => false;
     I2C0_SDA,           SamGpio, port => PIOA, pin => 3,  mode => PerA,   default => false, invert => false;
