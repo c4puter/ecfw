@@ -106,6 +106,7 @@ impl Northbridge {
         let addr3 = ((dest_addr & 0x00FF000000) >> 24) as u32;
         let addr4 = ((dest_addr & 0x0F00000000) >> 32) as u32;
 
+        clear_pins(PIO, CLK_BM);
         set_pins(PIO, NRD_BM | START_BM);
         pins_output(PIO, 0xFF);
 
