@@ -47,7 +47,7 @@ use core::str;
 const DRAC_BASE: u64 = 0xE_0000_0000;
 const COMMAND_MRS: u64 = (0 << 6);
 const COMMAND_NOP: u64 = (7 << 6);
-const COMMAND_ZQCL: u64 = (6 << 6);
+const COMMAND_ZQCL: u64 = (6 << 6) | (1 << 24);
 const COMMAND_CS1: u64 = 0;
 const COMMAND_CS2: u64 = (1 << 30);
 const INIT_CONTINUE: u64 = (1 << 31);
@@ -56,26 +56,25 @@ const SPD_I2C_ADDR: u8 = 0x50;
 
 fn cmd_nop(cs: u64) -> StdResult
 {
-    NORTHBRIDGE.poke(DRAC_BASE | cs | COMMAND_NOP | INIT_CONTINUE, &[0u32])
+    NORTHBRIDGE.poke(DRAC_BASE | cs | COMMAND_NOP | INIT_CONTINUE, &[0xffffffffu32])
 }
 
 fn cmd_done() -> StdResult
 {
-    NORTHBRIDGE.poke(DRAC_BASE | COMMAND_NOP, &[0u32])
+    NORTHBRIDGE.poke(DRAC_BASE | COMMAND_NOP, &[0xffffffffu32])
 }
 
 fn cmd_zqcl(cs: u64) -> StdResult
 {
-    NORTHBRIDGE.poke(DRAC_BASE | cs | COMMAND_ZQCL | INIT_CONTINUE, &[0u32])
+    NORTHBRIDGE.poke(DRAC_BASE | cs | COMMAND_ZQCL | INIT_CONTINUE, &[0xffffffffu32])
 }
 
 fn cmd_mrs(cs: u64, reg: u32, value: u32) -> StdResult
 {
-    let mrs_opcode = ((value & 0x3fff) << 3) | (reg & 0x3);
     NORTHBRIDGE.poke(
         DRAC_BASE | cs | COMMAND_MRS | INIT_CONTINUE |
-          ((mrs_opcode as u64) << 11),
-        &[0u32])
+            ((value as u64) << 14) | ((reg as u64) << 11),
+        &[0xffffffffu32])
 }
 
 fn calculate_mr0() -> u32
@@ -87,8 +86,8 @@ fn calculate_mr0() -> u32
     //|   | | |   CAS latency (5)
     //|   | | |   | READ burst type (sequential)
     //|   | | |   | | reserved
-    //|   | | |   | | | burst length = 8
-    0b1_001_1_0_001_0_0_00
+    //|   | | |   | | | burst length BC4 (chop)
+    0b1_001_1_0_001_0_0_10
 }
 
 fn calculate_mr1() -> u32
@@ -176,7 +175,7 @@ fn get_spd() -> Result<vec::Vec<u8>, Error>
 {
     let mut buf = vec::from_elem(0u8, 128);
 
-    I2C0.read(SPD_I2C_ADDR, &[0u8], &mut buf[0..128]);
+    I2C0.read(SPD_I2C_ADDR, &[0u8], &mut buf[0..128])?;
 
     Ok(buf)
 }
